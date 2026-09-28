@@ -21,6 +21,9 @@ import { describe, expect, it } from "vitest";
 const NEEDS_ACCOUNT_ID = /CF_ACCOUNT_ID/;
 const NEEDS_ZAI_KEY = /ZAI_API_KEY/;
 const NEEDS_WORKERS_AI_TOKEN = /WORKERS_AI_API_TOKEN/;
+const NEEDS_OPENAI_COMPATIBLE_URL = /OPENAI_COMPATIBLE_BASE_URL/;
+const NEEDS_OPENAI_COMPATIBLE_KEY = /OPENAI_COMPATIBLE_API_KEY/;
+const NEEDS_ORG_CHAT_MODEL = /ORG_CHAT_MODEL/;
 const ONLY_ACCEPTS_TEXT = /only accepts text/i;
 const ONLY_IMAGE = /only image/i;
 
@@ -175,6 +178,92 @@ describe("resolveOrgChatModelConfig", () => {
         env({ ORG_CHAT_PROVIDER: "workers-ai", CF_ACCOUNT_ID: "acct123" })
       )
     ).toThrow(NEEDS_WORKERS_AI_TOKEN);
+  });
+});
+
+describe("openai-compatible provider (generic OpenAI-compatible endpoint)", () => {
+  const baseEnv: OrgInferenceEnv = {
+    ORG_CHAT_PROVIDER: "openai-compatible",
+    OPENAI_COMPATIBLE_BASE_URL: "https://api.orcarouter.ai/v1",
+    OPENAI_COMPATIBLE_API_KEY: "ok",
+    ORG_CHAT_MODEL: "z-ai/glm-5.3-flash",
+  };
+
+  it("resolves base URL + key + model from env, calling the origin directly", () => {
+    const config = resolveOrgChatModelConfig(env(baseEnv));
+    expect(config.provider).toBe("openai-compatible");
+    if (config.kind !== "openai-compatible") {
+      throw new Error("expected openai-compatible");
+    }
+    expect(config.providerName).toBe("openaiCompatible");
+    expect(config.baseURL).toBe("https://api.orcarouter.ai/v1");
+    expect(config.apiKey).toBe("ok");
+    expect(config.cloudflareGateway).toBe(false);
+    expect(config.headers).toBeUndefined();
+    expect(config.entryId).toBe("z-ai/glm-5.3-flash");
+    expect(config.modelId).toBe("openai-compatible/z-ai/glm-5.3-flash");
+    expect(config.contextWindow).toBe(1_000_000);
+    expect(config.providerOptions).toBeUndefined();
+  });
+
+  it("is direct-only: CF AI Gateway vars do not rewrite the base URL", () => {
+    const config = resolveOrgChatModelConfig(
+      env({
+        ...baseEnv,
+        CF_ACCOUNT_ID: "acct123",
+        CF_AIG_GATEWAY_ID: "my-gw",
+        CF_AIG_TOKEN: "aig-token",
+      })
+    );
+    if (config.kind !== "openai-compatible") {
+      throw new Error("expected openai-compatible");
+    }
+    expect(config.cloudflareGateway).toBe(false);
+    expect(config.baseURL).toBe("https://api.orcarouter.ai/v1");
+    expect(config.headers).toBeUndefined();
+  });
+
+  it("fails when the base URL, the key or the model is missing", () => {
+    expect(() =>
+      resolveOrgChatModelConfig(
+        env({ ...baseEnv, OPENAI_COMPATIBLE_BASE_URL: undefined })
+      )
+    ).toThrow(NEEDS_OPENAI_COMPATIBLE_URL);
+    expect(() =>
+      resolveOrgChatModelConfig(
+        env({ ...baseEnv, OPENAI_COMPATIBLE_API_KEY: undefined })
+      )
+    ).toThrow(NEEDS_OPENAI_COMPATIBLE_KEY);
+    expect(() =>
+      resolveOrgChatModelConfig(env({ ...baseEnv, ORG_CHAT_MODEL: undefined }))
+    ).toThrow(NEEDS_ORG_CHAT_MODEL);
+  });
+
+  it("constructs a model", () => {
+    const model = buildOrgChatModel(resolveOrgChatModelConfig(env(baseEnv)));
+    expect(model).toBeDefined();
+  });
+
+  it("the catalog entry reports image input on", () => {
+    expect(resolveOrgChatCapabilities(env(baseEnv))).toEqual({
+      provider: "openai-compatible",
+      entryId: "z-ai/glm-5.3-flash",
+      inputModalities: ["text", "image"],
+      supportsImageInput: true,
+    });
+  });
+
+  it("unknown model ids fall back to the conservative defaults", () => {
+    expect(
+      resolveOrgChatCapabilities(
+        env({ ...baseEnv, ORG_CHAT_MODEL: "vendor/other-model" })
+      )
+    ).toEqual({
+      provider: "openai-compatible",
+      entryId: "vendor/other-model",
+      inputModalities: ["text"],
+      supportsImageInput: false,
+    });
   });
 });
 

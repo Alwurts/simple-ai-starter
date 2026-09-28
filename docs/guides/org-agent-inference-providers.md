@@ -29,6 +29,7 @@ Set `ORG_CHAT_PROVIDER` (unset ⇒ `vercel-gateway`), then the matching key.
 | `vercel-gateway` (default) | `AI_GATEWAY_API_KEY` | `google/gemini-3-flash` | text + image | Vercel AI Gateway; unchanged behaviour |
 | `zai-coding-plan` | `ZAI_API_KEY` | `glm-5.2` | **text-only** | z.ai GLM coding plan (OpenAI-compatible); attach control is hidden |
 | `workers-ai` | `WORKERS_AI_API_TOKEN` + `CF_ACCOUNT_ID` | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | **text-only** | Cloudflare Workers AI via its OpenAI-compatible endpoint — **no `env.AI` binding**, so it runs under plain `wrangler dev` |
+| `openai-compatible` | `OPENAI_COMPATIBLE_API_KEY` + `OPENAI_COMPATIBLE_BASE_URL` | none — `ORG_CHAT_MODEL` is **required** | per catalog row | Any OpenAI-compatible endpoint; called directly (no CF AI Gateway rewrite) |
 
 Modalities are a **per-model** property on each `MODEL_OFFERINGS` row (`inputModalities`),
 not a provider-wide flag — the same provider can host both text-only and vision models.
@@ -42,10 +43,29 @@ Attachment gating (ALW-453): `gateChatAttachments` + `GET /api/protected/chat/ca
 hide or reject non-text parts for text-only models before the model call, so users never
 see opaque provider errors like `messages.content.type is invalid`.
 
+## Generic OpenAI-compatible endpoints (`openai-compatible`)
+
+For any OpenAI-compatible endpoint (self-hosted gateways, aggregators, etc.):
+
+```ini
+ORG_CHAT_PROVIDER=openai-compatible
+OPENAI_COMPATIBLE_BASE_URL=https://api.example.com/v1
+OPENAI_COMPATIBLE_API_KEY=...
+ORG_CHAT_MODEL=vendor/model-id
+```
+
+- `ORG_CHAT_MODEL` is **required** — the provider has no default model.
+- The base URL is called directly. The Cloudflare AI Gateway section below does
+  **not** apply: a gateway route needs a fixed `custom-<slug>` upstream path,
+  which an arbitrary origin doesn't have.
+- Known model ids get their `MODEL_OFFERINGS` catalog row (e.g.
+  `z-ai/glm-5.3-flash`: 1M context, image input); unknown ids fall back to the
+  conservative defaults (128k context, text-only).
+
 ## Fronting with Cloudflare AI Gateway (optional)
 
-Set **all three** to route the `openai-compatible` providers through a Cloudflare
-AI Gateway (caching, analytics, rate-limiting, retries):
+Set **all three** to route the `zai-coding-plan` and `workers-ai` providers
+through a Cloudflare AI Gateway (caching, analytics, rate-limiting, retries):
 
 ```ini
 CF_ACCOUNT_ID=...
