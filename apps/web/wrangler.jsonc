@@ -4,8 +4,7 @@
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sfab-tok-worker-name",
-  "account_id": "sfab-tok-account-id",
+  "name": "simple-ai-starter",
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
@@ -15,15 +14,17 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "sfab-tok-d1-database-name",
-      "database_id": "sfab-tok-d1-database-id",
+      "database_name": "simple-ai-starter",
+      // Placeholder — local dev accepts it, but run `wrangler d1 create
+      // simple-ai-starter` and paste the real id here before deploying.
+      "database_id": "placeholder-replace-before-deploy",
       "migrations_dir": "../../packages/db/drizzle"
     }
   ],
   "r2_buckets": [
     {
       "binding": "R2_BUCKET",
-      "bucket_name": "sfab-tok-r2-bucket-name"
+      "bucket_name": "simple-ai-starter"
     }
   ],
   "durable_objects": {
