@@ -13,20 +13,15 @@ import {
 const productSelectFields = {
   id: products.id,
   organizationId: products.organizationId,
-  sku: products.sku,
   name: products.name,
   description: products.description,
   price: products.price,
-  cost: products.cost,
-  minStockLevel: products.minStockLevel,
-  imageUrl: products.imageUrl,
   createdAt: products.createdAt,
   updatedAt: products.updatedAt,
 };
 
 const productSortColumns = {
   name: products.name,
-  sku: products.sku,
   price: products.price,
   createdAt: products.createdAt,
 } as const;
@@ -42,7 +37,7 @@ export const getPaginatedProducts = async (
     const searchPattern = `%${params.search}%`;
     const searchCondition = or(
       like(products.name, searchPattern),
-      like(products.sku, searchPattern)
+      like(products.description, searchPattern)
     );
     if (searchCondition) {
       conditions.push(searchCondition);
@@ -143,7 +138,7 @@ export const resolveProductRef = async (
   const trimmed = ref.trim();
   if (!trimmed) {
     throw new DomainError(
-      `Product not found: no match for id, name, or sku "${ref}"`,
+      `Product not found: no match for id or name "${ref}"`,
       "not_found"
     );
   }
@@ -167,22 +162,8 @@ export const resolveProductRef = async (
     return byName[0] as Product;
   }
 
-  const bySku = await db
-    .select(productSelectFields)
-    .from(products)
-    .where(and(eq(products.organizationId, orgId), eq(products.sku, trimmed)));
-  if (bySku.length > 1) {
-    throw new DomainError(
-      `ambiguous product ref: ${bySku.length} matches for "${trimmed}"`,
-      "conflict"
-    );
-  }
-  if (bySku.length === 1) {
-    return bySku[0] as Product;
-  }
-
   throw new DomainError(
-    `Product not found: no match for id, name, or sku "${trimmed}"`,
+    `Product not found: no match for id or name "${trimmed}"`,
     "not_found"
   );
 };

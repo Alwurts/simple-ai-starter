@@ -351,9 +351,6 @@ importers:
       drizzle-orm:
         specifier: ^0.44.7
         version: 0.44.7(@cloudflare/workers-types@4.20260702.1)(@electric-sql/pglite@0.3.15)(@opentelemetry/api@1.9.1)(@prisma/client@7.4.2(prisma@7.4.2(@types/react@19.2.17)(better-sqlite3@11.10.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@7.0.2))(typescript@7.0.2))(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(kysely@0.29.3)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.4.2(@types/react@19.2.17)(better-sqlite3@11.10.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@7.0.2))(sql.js@1.14.1)
-      nanoid:
-        specifier: ^5.1.16
-        version: 5.1.16
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260702.1

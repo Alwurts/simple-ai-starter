@@ -13,7 +13,6 @@ export const searchCatalog = async (
     .select({
       id: products.id,
       name: products.name,
-      sku: products.sku,
       description: products.description,
     })
     .from(products)
@@ -22,7 +21,7 @@ export const searchCatalog = async (
         eq(products.organizationId, orgId),
         or(
           like(products.name, searchPattern),
-          like(products.sku, searchPattern)
+          like(products.description, searchPattern)
         )
       )
     )
@@ -30,13 +29,13 @@ export const searchCatalog = async (
 
   return productResults.map((p) => ({
     path: `/catalog/${p.id}`,
-    snippet: p.description || `Product SKU: ${p.sku}`,
+    snippet: p.description || p.name,
     score: 1.0,
     metadata: {
       type: "product" as const,
       id: p.id,
       title: p.name,
-      sku: p.sku,
+      description: p.description,
     },
   }));
 };
