@@ -21,12 +21,6 @@
       "migrations_dir": "../../packages/db/drizzle"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "R2_BUCKET",
-      "bucket_name": "simple-ai-starter"
-    }
-  ],
   "durable_objects": {
     // Only OrgAgent is bound top-level. OrgChat is a facet (sub-agent) of
     // OrgAgent — it is resolved via `ctx.exports.OrgChat` (the server.ts

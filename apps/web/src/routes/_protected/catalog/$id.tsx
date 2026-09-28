@@ -23,7 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/shadcn/card";
-import { Separator } from "@workspace/ui/components/shadcn/separator";
 import {
   DEFAULT_CURRENCY,
   formatMoneyMinor,
@@ -31,21 +30,19 @@ import {
   minorToMajorInput,
 } from "@workspace/ui/lib/money";
 import { DollarSign, Pencil, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ProductForm,
   type ProductFormValues,
 } from "@/components/catalog/product-form";
 import { ResourceNotFound } from "@/components/layout/resource-not-found";
 import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
-import { useSetPageContext } from "@/components/providers/page-context";
 import {
   useDeleteProduct,
   useProduct,
   useUpdateProduct,
 } from "@/hooks/use-products";
 import { intlLocale } from "@/lib/locale";
-import { getUploadUrl } from "@/lib/uploads";
 import { m } from "@/paraglide/messages.js";
 export const Route = createFileRoute("/_protected/catalog/$id")({
   component: ProductPage,
@@ -53,28 +50,12 @@ export const Route = createFileRoute("/_protected/catalog/$id")({
 interface ProductDetailsReadOnlyProps {
   product: {
     name: string;
-    sku: string;
     description: string | null;
-    imageUrl: string | null;
   };
 }
 function ProductDetailsReadOnly({ product }: ProductDetailsReadOnlyProps) {
   return (
     <div className="space-y-4">
-      {product.imageUrl && (
-        <>
-          <div className="overflow-hidden rounded-lg border">
-            <img
-              alt={product.name}
-              className="h-48 w-full object-cover"
-              height={192}
-              src={getUploadUrl(product.imageUrl)}
-              width={384}
-            />
-          </div>
-          <Separator />
-        </>
-      )}
       <div>
         <h4 className="mb-1 font-medium text-muted-foreground text-sm">
           {m.common_description()}
@@ -98,27 +79,6 @@ function ProductPage() {
   } = useProduct(productId || "");
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
-  useSetPageContext(
-    useMemo(
-      () =>
-        product
-          ? {
-              title: product.name,
-              description: product.sku,
-              entityType: "product",
-              entityId: product.id,
-              data: {
-                sku: product.sku,
-              },
-            }
-          : {
-              title: m.catalog_product_singular(),
-              entityType: "product",
-              entityId: productId,
-            },
-      [product, productId]
-    )
-  );
   if (!productId) {
     return (
       <ShellPage>
@@ -230,9 +190,6 @@ function ProductPage() {
       <div className="space-y-8 overflow-y-auto p-6">
         <div>
           <h2 className="font-semibold text-lg">{product.name}</h2>
-          <p className="text-muted-foreground text-sm">
-            {m.catalog_column_sku()}: {product.sku}
-          </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
@@ -268,22 +225,16 @@ function ProductPage() {
                 key={[
                   product.id,
                   product.name,
-                  product.sku,
                   product.price,
                   product.description ?? "",
-                  product.minStockLevel,
-                  product.imageUrl ?? "",
                 ].join("|")}
                 defaultValues={{
                   name: product.name,
-                  sku: product.sku,
                   price: minorToMajorInput(
                     product.price ?? 0,
                     DEFAULT_CURRENCY
                   ),
                   description: product.description || "",
-                  minStockLevel: product.minStockLevel || 5,
-                  imageUrl: product.imageUrl || null,
                 }}
                 isLoading={updateProduct.isPending}
                 mode="edit"

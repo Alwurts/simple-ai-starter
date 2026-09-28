@@ -12,38 +12,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/shadcn/card";
-import { FileText, Package, Settings, Users } from "lucide-react";
+import { Package, Settings } from "lucide-react";
 import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
 import { m } from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_protected/")({
-  component: TodayPage,
+  component: HomePage,
 });
 
 /**
  * Neutral landing for the starter. Deliberately ships no fabricated metrics —
- * it points the operator at the real sections instead. Replace this with a
- * data-backed "Today" summary once a downstream app has flows to summarize.
+ * it points the member at the real sections instead. Replace this with a
+ * data-backed summary once a downstream app has flows to summarize.
  */
-function TodayPage() {
+function HomePage() {
   const quickLinks = [
     {
       to: "/catalog" as const,
       title: m.catalog_title(),
       description: m.home_link_catalog_desc(),
       icon: Package,
-    },
-    {
-      to: "/entities" as const,
-      title: m.entities_title(),
-      description: m.home_link_entities_desc(),
-      icon: Users,
-    },
-    {
-      to: "/documents" as const,
-      title: m.documents_title(),
-      description: m.home_link_documents_desc(),
-      icon: FileText,
     },
     {
       to: "/settings" as const,

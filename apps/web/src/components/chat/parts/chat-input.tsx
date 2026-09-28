@@ -1,4 +1,3 @@
-import type { ChatContext } from "@workspace/contract/ai";
 import {
   ChatToken,
   ChatTokenGroup,
@@ -43,8 +42,6 @@ import {
   useChatTabsStore,
   useFocusedTabId,
 } from "@/components/chat/dock/chat-tabs-store";
-import { PageContextChip } from "@/components/chat/page-context-chip";
-import { usePageContext } from "@/components/providers/page-context";
 import { useChatCapabilities } from "@/hooks/use-chat-capabilities";
 import { m } from "@/paraglide/messages.js";
 
@@ -69,20 +66,6 @@ function handleSendError(error: unknown) {
   } else {
     toast.error(m.chat_toast_unexpected());
   }
-}
-
-function toOutgoingPageContext(
-  config: NonNullable<ChatContext["page"]>
-): NonNullable<OutgoingMessage["metadata"]>["pageContext"] {
-  return {
-    page: config.entityType ?? config.title ?? "page",
-    params: {
-      entityType: config.entityType,
-      entityId: config.entityId,
-      title: config.title,
-      view: config.view,
-    },
-  };
 }
 
 function filePartsFromList(fileList: FileList | File[]): ComposerFile[] {
@@ -157,7 +140,6 @@ function ChatInputInner({
   status,
   tabKey,
 }: ChatInputInnerProps) {
-  const livePageContext = usePageContext();
   const { organizationId } = useChatOrgConnection();
   const focusedTabId = useFocusedTabId(organizationId);
   const isBodyOpen = useChatTabsStore((s) => s.isBodyOpen);
@@ -165,9 +147,6 @@ function ChatInputInner({
   const supportsImageInput = capabilities?.supportsImageInput === true;
   const [text, setText] = useState("");
   const [files, setFiles] = useState<ComposerFile[]>([]);
-  const [pinned, setPinned] = useState(false);
-  const [pinnedContext, setPinnedContext] = useState(livePageContext);
-  const [dismissed, setDismissed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -178,11 +157,6 @@ function ChatInputInner({
     }
     textareaRef.current?.focus();
   }, [disabled, focusedTabId, isBodyOpen, tabKey]);
-
-  // When unpinned, follow live context; pin snapshots via handlePinToggle.
-  const displayContext = pinned ? pinnedContext : livePageContext;
-  const effectivePageContext =
-    dismissed || !displayContext ? undefined : displayContext;
 
   const clearFiles = useCallback(() => {
     setFiles((prev) => {
@@ -260,24 +234,11 @@ function ChatInputInner({
         ...files.map(({ id: _id, ...file }) => file),
       ],
     };
-    if (effectivePageContext) {
-      outgoing.metadata = {
-        pageContext: toOutgoingPageContext(effectivePageContext),
-      };
-    }
 
     setText("");
     clearFiles();
     onSubmit(outgoing).catch(handleSendError);
-  }, [
-    clearFiles,
-    disabled,
-    effectivePageContext,
-    files,
-    onSubmit,
-    supportsImageInput,
-    text,
-  ]);
+  }, [clearFiles, disabled, files, onSubmit, supportsImageInput, text]);
 
   const handleFormSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -297,17 +258,6 @@ function ChatInputInner({
     [submit]
   );
 
-  const handlePinToggle = useCallback(() => {
-    if (pinned) {
-      setPinned(false);
-      return;
-    }
-    if (displayContext) {
-      setPinnedContext(displayContext);
-    }
-    setPinned(true);
-  }, [pinned, displayContext]);
-
   return (
     <form className="w-full" onSubmit={handleFormSubmit}>
       <input
@@ -324,22 +274,12 @@ function ChatInputInner({
         type="file"
       />
       <InputGroup className="rounded-2xl">
-        {displayContext || dismissed || files.length > 0 ? (
+        {files.length > 0 ? (
           <InputGroupAddon
             align="block-start"
             className="flex-wrap gap-1.5 pb-0"
           >
             <ChatTokenGroup>
-              {displayContext || dismissed ? (
-                <PageContextChip
-                  context={displayContext ?? null}
-                  dismissed={dismissed}
-                  onDismiss={() => setDismissed(true)}
-                  onPinToggle={handlePinToggle}
-                  onRestore={() => setDismissed(false)}
-                  pinned={pinned}
-                />
-              ) : null}
               {files.map((file) => (
                 <ChatToken key={file.id}>
                   <ChatTokenIcon>

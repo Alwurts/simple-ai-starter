@@ -35,12 +35,6 @@
       "migrations_dir": "../../packages/db/drizzle"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "R2_BUCKET",
-      "bucket_name": "simple-ai-starter"
-    }
-  ],
   "durable_objects": {
     "bindings": [
       { "class_name": "TestCounter", "name": "TEST_COUNTER" },

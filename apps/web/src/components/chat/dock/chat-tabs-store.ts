@@ -13,7 +13,6 @@ export type ChatHelpers = ReturnType<
 >;
 
 export interface OutgoingMessage {
-  metadata?: Pick<AIMetadata, "pageContext">;
   parts: OrgChatMessage["parts"];
   role: "user";
 }
