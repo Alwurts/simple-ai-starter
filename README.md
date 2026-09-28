@@ -10,9 +10,8 @@ full-stack monorepo you can clone and run.
 
 In 2026 the usual path is to hand this repo to an AI coding agent. Use this
 template on GitHub or clone it, open the folder in Cursor / Claude Code /
-Codex, or paste the repo URL into ChatGPT or Claude. Ask it to read
-[`docs/template-init.md`](docs/template-init.md) and reshape the starter into
-your product. [`AGENTS.md`](AGENTS.md) is day-to-day commands and conventions
+Codex, or paste the repo URL into ChatGPT or Claude.
+[`AGENTS.md`](AGENTS.md) is day-to-day commands and conventions
 once you are working in the repo. Cloudflare agent skills are **pinned in this
 repo** from [cloudflare/skills](https://github.com/cloudflare/skills) (not a
 global `npx skills add`). TanStack Start/Router/Table skills ship inside the
@@ -112,7 +111,6 @@ example are in [`docs/architecture.md`](docs/architecture.md).
 
 ## Where to go next
 
-- [`docs/template-init.md`](docs/template-init.md): first-pass reshape guidance.
 - [`AGENTS.md`](AGENTS.md): commands and conventions once you are working in the repo.
 - [`docs/architecture.md`](docs/architecture.md): the layer map and a worked feature example.
 - [`docs/guides/`](docs/guides/): code-anchored how-tos.

@@ -10,7 +10,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import "./pdf-viewer.css";
 
 // Point pdf.js at its worker. `new URL(..., import.meta.url)` is understood by
-// both Vite (apps/web) and webpack (apps/docs), so the worker is bundled as a
+// Vite (apps/web), so the worker is bundled as a
 // local asset — no CDN, no CSP escape hatch. The bare specifier resolves the
 // `pdfjs-dist` we pin to react-pdf's exact version, so worker and API never skew.
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(

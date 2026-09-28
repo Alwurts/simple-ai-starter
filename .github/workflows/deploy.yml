@@ -56,13 +56,11 @@ jobs:
 
       # Migrations before deploy: additive-only (ALW-111), so old Worker code on
       # a new schema is safe; new code on an old schema is not.
-      # Address D1 by binding name `DB` (stable across fabrication); the
-      # provisioner rewrites `database_name` per project.
       - name: Apply D1 migrations
         run: pnpm exec wrangler d1 migrations apply DB --remote
 
-      # --no-x-provision: missing D1/R2/KV must fail loudly — CI never provisions
-      # (resource IDs are committed in wrangler.jsonc by the platform provisioner).
+      # --no-x-provision: missing D1/R2/KV must fail loudly — CI never provisions;
+      # the resource ids in wrangler.jsonc must exist before deploying.
       - name: Deploy Worker
         run: pnpm exec wrangler deploy --no-x-provision
 
@@ -81,6 +79,8 @@ jobs:
           ORG_CHAT_MODEL: ${{ secrets.ORG_CHAT_MODEL }}
           AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
           ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+          OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.OPENAI_COMPATIBLE_BASE_URL }}
+          OPENAI_COMPATIBLE_API_KEY: ${{ secrets.OPENAI_COMPATIBLE_API_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           WORKERS_AI_API_TOKEN: ${{ secrets.WORKERS_AI_API_TOKEN }}
           CF_AIG_GATEWAY_ID: ${{ secrets.CF_AIG_GATEWAY_ID }}
@@ -99,6 +99,8 @@ jobs:
             "ORG_CHAT_MODEL",
             "AI_GATEWAY_API_KEY",
             "ZAI_API_KEY",
+            "OPENAI_COMPATIBLE_BASE_URL",
+            "OPENAI_COMPATIBLE_API_KEY",
             "CF_ACCOUNT_ID",
             "WORKERS_AI_API_TOKEN",
             "CF_AIG_GATEWAY_ID",

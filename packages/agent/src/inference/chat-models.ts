@@ -53,6 +53,11 @@ export interface OrgInferenceEnv {
   ZAI_API_KEY?: string;
   /** Cloudflare API token for the Workers AI OpenAI-compatible endpoint. */
   WORKERS_AI_API_TOKEN?: string;
+  /** Base URL of any OpenAI-compatible endpoint (the `openai-compatible`
+   *  provider); called directly, no path rewriting. */
+  OPENAI_COMPATIBLE_BASE_URL?: string;
+  /** API key for the generic OpenAI-compatible endpoint. */
+  OPENAI_COMPATIBLE_API_KEY?: string;
   /** Cloudflare account id (Workers AI direct endpoint + AI Gateway URL). */
   CF_ACCOUNT_ID?: string;
   /** Cloudflare AI Gateway id/slug. Set (with account id + token) to route the
@@ -65,7 +70,8 @@ export interface OrgInferenceEnv {
 export type OrgChatProvider =
   | "vercel-gateway"
   | "workers-ai"
-  | "zai-coding-plan";
+  | "zai-coding-plan"
+  | "openai-compatible";
 
 /** Modalities a model accepts on user message content. `text` is always on. */
 export type OrgChatInputModality = "text" | "image";
@@ -91,6 +97,7 @@ const PROVIDERS: readonly OrgChatProvider[] = [
   "vercel-gateway",
   "workers-ai",
   "zai-coding-plan",
+  "openai-compatible",
 ];
 
 const DEFAULT_PROVIDER: OrgChatProvider = "vercel-gateway";
@@ -100,8 +107,9 @@ const DEFAULT_PROVIDER: OrgChatProvider = "vercel-gateway";
  * gateway; `openai-compatible` points `createOpenAICompatible` at a base URL.
  * `gatewayPath` is the segment appended after the Cloudflare AI Gateway id when
  * the CF gateway is enabled (a `custom-<slug>` for third-party upstreams, or the
- * native provider path for Workers AI). `baseURL` is the direct (no-CF-gateway)
- * origin; Workers AI derives it from the account id at resolve time.
+ * native provider path for Workers AI); absent ⇒ the provider is direct-only
+ * (no CF gateway rewrite). `baseURL` is the direct (no-CF-gateway) origin;
+ * Workers AI derives it from the account id at resolve time.
  */
 type ProviderBuild =
   | { kind: "gateway" }
@@ -109,7 +117,7 @@ type ProviderBuild =
       kind: "openai-compatible";
       providerName: string;
       baseURL?: string;
-      gatewayPath: string;
+      gatewayPath?: string;
     };
 
 const PROVIDER_BUILD: Record<OrgChatProvider, ProviderBuild> = {
@@ -125,6 +133,13 @@ const PROVIDER_BUILD: Record<OrgChatProvider, ProviderBuild> = {
     providerName: "workersAi",
     // Direct base URL is derived from CF_ACCOUNT_ID at resolve time.
     gatewayPath: "workers-ai/v1",
+  },
+  // The origin comes from OPENAI_COMPATIBLE_BASE_URL at resolve time. It is
+  // arbitrary, so there is no fixed `custom-<slug>` upstream path for a CF AI
+  // Gateway route — this provider calls its base URL directly.
+  "openai-compatible": {
+    kind: "openai-compatible",
+    providerName: "openaiCompatible",
   },
 };
 
@@ -166,6 +181,14 @@ const MODEL_OFFERINGS: readonly ModelOffering[] = [
     entryId: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
     contextWindow: 128_000,
     inputModalities: ["text"],
+  },
+  // Capability row for the generic provider — NOT a default: it has no model
+  // of its own, so `ORG_CHAT_MODEL` is required (see `selectOffering`).
+  {
+    provider: "openai-compatible",
+    entryId: "z-ai/glm-5.3-flash",
+    contextWindow: 1_000_000,
+    inputModalities: ["text", "image"],
   },
 ];
 
@@ -283,6 +306,11 @@ function selectProvider(env: OrgInferenceEnv): OrgChatProvider {
   return raw && isProvider(raw) ? raw : DEFAULT_PROVIDER;
 }
 
+// Providers whose model must be named explicitly — no catalog default.
+const REQUIRES_EXPLICIT_MODEL: readonly OrgChatProvider[] = [
+  "openai-compatible",
+];
+
 function selectOffering(
   provider: OrgChatProvider,
   env: OrgInferenceEnv
@@ -305,6 +333,11 @@ function selectOffering(
         provider === "zai-coding-plan" ? ZAI_THINKING : undefined,
     };
   }
+  if (REQUIRES_EXPLICIT_MODEL.includes(provider)) {
+    throw new Error(
+      `ORG_CHAT_PROVIDER="${provider}" requires ORG_CHAT_MODEL to be set.`
+    );
+  }
   const def = MODEL_OFFERINGS.find((o) => o.provider === provider);
   if (!def) {
     throw new Error(`No default model registered for provider "${provider}".`);
@@ -324,6 +357,7 @@ const KEY_VAR: Record<OrgChatProvider, string> = {
   "vercel-gateway": "AI_GATEWAY_API_KEY",
   "zai-coding-plan": "ZAI_API_KEY",
   "workers-ai": "WORKERS_AI_API_TOKEN",
+  "openai-compatible": "OPENAI_COMPATIBLE_API_KEY",
 };
 
 function apiKeyFor(
@@ -337,6 +371,8 @@ function apiKeyFor(
       return env.ZAI_API_KEY;
     case "workers-ai":
       return env.WORKERS_AI_API_TOKEN;
+    case "openai-compatible":
+      return env.OPENAI_COMPATIBLE_API_KEY;
     default:
       return;
   }
@@ -347,7 +383,17 @@ function effectiveBaseURL(
   build: Extract<ProviderBuild, { kind: "openai-compatible" }>,
   env: OrgInferenceEnv
 ): string {
-  const gatewayBase = cloudflareGatewayBase(env);
+  // Generic provider: the operator supplies the origin; no rewriting.
+  if (provider === "openai-compatible") {
+    const direct = env.OPENAI_COMPATIBLE_BASE_URL?.trim();
+    if (!direct) {
+      throw new Error(
+        `ORG_CHAT_PROVIDER="${provider}" requires OPENAI_COMPATIBLE_BASE_URL to be set.`
+      );
+    }
+    return direct;
+  }
+  const gatewayBase = build.gatewayPath ? cloudflareGatewayBase(env) : null;
   if (gatewayBase) {
     return `${gatewayBase}/${build.gatewayPath}`;
   }
@@ -399,7 +445,10 @@ export function resolveOrgChatModelConfig(
   // by `createOpenAICompatible`); when a Cloudflare AI Gateway fronts it, the
   // gateway token authenticates the gateway itself via `cf-aig-authorization:
   // Bearer <token>` (per CF's provider docs — the Bearer prefix is required).
-  const cloudflareGateway = cloudflareGatewayBase(env) !== null;
+  // The generic `openai-compatible` provider calls its own base URL directly —
+  // an arbitrary origin has no `custom-<slug>` gateway route.
+  const cloudflareGateway =
+    build.gatewayPath !== undefined && cloudflareGatewayBase(env) !== null;
   return {
     ...base,
     kind: "openai-compatible",

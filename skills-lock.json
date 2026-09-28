@@ -13,12 +13,6 @@
       "skillPath": "skills/use-ai-sdk/SKILL.md",
       "computedHash": "da25c27a274ef2b71017c255f95a26350d2519765a75cb54ee1a37872b121dab"
     },
-    "cloudflare": {
-      "source": "cloudflare/skills",
-      "sourceType": "github",
-      "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "cbd850ee99fc1b224269f31c99d4e2517d0dd1b83cf626ca002af2f382058a6f"
-    },
     "durable-objects": {
       "source": "cloudflare/skills",
       "sourceType": "github",

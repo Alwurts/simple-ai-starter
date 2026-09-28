@@ -17,7 +17,7 @@ MOCK_SEND_EMAIL=true
 # ─── Org agent inference (ALW-411) ────────────────────────────────────────────
 # Pick the underlying provider; unset = vercel-gateway (default). Then fill the
 # matching key below. ORG_CHAT_MODEL optionally overrides the model id.
-#   ORG_CHAT_PROVIDER=vercel-gateway | workers-ai | zai-coding-plan
+#   ORG_CHAT_PROVIDER=vercel-gateway | workers-ai | zai-coding-plan | openai-compatible
 # ORG_CHAT_PROVIDER=
 # ORG_CHAT_MODEL=
 
@@ -31,11 +31,17 @@ AI_GATEWAY_API_KEY=
 # CF_ACCOUNT_ID=
 # WORKERS_AI_API_TOKEN=
 
-# Cloudflare AI Gateway (optional, fronts the openai-compatible providers for
-# caching/observability). Set all three to enable. For a third-party upstream
-# like GLM, first create a Custom Provider in the CF dashboard/API with slug
-# "zai" and base_url "https://api.z.ai" (see docs/guides). Native Workers AI
-# needs no custom provider.
+# openai-compatible: any OpenAI-compatible endpoint. ORG_CHAT_MODEL is required
+# (no default model) and the base URL is called directly.
+# OPENAI_COMPATIBLE_BASE_URL=
+# OPENAI_COMPATIBLE_API_KEY=
+
+# Cloudflare AI Gateway (optional): fronts the zai-coding-plan and workers-ai
+# providers for caching/observability. Set all three to enable. For a
+# third-party upstream like GLM, first create a Custom Provider in the CF
+# dashboard/API with slug "zai" and base_url "https://api.z.ai" (see
+# docs/guides). Native Workers AI needs no custom provider. The generic
+# openai-compatible provider always calls its base URL directly.
 # CF_ACCOUNT_ID=
 # CF_AIG_GATEWAY_ID=
 # CF_AIG_TOKEN=

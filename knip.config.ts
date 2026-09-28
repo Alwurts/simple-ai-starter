@@ -1,6 +1,6 @@
 import type { KnipConfig } from "knip";
 
-// Dead-code detection for the sfab-starter monorepo. Refreshed for knip 6
+// Dead-code detection for this monorepo. Refreshed for knip 6
 // (ALW-692) after TypeScript 7 broke knip 5 (`typescript` peer `<7`).
 //
 // Conventions (same as sfab):
@@ -33,18 +33,6 @@ const config: KnipConfig = {
         // Agent model + sandbox shell — wired via config / dynamic provider paths.
         "@ai-sdk/google",
         "@cloudflare/shell",
-      ],
-    },
-    "apps/docs": {
-      project: ["src/**/*.{ts,tsx}"],
-      ignoreDependencies: [
-        // Docs shell mirrors UI deps for local examples / fumadocs styling.
-        "class-variance-authority",
-        "radix-ui",
-        "tailwindcss",
-        "clsx",
-        "tailwind-merge",
-        "@tanstack/router-plugin",
       ],
     },
     "packages/agent": {
@@ -98,31 +86,9 @@ const config: KnipConfig = {
         "tippy.js",
       ],
     },
-    "packages/registry": {
-      entry: [
-        "registry/blocks/**/*.{ts,tsx}!",
-        "registry/components/**/*.{ts,tsx}!",
-        "registry/_shared/**/*.{ts,tsx}!",
-        "registry/packs/*/item.ts!",
-        "scripts/**/*.ts!",
-        "test/**/*.{ts,tsx}!",
-      ],
-      project: [
-        "src/**/*.{ts,tsx}",
-        "registry/blocks/**/*.{ts,tsx}",
-        "registry/components/**/*.{ts,tsx}",
-        "registry/_shared/**/*.{ts,tsx}",
-        "registry/packs/*/item.ts",
-        "scripts/**/*.ts",
-      ],
-      ignoreDependencies: [
-        // Toast used from generated block/item trees.
-        "sonner",
-      ],
-    },
   },
   ignore: [
-    // Cursor agent hooks — not part of the app graph.
+    // Agent skills / procedural docs — not part of the app graph.
     ".agents/**",
   ],
   // `cloudflare:workers` is Cloudflare's built-in module; Knip normalizes the

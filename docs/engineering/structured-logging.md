@@ -102,7 +102,6 @@ Deny-by-default everywhere Biome scans. Documented carve-outs in root
 
 - `packages/log/src/structured-log.ts` — the helper
 - `apps/web/src/{components,routes,hooks}/**` — browser UI
-- `apps/docs/src/**` — docs site
 - `packages/ui/src/**` — shared UI
 - `**/scripts/**`, `**/*.{mjs,cjs}` — scripts / CLIs
 - test files (inherited from `@workspace/biome-config`)

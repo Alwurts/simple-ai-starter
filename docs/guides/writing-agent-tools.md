@@ -37,7 +37,6 @@ packages/agent/src/
 | `getOrgAgentTools(ctx)` | All 15 ERP tools (reads + catalog writes + `delete_product`) | Top-level Think tools on `OrgChat` |
 | `getOrgAgentReadOnlyTools(ctx)` | Same reads, no writes | Delegated sub-agent (`OrgSubAgent`) |
 | `getOrgAgentDisplayTools(ctx)` | `display_product_list`, `display_memory` | Top-level peers of ERP + `delegate` |
-| `registerMcpTools(server, ctx)` (mcp pack) | 12 reads + `create_product` / `update_product` | `POST /mcp` after pack install |
 
 `org-chat.getTools()` spreads ERP tools, `delegate`, and display tools as
 siblings. Display tools are UI echoes and may keep their own return shapes —
@@ -229,11 +228,7 @@ On `@cloudflare/think` + the AI SDK tool loop:
    inside `execute`.
 4. Import the pieces in `in-app/compose-org-tools.ts` and bind them in
    `getOrgAgentTools` and `getOrgAgentReadOnlyTools` if the sub-agent should
-   see it. Re-declare each tool — do not loop a catalog array. If the mcp pack
-   is installed and the tool should be callable over MCP, also bind it in
-   `packages/agent/src/mcp/register-mcp-tools.ts` (skip `delete_product` and
-   `display_*`). The install skill reconciles once against `tool-parts/`;
-   tools added after that are bound here.
+   see it. Re-declare each tool — do not loop a catalog array.
 
 ### Write tool (autonomous)
 
@@ -273,15 +268,11 @@ For day-to-day “add `get_foo`,” skip the grill and follow **Adding a new too
   execute returns `ToolResult`, no throw on miss.
 - Workerd: `apps/web/src/workerd-test/tool-approvals.workerd.test.ts` —
   `needsApproval` on top-level `delete_product`.
-- MCP (after pack install): `apps/web/test/api/mcp.workerd.test.ts` and
-  `packages/agent/src/mcp/register-mcp-tools.test.ts`. Those files live in
-  `packages/registry/registry/packs/mcp/` until install.
 
 ## Files of interest
 
 - `packages/agent/src/org/chat/org-chat.ts` — `getTools()` wiring
 - `packages/agent/src/tool-parts/catalog/products.ts` — named pieces
 - `packages/agent/src/in-app/compose-org-tools.ts` — compose entry points
-- `packages/registry/registry/packs/mcp/tools/register-mcp-tools.ts` — `registerMcpTools` (pack; no delete/display)
 - `packages/agent/src/tools/guard.ts` — RBAC
 - `apps/web/src/components/chat/tools/default-tool.tsx` — Approve/Reject UI
