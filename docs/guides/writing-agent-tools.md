@@ -37,7 +37,6 @@ packages/agent/src/
 | `getOrgAgentTools(ctx)` | All 15 ERP tools (reads + catalog writes + `delete_product`) | Top-level Think tools on `OrgChat` |
 | `getOrgAgentReadOnlyTools(ctx)` | Same reads, no writes | Delegated sub-agent (`OrgSubAgent`) |
 | `getOrgAgentDisplayTools(ctx)` | `display_product_list`, `display_memory` | Top-level peers of ERP + `delegate` |
-| `registerMcpTools(server, ctx)` (mcp pack) | 12 reads + `create_product` / `update_product` | `POST /mcp` after pack install |
 
 `org-chat.getTools()` spreads ERP tools, `delegate`, and display tools as
 siblings. Display tools are UI echoes and may keep their own return shapes —
@@ -229,11 +228,7 @@ On `@cloudflare/think` + the AI SDK tool loop:
    inside `execute`.
 4. Import the pieces in `in-app/compose-org-tools.ts` and bind them in
    `getOrgAgentTools` and `getOrgAgentReadOnlyTools` if the sub-agent should
-   see it. Re-declare each tool — do not loop a catalog array. If the mcp pack
-   is installed and the tool should be callable over MCP, also bind it in
-   `packages/agent/src/mcp/register-mcp-tools.ts` (skip `delete_product` and
-   `display_*`). The install skill reconciles once against `tool-parts/`;
-   tools added after that are bound here.
+   see it. Re-declare each tool — do not loop a catalog array.
 
 ### Write tool (autonomous)
 

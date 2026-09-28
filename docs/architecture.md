@@ -5,11 +5,8 @@ moves through them, and the rules that keep the boundaries honest. Read this
 first — every ADR in `docs/decisions/` records *why* one of these choices was
 made, and every guide in `docs/guides/` shows *how* to work within them.
 
-The starter is a **generic worldwide ERP base**. Packs add opt-in capabilities
-(and later country/vertical specifics); i18n handles language. Pack install is
-real (`sfabKind: "pack"`, ADR-0010 / ADR-0017). The first pack is **mcp**
-(`shadcn add sfab-oss/sfab-starter/mcp#<ref>` with `shadcn@4.20.1` and `-c apps/web`). Gallery items remain `block`.
-The live information architecture is Catalog / Entities / Documents
+The starter is a **generic worldwide ERP base**. The live information
+architecture is Catalog / Entities / Documents
 (`apps/web/src/components/layout/platform-navigation.ts`).
 
 ## Guiding principles

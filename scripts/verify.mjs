@@ -1,6 +1,6 @@
 // `pnpm verify`: the checks CI runs, locally, in order, stopping at the first
-// failure. The factory runs this before it pushes an agent's work, and the
-// pre-push hook runs it for humans, so red CI is caught before it costs a run.
+// failure. The pre-push hook runs it, so red CI is caught before it costs a
+// run.
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 

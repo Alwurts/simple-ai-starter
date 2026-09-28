@@ -1,6 +1,6 @@
 import type { KnipConfig } from "knip";
 
-// Dead-code detection for the sfab-starter monorepo. Refreshed for knip 6
+// Dead-code detection for this monorepo. Refreshed for knip 6
 // (ALW-692) after TypeScript 7 broke knip 5 (`typescript` peer `<7`).
 //
 // Conventions (same as sfab):
@@ -88,7 +88,7 @@ const config: KnipConfig = {
     },
   },
   ignore: [
-    // Cursor agent hooks — not part of the app graph.
+    // Agent skills / procedural docs — not part of the app graph.
     ".agents/**",
   ],
   // `cloudflare:workers` is Cloudflare's built-in module; Knip normalizes the
