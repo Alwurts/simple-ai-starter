@@ -58,7 +58,7 @@ Run from the **monorepo root** (not inside a package):
   Multi-language UI → [`docs/guides/i18n.md`](docs/guides/i18n.md) + skill
   `.agents/skills/i18n`.
 - **Procedural domain knowledge, loaded on demand** → `.agents/skills/`
-  (`cloudflare`, `wrangler`, `durable-objects`, `workers-best-practices`,
+  (`wrangler`, `durable-objects`, `workers-best-practices`,
   `agents-sdk`, `web-perf`, `ai-sdk`, `shadcn`, `i18n`,
   `template-architecture`, `components-composition`). Use the relevant skill
   when a task matches its domain.
@@ -80,8 +80,7 @@ Before editing files for a substantial task:
 - Monorepos: when working across packages, run the skill check from the workspace root and prefer the local skill for the package being changed.
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
 <!-- intent-skills:end -->
-- **First-time initialization** → follow [`docs/template-init.md`](docs/template-init.md).
-  Setup / run → [`README.md`](README.md).
+- **Setup / run** → [`README.md`](README.md).
 
 ## Code standards
 

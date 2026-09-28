@@ -173,9 +173,6 @@ The DO fixture + reference test live in `apps/web/src/workerd-test/`.
 - **A candidate Mexican-SME operator pack** (not the live IA; that pack is
   unbuilt; pack *install* already exists) →
   [`docs/architecture/operator-ux.md`](architecture/operator-ux.md).
-- **Deploy contract (Option Y)** — named `Deploy` workflow, `workflow_run`
-  observation, migrations → deploy → secrets-sync →
-  [`docs/architecture/deploy-contract.md`](architecture/deploy-contract.md).
 - **Why** a choice was made → `docs/decisions/` (ADRs, under a strict
   significance bar — see ADR-005).
 - **How** to do or extend something here → `docs/guides/`.
