@@ -7,7 +7,6 @@ import { readFileSync } from "node:fs";
 const STEPS = [
   "pnpm lint:check",
   "pnpm i18n:lint",
-  "pnpm --filter @workspace/registry generate:check",
   "pnpm typecheck",
   "pnpm check:cycles",
   "pnpm i18n:compile",

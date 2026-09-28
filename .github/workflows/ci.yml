@@ -29,9 +29,6 @@ jobs:
 
       - run: pnpm i18n:lint
 
-      # Fails if registry.json / src/generated.ts are stale vs the item.ts sources.
-      - run: pnpm --filter @workspace/registry generate:check
-
   typecheck:
     runs-on: ubuntu-24.04
     steps:

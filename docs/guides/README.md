@@ -35,7 +35,6 @@ Only add a guide for something actually encountered here — not a hypothetical.
 ## Index
 
 - [Internationalization](i18n.md)
-- [MCP OAuth server](mcp.md)
 - [Writing agent tools](writing-agent-tools.md)
 - [Agent tool approvals](agent-tool-approvals.md)
 - [Org-agent inference providers](org-agent-inference-providers.md)

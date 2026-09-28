@@ -86,7 +86,6 @@
       // ALW-700: client / helper / scripts carve-outs.
       // Also scripts/** + nested *.mjs (core preset's `*.mjs` only matches repo root).
       "includes": [
-        "apps/docs/src/**",
         "packages/ui/src/**",
         "packages/log/src/structured-log.ts",
         "**/scripts/**",

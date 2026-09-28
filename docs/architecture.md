@@ -123,12 +123,6 @@ Durable Objects, and background jobs. A new app is justified only when the
 runtime genuinely differs, not when a new surface is added. This keeps one
 deploy, one binding set, one env. See **ADR-001**.
 
-MCP Streamable HTTP (`POST /mcp`) is **not** in the base. Install the `mcp`
-pack with `pnpm dlx shadcn@4.20.1 add sfab-oss/sfab-starter/mcp#<ref> --yes -c apps/web`, then run
-`apps/web/src/_pack/mcp/skill.md` (including `pnpm db:generate` and
-`pnpm db:migrate`). Guide:
-[`docs/guides/mcp.md`](guides/mcp.md).
-
 The HTTP API is grouped by auth scope first, then capability:
 `hono/{public,protected,org-protected}/<cap>/`. Auth middleware enforces the
 scope; org-protected routes are organization-scoped.

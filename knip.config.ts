@@ -35,18 +35,6 @@ const config: KnipConfig = {
         "@cloudflare/shell",
       ],
     },
-    "apps/docs": {
-      project: ["src/**/*.{ts,tsx}"],
-      ignoreDependencies: [
-        // Docs shell mirrors UI deps for local examples / fumadocs styling.
-        "class-variance-authority",
-        "radix-ui",
-        "tailwindcss",
-        "clsx",
-        "tailwind-merge",
-        "@tanstack/router-plugin",
-      ],
-    },
     "packages/agent": {
       project: ["src/**/*.ts"],
       ignoreDependencies: [
@@ -96,28 +84,6 @@ const config: KnipConfig = {
         "@hookform/resolvers",
         "nanoid",
         "tippy.js",
-      ],
-    },
-    "packages/registry": {
-      entry: [
-        "registry/blocks/**/*.{ts,tsx}!",
-        "registry/components/**/*.{ts,tsx}!",
-        "registry/_shared/**/*.{ts,tsx}!",
-        "registry/packs/*/item.ts!",
-        "scripts/**/*.ts!",
-        "test/**/*.{ts,tsx}!",
-      ],
-      project: [
-        "src/**/*.{ts,tsx}",
-        "registry/blocks/**/*.{ts,tsx}",
-        "registry/components/**/*.{ts,tsx}",
-        "registry/_shared/**/*.{ts,tsx}",
-        "registry/packs/*/item.ts",
-        "scripts/**/*.ts",
-      ],
-      ignoreDependencies: [
-        // Toast used from generated block/item trees.
-        "sonner",
       ],
     },
   },

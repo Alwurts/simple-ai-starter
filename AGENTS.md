@@ -56,14 +56,10 @@ Run from the **monorepo root** (not inside a package):
   strict significance bar ([template](docs/decisions/template.md)).
 - **How to do/extend something here** → [`docs/guides/`](docs/guides/).
   Multi-language UI → [`docs/guides/i18n.md`](docs/guides/i18n.md) + skill
-  `.agents/skills/i18n`. MCP OAuth server is an **opt-in pack** (`pnpm dlx
-  shadcn@4.20.1 add sfab-oss/sfab-starter/mcp#<ref> --yes -c apps/web`). After
-  install, run `apps/web/src/_pack/mcp/skill.md`, then `pnpm db:generate` and
-  `pnpm db:migrate`. Guide: [`docs/guides/mcp.md`](docs/guides/mcp.md)
-  + skill `.agents/skills/mcp`.
+  `.agents/skills/i18n`.
 - **Procedural domain knowledge, loaded on demand** → `.agents/skills/`
   (`cloudflare`, `wrangler`, `durable-objects`, `workers-best-practices`,
-  `agents-sdk`, `web-perf`, `ai-sdk`, `shadcn`, `i18n`, `mcp`,
+  `agents-sdk`, `web-perf`, `ai-sdk`, `shadcn`, `i18n`,
   `template-architecture`, `components-composition`). Use the relevant skill
   when a task matches its domain.
 - **Cloudflare skills are hash-pinned in-repo** (`skills-lock.json`) so a
