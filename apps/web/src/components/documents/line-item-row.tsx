@@ -1,0 +1,162 @@
+"use client";
+
+import { Button } from "@workspace/ui/components/shadcn/button";
+import { Input } from "@workspace/ui/components/shadcn/input";
+import { toast } from "@workspace/ui/components/shadcn/sonner";
+import {
+  formatMajorInputValue,
+  majorToMinor,
+  minorToMajor,
+} from "@workspace/ui/lib/money";
+import { Trash2 } from "lucide-react";
+import {
+  bpsToPercent,
+  percentToBps,
+} from "@/components/documents/document-type";
+import { useRemoveLineItem, useUpdateLineItem } from "@/hooks/use-documents";
+import { m } from "@/paraglide/messages.js";
+
+interface LineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+}
+
+interface LineItemRowProps {
+  docId: string;
+  currencyCode: string;
+  line: LineItem;
+}
+
+export function LineItemRow({ docId, currencyCode, line }: LineItemRowProps) {
+  const updateLineItem = useUpdateLineItem();
+  const removeLineItem = useRemoveLineItem();
+
+  return (
+    <div className="grid grid-cols-1 gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_5rem_7rem_5rem_6rem] sm:items-end">
+      <div className="grid gap-1">
+        <span className="text-muted-foreground text-xs sm:hidden">
+          {m.documents_line_description()}
+        </span>
+        <Input
+          aria-label={m.documents_line_description()}
+          defaultValue={line.description}
+          onBlur={(e) => {
+            const description = e.target.value.trim();
+            if (!description) {
+              e.target.value = line.description;
+              toast.error(m.documents_line_description_required());
+              return;
+            }
+            if (description !== line.description) {
+              updateLineItem.mutate({
+                id: docId,
+                lineId: line.id,
+                data: { description },
+              });
+            }
+          }}
+        />
+      </div>
+      <div className="grid gap-1">
+        <span className="text-muted-foreground text-xs sm:hidden">
+          {m.documents_line_qty()}
+        </span>
+        <Input
+          aria-label={m.documents_line_qty()}
+          defaultValue={Math.abs(line.quantity)}
+          min={1}
+          onBlur={(e) => {
+            const quantity = Math.abs(Number(e.target.value) || 0);
+            if (quantity < 1) {
+              e.target.value = String(Math.abs(line.quantity));
+              toast.error(m.documents_line_qty_min());
+              return;
+            }
+            if (quantity !== Math.abs(line.quantity)) {
+              updateLineItem.mutate({
+                id: docId,
+                lineId: line.id,
+                data: { quantity },
+              });
+            }
+          }}
+          type="number"
+        />
+      </div>
+      <div className="grid gap-1">
+        <span className="text-muted-foreground text-xs sm:hidden">
+          {m.documents_line_unit_price()}
+        </span>
+        <Input
+          aria-label={m.documents_line_unit_price()}
+          defaultValue={formatMajorInputValue(
+            minorToMajor(line.unitPrice, currencyCode),
+            currencyCode
+          )}
+          min={0}
+          onBlur={(e) => {
+            const raw = Number(e.target.value);
+            if (!Number.isFinite(raw) || raw < 0) {
+              e.target.value = formatMajorInputValue(
+                minorToMajor(line.unitPrice, currencyCode),
+                currencyCode
+              );
+              toast.error(m.documents_line_price_negative());
+              return;
+            }
+            const unitPrice = majorToMinor(raw, currencyCode);
+            if (unitPrice !== line.unitPrice) {
+              updateLineItem.mutate({
+                id: docId,
+                lineId: line.id,
+                data: { unitPrice },
+              });
+            }
+          }}
+          step="0.01"
+          type="number"
+        />
+      </div>
+      <div className="grid gap-1">
+        <span className="text-muted-foreground text-xs sm:hidden">
+          {m.documents_line_tax_percent()}
+        </span>
+        <Input
+          aria-label={m.documents_line_tax_percent()}
+          defaultValue={bpsToPercent(line.taxRate)}
+          min={0}
+          onBlur={(e) => {
+            const raw = Number(e.target.value);
+            if (!Number.isFinite(raw) || raw < 0 || raw > 100) {
+              e.target.value = String(bpsToPercent(line.taxRate));
+              toast.error(m.documents_line_tax_range());
+              return;
+            }
+            const taxRate = percentToBps(raw);
+            if (taxRate !== line.taxRate) {
+              updateLineItem.mutate({
+                id: docId,
+                lineId: line.id,
+                data: { taxRate },
+              });
+            }
+          }}
+          step="0.01"
+          type="number"
+        />
+      </div>
+      <Button
+        aria-label="Remove line"
+        className="w-full"
+        onClick={() => removeLineItem.mutate({ id: docId, lineId: line.id })}
+        size="icon"
+        variant="ghost"
+      >
+        <Trash2 className="size-4" />
+      </Button>
+    </div>
+  );
+}

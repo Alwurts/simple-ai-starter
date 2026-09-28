@@ -1,0 +1,104 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": [
+    "@workspace/biome-config/core",
+    "@workspace/biome-config/react",
+    "@workspace/biome-config/tanstack"
+  ],
+  "assist": {
+    "actions": {
+      "source": {
+        "useSortedKeys": "off",
+        "useSortedAttributes": "off",
+        "useSortedInterfaceMembers": "off",
+        "useSortedProperties": "off",
+        "useSortedTypeFields": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": ["!!packages/env/src/env.d.ts"]
+  },
+  // ALW-672: ban useEffect/useLayoutEffect outside vendored shadcn
+  // (port of platform ALW-671). One pattern per .grit file — Biome's Grit
+  // compiler rejects multi-pattern files.
+  "plugins": [
+    {
+      "path": "./packages/biome-config/plugins/no-use-effect.grit",
+      "includes": ["**/*.{ts,tsx}", "!**/packages/ui/src/components/shadcn/**"]
+    },
+    {
+      "path": "./packages/biome-config/plugins/no-use-layout-effect.grit",
+      "includes": ["**/*.{ts,tsx}", "!**/packages/ui/src/components/shadcn/**"]
+    }
+  ],
+  "linter": {
+    "rules": {
+      "performance": {
+        "noBarrelFile": "off",
+        "noImgElement": "off",
+        "noJsxPropsBind": "off",
+        "noAwaitInLoops": "off"
+      },
+      "suspicious": {
+        "noLeakedRender": "off",
+        "noEqualsToNull": "off",
+        "noShadow": "off",
+        "noUnusedExpressions": "off",
+        "noUnnecessaryConditions": "off",
+        // ALW-700: fold raw-console guard into Biome. Path carve-outs below
+        // (and inherited test/scripts overrides from @workspace/biome-config).
+        "noConsole": "error"
+      },
+      "style": {
+        "useDestructuring": "off",
+        "noIncrementDecrement": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/*/src/routes/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
+    },
+    {
+      // ALW-700: browser-reachable web UI — not yet on structuredLog.
+      "includes": [
+        "apps/web/src/components/**",
+        "apps/web/src/routes/**",
+        "apps/web/src/hooks/**"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      // ALW-700: client / helper / scripts carve-outs.
+      // Also scripts/** + nested *.mjs (core preset's `*.mjs` only matches repo root).
+      "includes": [
+        "apps/docs/src/**",
+        "packages/ui/src/**",
+        "packages/log/src/structured-log.ts",
+        "**/scripts/**",
+        "**/*.{mjs,cjs}"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
+}

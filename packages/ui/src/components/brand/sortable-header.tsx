@@ -1,0 +1,88 @@
+"use client";
+
+import type { Column, RowData, TableFeatures } from "@tanstack/react-table";
+import { Button } from "@workspace/ui/components/shadcn/button";
+import type { DataTableFeatures } from "@workspace/ui/lib/data-table-features";
+import { cn } from "@workspace/ui/lib/utils";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+
+declare module "@tanstack/react-table" {
+  interface ColumnMeta<
+    TFeatures extends TableFeatures,
+    TData extends RowData,
+    TValue,
+  > {
+    /** Human-readable column label, shared by SortableHeader and the sort popover. */
+    label?: string;
+  }
+}
+
+export type SortDirection = false | "asc" | "desc";
+
+export type SortAriaLabelFn = (label: string, sorted: SortDirection) => string;
+
+export function sortAriaLabel(label: string, sorted: SortDirection): string {
+  if (sorted === "asc") {
+    return `Sorted by ${label}, ascending. Click to sort descending.`;
+  }
+  if (sorted === "desc") {
+    return `Sorted by ${label}, descending. Click to sort ascending.`;
+  }
+  return `Sort by ${label}`;
+}
+
+export function sortAriaSort(
+  sorted: SortDirection
+): "ascending" | "descending" | undefined {
+  if (sorted === "asc") {
+    return "ascending";
+  }
+  if (sorted === "desc") {
+    return "descending";
+  }
+}
+
+export function SortIcon({
+  sorted,
+  className,
+}: {
+  sorted: SortDirection;
+  className?: string;
+}) {
+  if (sorted === "asc") {
+    return <ArrowUp className={cn("h-4 w-4", className)} />;
+  }
+  if (sorted === "desc") {
+    return <ArrowDown className={cn("h-4 w-4", className)} />;
+  }
+  return (
+    <ArrowUpDown
+      className={cn("h-4 w-4 text-muted-foreground opacity-50", className)}
+    />
+  );
+}
+
+export function SortableHeader<TData extends RowData>({
+  column,
+  getAriaLabel = sortAriaLabel,
+}: {
+  column: Column<DataTableFeatures, TData, unknown>;
+  /** Locale-aware aria label; defaults to English `sortAriaLabel`. */
+  getAriaLabel?: SortAriaLabelFn;
+}) {
+  const sorted = column.getIsSorted();
+  const label = column.columnDef.meta?.label ?? column.id;
+
+  return (
+    <Button
+      aria-label={getAriaLabel(label, sorted)}
+      className={cn("h-8 px-0 font-medium", sorted && "text-foreground")}
+      onClick={() => column.toggleSorting(sorted === "asc")}
+      tabIndex={-1}
+      variant="ghost"
+    >
+      {label}
+      <SortIcon className="ml-2" sorted={sorted} />
+    </Button>
+  );
+}

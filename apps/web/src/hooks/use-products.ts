@@ -1,0 +1,208 @@
+"use client";
+
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import type {
+  createProductSchema,
+  updateProductSchema,
+} from "@workspace/contract/catalog";
+import type { PaginationQuery } from "@workspace/contract/pagination";
+import { toast } from "@workspace/ui/components/shadcn/sonner";
+import type { InferResponseType } from "hono/client";
+import type { z } from "zod";
+import { client } from "@/lib/client";
+import { retryUnlessNotFound } from "@/lib/query";
+import { m } from "@/paraglide/messages.js";
+
+/**
+ * The outbound product row, inferred from the list endpoint's typed response
+ * (ADR-004: reads are inferred from the implementation, never hand-mirrored).
+ */
+export type Product = InferResponseType<
+  (typeof client.protected.catalog.products)["$get"],
+  200
+>["data"][number];
+
+export const getProductsKey = () => ["products"];
+export const getProductsListKey = (params: PaginationQuery) => [
+  "products",
+  "list",
+  params,
+];
+export const getProductKey = (id: string) => ["products", id];
+
+export const useProducts = (params: PaginationQuery) =>
+  useQuery({
+    queryKey: getProductsListKey(params),
+    queryFn: async () => {
+      const res = await client.protected.catalog.products.$get({
+        query: {
+          page: params.page.toString(),
+          pageSize: params.pageSize.toString(),
+          ...(params.sortBy && { sortBy: params.sortBy }),
+          sortOrder: params.sortOrder,
+          ...(params.search && { search: params.search }),
+        },
+      });
+      return res.json();
+    },
+    placeholderData: keepPreviousData,
+  });
+
+export const useProduct = (id: string) =>
+  useQuery({
+    queryKey: getProductKey(id),
+    queryFn: async () => {
+      const res = await client.protected.catalog.products[":id"].$get({
+        param: { id },
+      });
+      if (res.status === 404) {
+        throw new Error("Product not found");
+      }
+      if (!res.ok) {
+        throw new Error("Failed to load product");
+      }
+      return res.json();
+    },
+    enabled: !!id,
+    retry: retryUnlessNotFound,
+  });
+
+export const useCreateProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: z.infer<typeof createProductSchema>) => {
+      const res = await client.protected.catalog.products.$post({
+        json: data,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getProductsKey() });
+      toast.success(m.catalog_toast_created());
+    },
+    onError: () => {
+      toast.error(m.catalog_toast_create_failed());
+    },
+  });
+};
+
+export const useUpdateProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      data: z.infer<typeof updateProductSchema>;
+    }) => {
+      const res = await client.protected.catalog.products[":id"].$put({
+        param: { id: params.id },
+        json: params.data,
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update product");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: getProductsKey() });
+      queryClient.invalidateQueries({ queryKey: getProductKey(variables.id) });
+      toast.success(m.catalog_toast_updated());
+    },
+    onError: () => {
+      toast.error(m.catalog_toast_update_failed());
+    },
+  });
+};
+
+interface PaginatedProducts {
+  data: Product[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export const useDeleteProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await client.protected.catalog.products[":id"].$delete({
+        param: { id },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete product");
+      }
+      return res.json();
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: getProductsKey() });
+
+      const previousLists = queryClient.getQueriesData<PaginatedProducts>({
+        queryKey: ["products", "list"],
+      });
+
+      queryClient.setQueriesData<PaginatedProducts>(
+        { queryKey: ["products", "list"] },
+        (old) => {
+          if (!old) {
+            return old;
+          }
+          return {
+            ...old,
+            data: old.data.filter((p) => p.id !== id),
+            total: old.total - 1,
+          };
+        }
+      );
+
+      return { previousLists };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousLists) {
+        for (const [queryKey, data] of context.previousLists) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+      toast.error(m.catalog_toast_delete_failed());
+    },
+    onSuccess: () => {
+      toast.success(m.catalog_toast_deleted());
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: getProductsKey() });
+    },
+  });
+};
+
+export const useUploadProductImage = () =>
+  useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/protected/catalog/uploads", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error((body as { error?: string }).error || "Upload failed");
+      }
+      return res.json() as Promise<{ key: string }>;
+    },
+  });
+
+export const useDeleteProductImage = () =>
+  useMutation({
+    mutationFn: async (key: string) => {
+      const res = await client.protected.catalog.uploads[":key"].$delete({
+        param: { key },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete image");
+      }
+      return res.json();
+    },
+  });

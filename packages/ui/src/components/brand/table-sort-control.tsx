@@ -1,0 +1,162 @@
+"use client";
+
+import type { RowData, SortingState, Table } from "@tanstack/react-table";
+import { SortIcon } from "@workspace/ui/components/brand/sortable-header";
+import { Button } from "@workspace/ui/components/shadcn/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/shadcn/popover";
+import { Separator } from "@workspace/ui/components/shadcn/separator";
+import type { DataTableFeatures } from "@workspace/ui/lib/data-table-features";
+import { Check } from "lucide-react";
+import { useState } from "react";
+
+export interface SortableColumn {
+  id: string;
+  label: string;
+}
+
+export interface TableSort {
+  columns: SortableColumn[];
+  onSortingChange: (sorting: SortingState) => void;
+  sorting: SortingState;
+}
+
+export interface TableSortLabels {
+  sort?: string;
+  sortBy?: string;
+  clear?: string;
+  ascending?: string;
+  descending?: string;
+  sortedByAria?: (column: string, direction: "asc" | "desc") => string;
+}
+
+const DEFAULT_SORT_LABELS: Required<Omit<TableSortLabels, "sortedByAria">> & {
+  sortedByAria: (column: string, direction: "asc" | "desc") => string;
+} = {
+  sort: "Sort",
+  sortBy: "Sort by",
+  clear: "Clear",
+  ascending: "Ascending",
+  descending: "Descending",
+  sortedByAria: (column, direction) =>
+    `Sorted by ${column}, ${direction === "asc" ? "ascending" : "descending"}. Change sort.`,
+};
+
+/** Sortable columns from the table instance (`meta.label` on each column def). */
+export function getSortableColumns<TData extends RowData>(
+  table: Table<DataTableFeatures, TData>
+): SortableColumn[] {
+  return table
+    .getAllLeafColumns()
+    .filter((column) => column.getCanSort())
+    .map((column) => ({
+      id: column.id,
+      label: column.columnDef.meta?.label ?? column.id,
+    }));
+}
+
+export function TableSortControl({
+  sort,
+  labels: labelsProp,
+}: {
+  sort: TableSort;
+  labels?: TableSortLabels;
+}) {
+  const labels = { ...DEFAULT_SORT_LABELS, ...labelsProp };
+  const { sorting, onSortingChange, columns } = sort;
+  const [open, setOpen] = useState(false);
+  const active = sorting[0];
+  const activeColumn = active
+    ? columns.find((column) => column.id === active.id)
+    : undefined;
+  const activeDirection = active?.desc ? "desc" : "asc";
+  const triggerLabel = activeColumn
+    ? labels.sortedByAria(activeColumn.label, activeDirection)
+    : labels.sort;
+  const applySort = (nextSorting: SortingState) => {
+    onSortingChange(nextSorting);
+    setOpen(false);
+  };
+  return (
+    <Popover onOpenChange={setOpen} open={open}>
+      <PopoverTrigger
+        render={
+          <Button
+            aria-label={triggerLabel}
+            className="shrink-0"
+            size="icon-xs"
+            variant="outline"
+          />
+        }
+      >
+        <SortIcon sorted={active ? activeDirection : false} />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 gap-0 p-0">
+        <div className="flex items-center justify-between px-4 py-3">
+          <p className="font-medium text-sm">{labels.sortBy}</p>
+          {active ? (
+            <Button
+              className="h-auto px-0 text-muted-foreground text-xs"
+              onClick={() => applySort([])}
+              type="button"
+              variant="link"
+            >
+              {labels.clear}
+            </Button>
+          ) : null}
+        </div>
+        <Separator />
+        <div className="max-h-[min(24rem,60vh)] overflow-y-auto p-1">
+          {columns.map((column, index) => {
+            const isActiveColumn = active?.id === column.id;
+            return (
+              <div key={column.id}>
+                {index > 0 ? <Separator className="my-1" /> : null}
+                <p className="px-2 py-1 font-medium text-muted-foreground text-xs">
+                  {column.label}
+                </p>
+                {([false, true] as const).map((desc) => {
+                  const isActive = isActiveColumn && active?.desc === desc;
+                  return (
+                    <Button
+                      aria-label={`${column.label}, ${desc ? labels.descending : labels.ascending}`}
+                      className="h-8 w-full justify-between px-2 font-normal"
+                      key={`${column.id}-${desc ? "desc" : "asc"}`}
+                      onClick={() =>
+                        applySort(
+                          isActive
+                            ? []
+                            : [
+                                {
+                                  id: column.id,
+                                  desc,
+                                },
+                              ]
+                        )
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      <span className="flex items-center gap-2">
+                        <SortIcon sorted={desc ? "desc" : "asc"} />
+                        {desc ? labels.descending : labels.ascending}
+                      </span>
+                      {isActive ? (
+                        <Check className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <span className="h-4 w-4 shrink-0" />
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}

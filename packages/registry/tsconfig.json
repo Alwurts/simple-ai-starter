@@ -1,0 +1,20 @@
+{
+  "extends": "@workspace/tsconfig/react-library-bundler.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": {
+      "@workspace/registry/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src",
+    "registry/blocks",
+    "registry/components",
+    "registry/_shared",
+    "registry/packs/*/item.ts",
+    "scripts",
+    "test",
+    "../tsconfig/css-modules.d.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,23 @@
+---
+title: Blocks
+description: Full-page composed UI examples — rendered live in an iframe and openable full screen.
+---
+
+**Blocks** are complete screens built from `@workspace/ui` primitives with mock
+data. Golden references cover the operator home, list spine, record routes (read / edit),
+create dialog, and full-screen assistant chat.
+
+Each block is:
+
+- **Authored** under `packages/registry/registry/blocks/<name>/` or
+  `packages/registry/registry/components/<name>/` with an `item.ts` manifest.
+- **Published** via `pnpm --filter @workspace/registry generate` to `registry.json`
+  and the gallery lazy map (`shadcn add` compatible).
+- **Rendered chromeless** at `/view/<name>` and embedded via `<BlockViewer />`.
+
+## All blocks
+
+<BlocksGallery />
+
+Browse [Components](/docs/components/shell) for the layout and table
+primitives that make up the blocks.

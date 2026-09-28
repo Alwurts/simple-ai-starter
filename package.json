@@ -1,0 +1,54 @@
+{
+  "name": "sfab-starter",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint:check": "biome check .",
+    "lint:fix": "biome check --write .",
+    "check:cycles": "madge --circular --extensions ts,tsx --exclude '(\\.gen\\.|/org/)' packages",
+    "check:dead-code": "pnpm i18n:compile && knip",
+    "test": "turbo test",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "typecheck": "turbo typecheck",
+    "verify": "node scripts/verify.mjs",
+    "db:generate": "pnpm --filter @workspace/db db:generate",
+    "db:studio": "pnpm --filter @workspace/db db:studio",
+    "db:migrate": "pnpm --filter web db:migrate",
+    "db:migrate:prod": "pnpm --filter web db:migrate:prod",
+    "db:seed": "pnpm --filter web db:seed",
+    "db:reset": "pnpm --filter web db:reset",
+    "db:list": "pnpm --filter web db:list",
+    "i18n:sync": "pnpm --filter @workspace/i18n i18n:sync",
+    "i18n:lint": "pnpm --filter @workspace/i18n i18n:lint",
+    "i18n:compile": "pnpm --filter web i18n:compile",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.2",
+    "@workspace/biome-config": "workspace:*",
+    "@workspace/tsconfig": "workspace:*",
+    "husky": "^9.1.7",
+    "knip": "^6.27.0",
+    "lint-staged": "^16.4.0",
+    "madge": "^8.0.0",
+    "turbo": "^2.10.4",
+    "typescript": "7.0.2"
+  },
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "intent": {
+    "skills": [
+      "@tanstack/*"
+    ]
+  },
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx,json,css}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
+  }
+}

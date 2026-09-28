@@ -1,0 +1,1001 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "sfab-starter",
+  "homepage": "https://github.com/sfab-oss/sfab-starter",
+  "items": [
+    {
+      "name": "accept-invite",
+      "type": "registry:block",
+      "title": "Accept invite",
+      "description": "Centered invite-acceptance route — org + role context over a name + password card, zod-validated.",
+      "registryDependencies": ["button", "card", "field", "input", "sonner"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "docs": "`AuthShell` is the shared centered frame for every unauthenticated route.\n`AcceptInviteForm` takes the org, invited email, and role as props — resolve\nthem from the invite token on the server. Swap the mock `onSubmit` for your\naccept-invite call.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/accept-invite/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/accept-invite.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/accept-invite/components/auth-shell.tsx",
+          "type": "registry:component",
+          "target": "src/features/auth/components/auth-shell.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/accept-invite/components/accept-invite-form.tsx",
+          "type": "registry:component",
+          "target": "src/features/auth/components/accept-invite-form.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/accept-invite/lib/accept-invite-schema.ts",
+          "type": "registry:lib",
+          "target": "src/features/auth/lib/accept-invite-schema.ts"
+        }
+      ]
+    },
+    {
+      "name": "chat-dock",
+      "type": "registry:block",
+      "title": "Chat dock",
+      "description": "Bottom-docked assistant widget — a launcher that opens a compact chat window and expands into a large view with the workspace file viewer.",
+      "registryDependencies": [
+        "bubble",
+        "button",
+        "collapsible",
+        "drawer",
+        "dropdown-menu",
+        "empty",
+        "input-group",
+        "message",
+        "message-scroller",
+        "popover",
+        "resizable",
+        "sheet",
+        "sidebar"
+      ],
+      "dependencies": ["streamdown"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/assistant-dock.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/components/chat-dock.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant-dock/components/chat-dock.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/components/chat-history-panel.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant-dock/components/chat-history-panel.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/components/chat-input.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant-dock/components/chat-input.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/components/chat-message-parts.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant-dock/components/chat-message-parts.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/components/chat-side-panel.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant-dock/components/chat-side-panel.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/components/file-explorer-tree.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant-dock/components/file-explorer-tree.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/hooks/use-chat-dock.ts",
+          "type": "registry:hook",
+          "target": "src/features/assistant-dock/hooks/use-chat-dock.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/hooks/use-chat-side-panel.ts",
+          "type": "registry:hook",
+          "target": "src/features/assistant-dock/hooks/use-chat-side-panel.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/lib/mock-chat-messages.ts",
+          "type": "registry:lib",
+          "target": "src/features/assistant-dock/lib/mock-chat-messages.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/lib/mock-chats.ts",
+          "type": "registry:lib",
+          "target": "src/features/assistant-dock/lib/mock-chats.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/lib/mock-workspace-tree.ts",
+          "type": "registry:lib",
+          "target": "src/features/assistant-dock/lib/mock-workspace-tree.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-dock/lib/mock-members.ts",
+          "type": "registry:lib",
+          "target": "src/features/assistant-dock/lib/mock-members.ts"
+        }
+      ]
+    },
+    {
+      "name": "chat-page",
+      "type": "registry:block",
+      "title": "Chat page",
+      "description": "Full-screen assistant chat inside the app shell — conversation, prompt input, and mock replies.",
+      "registryDependencies": [
+        "bubble",
+        "button",
+        "dropdown-menu",
+        "empty",
+        "input-group",
+        "message",
+        "message-scroller",
+        "resizable",
+        "sidebar"
+      ],
+      "dependencies": ["streamdown"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/chat-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/assistant.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/lib/mock-chat-messages.ts",
+          "type": "registry:lib",
+          "target": "src/features/assistant/lib/mock-chat-messages.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/components/full-screen-chat.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant/components/full-screen-chat.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/components/chat-input.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant/components/chat-input.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/components/chat-message-parts.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant/components/chat-message-parts.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/components/chat-side-panel.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant/components/chat-side-panel.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/components/file-explorer-tree.tsx",
+          "type": "registry:component",
+          "target": "src/features/assistant/components/file-explorer-tree.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/hooks/use-chat-side-panel.ts",
+          "type": "registry:hook",
+          "target": "src/features/assistant/hooks/use-chat-side-panel.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/lib/mock-workspace-tree.ts",
+          "type": "registry:lib",
+          "target": "src/features/assistant/lib/mock-workspace-tree.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/chat-page/lib/mock-members.ts",
+          "type": "registry:lib",
+          "target": "src/features/assistant/lib/mock-members.ts"
+        }
+      ]
+    },
+    {
+      "name": "coming-soon-page",
+      "type": "registry:block",
+      "title": "Coming soon page",
+      "description": "Honest full-page states — coming soon, not found, and empty — for routes that aren't built or have no data yet.",
+      "registryDependencies": ["button", "empty", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "docs": "Import whichever placeholder a route needs from\n`components/page-placeholder.tsx` — the three are independent. `page.tsx`\nwires `ComingSoonPage` into the Buy route; swap in `EmptyResourcePage` once\nthe feature ships, or render `NotFoundPage` from a route's notFound handler.\nNever fake data — an honest placeholder beats a hollow screen.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/coming-soon-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/buy/page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/coming-soon-page/components/page-placeholder.tsx",
+          "type": "registry:component",
+          "target": "src/features/buy/components/page-placeholder.tsx"
+        }
+      ]
+    },
+    {
+      "name": "command-palette",
+      "type": "registry:block",
+      "title": "Command palette",
+      "description": "⌘K / sidebar search — go-to navigation from navigation-config (no faked entity search).",
+      "registryDependencies": ["button", "sidebar", "dialog"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "docs": "Swap `fetchCommandPaletteSearch` for your search endpoint —\n`useCommandPaletteSearch` feeds the palette through React Query, so its loading\nand error rows are already wired. Go-to entries come from `navigation-config`;\nthe mock fetch adds a delay you can drop.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/command-palette/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/command-palette.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/command-palette/lib/fetch-command-palette-search.ts",
+          "type": "registry:lib",
+          "target": "src/features/search/lib/fetch-command-palette-search.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/command-palette/hooks/use-command-palette-search.ts",
+          "type": "registry:hook",
+          "target": "src/features/search/hooks/use-command-palette-search.ts"
+        }
+      ]
+    },
+    {
+      "name": "destructive-confirm",
+      "type": "registry:block",
+      "title": "Destructive confirm",
+      "description": "The default destructive confirm — one AlertDialog with Cancel / Delete, then a post-commit toast.",
+      "registryDependencies": [
+        "alert-dialog",
+        "button",
+        "card",
+        "sidebar",
+        "sonner"
+      ],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "docs": "The baseline for ordinary destroys: a single AlertDialog with Cancel /\nDelete. Run the mutation in the action's `onClick`, then confirm with a\ntoast. Escalate to `type-to-confirm` only for irreversible, org-scoped\ndeletes. Mount one `<Toaster />` at the shell for the post-commit toast.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/destructive-confirm/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/confirm/destructive-confirm-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/destructive-confirm/components/destructive-confirm-card.tsx",
+          "type": "registry:component",
+          "target": "src/features/confirm/components/destructive-confirm-card.tsx"
+        }
+      ]
+    },
+    {
+      "name": "markdown-editor",
+      "type": "registry:ui",
+      "title": "Markdown editor",
+      "description": "BlockNote WYSIWYG markdown editor — controlled value/onChange, trimmed formatting toolbar, theme-aware, layout-neutral.",
+      "dependencies": ["@blocknote/react", "@blocknote/shadcn", "next-themes"],
+      "meta": {
+        "sfabKind": "block"
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/components/markdown-editor/markdown-editor-demo.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "markdown-viewer-page",
+      "type": "registry:block",
+      "title": "Markdown viewer page",
+      "description": "Documents route — a read-only markdown document on a full shell page, with header actions.",
+      "registryDependencies": ["button", "dialog", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 820
+      },
+      "docs": "Swap `SAMPLE_MARKDOWN` for the document you load (a store record, a File, or\nan API response). The same editor authors and displays markdown — drop the\n`readOnly` prop to make the page editable.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/markdown-viewer-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/documents/markdown-viewer-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/markdown-viewer-page/lib/sample-markdown.ts",
+          "type": "registry:lib",
+          "target": "src/features/documents/lib/sample-markdown.ts"
+        }
+      ]
+    },
+    {
+      "name": "mcp",
+      "type": "registry:block",
+      "title": "MCP server",
+      "description": "Opt-in MCP OAuth + Streamable HTTP. Connection is the org. DCR on. No CIMD.",
+      "meta": {
+        "sfabKind": "pack"
+      },
+      "docs": "Files landed under apps/web (src/mcp, src/_pack/mcp, routes, tests).\nOpen apps/web/src/_pack/mcp/skill.md and run it: it moves layer files into\npackages/*, grafts, generate/migrate, then deletes the staging dir.",
+      "files": [
+        {
+          "path": "packages/registry/registry/packs/mcp/skill.md",
+          "type": "registry:file",
+          "target": "src/_pack/mcp/skill.md"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/db/schema/oauth.ts",
+          "type": "registry:lib",
+          "target": "src/_pack/mcp/db/schema/oauth.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/contract/mcp-connections.ts",
+          "type": "registry:lib",
+          "target": "src/_pack/mcp/contract/mcp-connections.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/core/mcp.ts",
+          "type": "registry:lib",
+          "target": "src/_pack/mcp/core/mcp.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/auth/mcp-resource.ts",
+          "type": "registry:lib",
+          "target": "src/_pack/mcp/auth/mcp-resource.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/auth/mcp-resource.test.ts",
+          "type": "registry:file",
+          "target": "src/_pack/mcp/auth/mcp-resource.test.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/tools/mcp-tool.ts",
+          "type": "registry:lib",
+          "target": "src/_pack/mcp/agent/mcp-tool.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/tools/mcp-tool-names.ts",
+          "type": "registry:lib",
+          "target": "src/_pack/mcp/agent/mcp-tool-names.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/tools/register-mcp-tools.ts",
+          "type": "registry:lib",
+          "target": "src/_pack/mcp/agent/register-mcp-tools.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/tools/register-mcp-tools.test.ts",
+          "type": "registry:file",
+          "target": "src/_pack/mcp/agent/register-mcp-tools.test.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/i18n/en.json",
+          "type": "registry:file",
+          "target": "src/_pack/mcp/i18n/en.json"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/i18n/es.json",
+          "type": "registry:file",
+          "target": "src/_pack/mcp/i18n/es.json"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/server/mcp/index.ts",
+          "type": "registry:lib",
+          "target": "src/mcp/index.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/server/mcp/check-mcp-origin.ts",
+          "type": "registry:lib",
+          "target": "src/mcp/check-mcp-origin.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/server/mcp/consent-handler.ts",
+          "type": "registry:lib",
+          "target": "src/mcp/consent-handler.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/server/mcp/validate-consent-origin.ts",
+          "type": "registry:lib",
+          "target": "src/mcp/validate-consent-origin.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/server/hono/mcp.ts",
+          "type": "registry:lib",
+          "target": "src/hono/org-protected/mcp.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/components/mcp-settings-section.tsx",
+          "type": "registry:component",
+          "target": "src/components/organization/settings/mcp-settings-section.tsx"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/hooks/use-mcp-connections.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/use-mcp-connections.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/lib/restore-signed-oauth-query.ts",
+          "type": "registry:lib",
+          "target": "src/lib/restore-signed-oauth-query.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/lib/restore-signed-oauth-query.test.ts",
+          "type": "registry:file",
+          "target": "src/lib/restore-signed-oauth-query.test.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/routes/mcp.consent.tsx",
+          "type": "registry:page",
+          "target": "~/src/routes/mcp.consent.tsx"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/routes/settings-mcp.tsx",
+          "type": "registry:page",
+          "target": "~/src/routes/_protected/settings/mcp.tsx"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/test/mcp.workerd.test.ts",
+          "type": "registry:file",
+          "target": "~/test/api/mcp.workerd.test.ts"
+        },
+        {
+          "path": "packages/registry/registry/packs/mcp/test/helpers/mcp-oauth.ts",
+          "type": "registry:file",
+          "target": "~/test/helpers/mcp-oauth.ts"
+        }
+      ]
+    },
+    {
+      "name": "pdf-viewer",
+      "type": "registry:ui",
+      "title": "PDF viewer",
+      "description": "Continuous fit-to-width PDF reader on react-pdf (pdf.js) — scroll, zoom, page X of N, loading/error states, layout-neutral.",
+      "dependencies": ["react-pdf", "pdfjs-dist"],
+      "meta": {
+        "sfabKind": "block"
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/components/pdf-viewer/pdf-viewer-demo.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "pdf-viewer-page",
+      "type": "registry:block",
+      "title": "PDF viewer page",
+      "description": "Documents route — a continuous, fit-to-width PDF reader on a full shell page, with header actions.",
+      "registryDependencies": ["button", "dialog", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 820
+      },
+      "docs": "Swap `SAMPLE_PDF` for the document you load — the viewer accepts a URL, a\nFile, or raw bytes, so point it at your document store or an upload.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/pdf-viewer-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/documents/pdf-viewer-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/pdf-viewer-page/lib/sample-pdf.ts",
+          "type": "registry:lib",
+          "target": "src/features/documents/lib/sample-pdf.ts"
+        }
+      ]
+    },
+    {
+      "name": "record-edit-page",
+      "type": "registry:block",
+      "title": "Record edit page",
+      "description": "Invoice edit route — due date and notes form on a full shell page with activity log.",
+      "registryDependencies": [
+        "button",
+        "calendar",
+        "collapsible",
+        "field",
+        "input",
+        "popover",
+        "sidebar",
+        "textarea"
+      ],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/record-edit-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/collect/record-edit-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-edit-page/lib/payment-types.ts",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/payment-types.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-edit-page/lib/invoice-edit-schema.ts",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/invoice-edit-schema.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-edit-page/lib/mock-invoice-activity.tsx",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/mock-invoice-activity.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-edit-page/components/invoice-edit-form.tsx",
+          "type": "registry:component",
+          "target": "src/features/collect/components/invoice-edit-form.tsx"
+        }
+      ]
+    },
+    {
+      "name": "record-payment-dialog",
+      "type": "registry:block",
+      "title": "Record payment dialog",
+      "description": "Collect hub with record-payment dialog open by default — money fields plus activity log (MXN minor units).",
+      "registryDependencies": [
+        "button",
+        "calendar",
+        "collapsible",
+        "dialog",
+        "field",
+        "input",
+        "popover",
+        "sidebar"
+      ],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/collect/record-payment-dialog-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/lib/payment-types.ts",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/payment-types.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/lib/payment-form-schema.ts",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/payment-form-schema.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/lib/mock-invoice-activity.tsx",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/mock-invoice-activity.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/lib/mock-open-invoices.ts",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/mock-open-invoices.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/components/open-invoices-columns.tsx",
+          "type": "registry:component",
+          "target": "src/features/collect/components/open-invoices-columns.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/components/payment-form.tsx",
+          "type": "registry:component",
+          "target": "src/features/collect/components/payment-form.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-payment-dialog/components/payment-form-dialog.tsx",
+          "type": "registry:component",
+          "target": "src/features/collect/components/payment-form-dialog.tsx"
+        }
+      ]
+    },
+    {
+      "name": "record-read-page",
+      "type": "registry:block",
+      "title": "Record read page",
+      "description": "Invoice record route — PropertyGrid and activity log on a full shell page (read-only).",
+      "registryDependencies": ["button", "collapsible", "popover", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/record-read-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/collect/record-read-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-read-page/lib/payment-types.ts",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/payment-types.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-read-page/lib/mock-invoice-activity.tsx",
+          "type": "registry:lib",
+          "target": "src/features/collect/lib/mock-invoice-activity.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/record-read-page/components/invoice-record-view.tsx",
+          "type": "registry:component",
+          "target": "src/features/collect/components/invoice-record-view.tsx"
+        }
+      ]
+    },
+    {
+      "name": "resource-list-page",
+      "type": "registry:block",
+      "title": "Resource list page",
+      "description": "Full list page — app shell, list page shell, filter toolbar, resource table, and a React Query hook on mock data.",
+      "registryDependencies": ["table", "button", "badge", "input", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "docs": "Before wiring your API, clean up hooks/use-people.ts: delete the two\n`GALLERY PREVIEW ONLY` fenced blocks and the preview import, then use the\n`PRODUCTION:` return on the last line of usePeopleList. What's left is a plain\nuseQuery over your fetch function — no other files need edits.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/resource-list-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/people/page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/resource-list-page/lib/people/types.ts",
+          "type": "registry:lib",
+          "target": "src/features/people/lib/people/types.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/resource-list-page/lib/people/mock-people.ts",
+          "type": "registry:lib",
+          "target": "src/features/people/lib/people/mock-people.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/resource-list-page/lib/people/fetch-people.ts",
+          "type": "registry:lib",
+          "target": "src/features/people/lib/people/fetch-people.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/resource-list-page/hooks/use-people.ts",
+          "type": "registry:hook",
+          "target": "src/features/people/hooks/use-people.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/resource-list-page/components/people/people-columns.tsx",
+          "type": "registry:component",
+          "target": "src/features/people/components/people/people-columns.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/resource-list-page/components/resource-list-collection-state.tsx",
+          "type": "registry:component",
+          "target": "src/features/people/components/resource-list-collection-state.tsx"
+        }
+      ]
+    },
+    {
+      "name": "resource-table",
+      "type": "registry:ui",
+      "title": "Resource table",
+      "description": "Extended DataTable with drill-in row click, inline CTA, and kebab actions.",
+      "registryDependencies": ["table", "button", "dropdown-menu", "input"],
+      "meta": {
+        "sfabKind": "block"
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/components/resource-table/resource-table-demo.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "settings-page",
+      "type": "registry:block",
+      "title": "Settings page",
+      "description": "Full-route org settings — organization details, member invites, members table, and pending invitations (gallery mock, admin+ surface).",
+      "registryDependencies": [
+        "button",
+        "drawer",
+        "input",
+        "select",
+        "table",
+        "sidebar"
+      ],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/settings-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/_protected/settings/route.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/components/settings-page-content.tsx",
+          "type": "registry:component",
+          "target": "src/features/settings/components/settings-page-content.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/components/organization-details-form.tsx",
+          "type": "registry:component",
+          "target": "src/features/settings/components/organization-details-form.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/components/invite-member-form.tsx",
+          "type": "registry:component",
+          "target": "src/features/settings/components/invite-member-form.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/components/members-tables.tsx",
+          "type": "registry:component",
+          "target": "src/features/settings/components/members-tables.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/lib/mock-organization.ts",
+          "type": "registry:lib",
+          "target": "src/features/settings/lib/mock-organization.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/lib/settings-sections.ts",
+          "type": "registry:lib",
+          "target": "src/features/settings/lib/settings-sections.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/lib/settings-schemas.ts",
+          "type": "registry:lib",
+          "target": "src/features/settings/lib/settings-schemas.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/lib/fetch-organization-settings.ts",
+          "type": "registry:lib",
+          "target": "src/features/settings/lib/fetch-organization-settings.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/settings-page/hooks/use-organization-settings.ts",
+          "type": "registry:hook",
+          "target": "src/features/settings/hooks/use-organization-settings.ts"
+        }
+      ]
+    },
+    {
+      "name": "shell",
+      "type": "registry:ui",
+      "title": "Shell",
+      "description": "App shell compound layout — sidebar frame, page header row, and main content slot.",
+      "registryDependencies": ["button", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/components/shell/shell-demo.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "sign-in",
+      "type": "registry:block",
+      "title": "Sign in",
+      "description": "Centered sign-in route — brand mark over an email + password card, zod-validated.",
+      "registryDependencies": ["button", "card", "field", "input", "sonner"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "docs": "`AuthShell` is the shared centered frame for every unauthenticated route.\nThe form validates with zod via `zodResolver` — swap the mock `onSubmit` for\nyour auth call. The 'Sign up' cross-link is inert; wire it to your router.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/sign-in/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/sign-in.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/sign-in/components/auth-shell.tsx",
+          "type": "registry:component",
+          "target": "src/features/auth/components/auth-shell.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/sign-in/components/sign-in-form.tsx",
+          "type": "registry:component",
+          "target": "src/features/auth/components/sign-in-form.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/sign-in/lib/sign-in-schema.ts",
+          "type": "registry:lib",
+          "target": "src/features/auth/lib/sign-in-schema.ts"
+        }
+      ]
+    },
+    {
+      "name": "sign-up",
+      "type": "registry:block",
+      "title": "Sign up",
+      "description": "Centered sign-up route — name, email, and password card on the shared auth shell, zod-validated.",
+      "registryDependencies": ["button", "card", "field", "input", "sonner"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "docs": "`AuthShell` is the shared centered frame for every unauthenticated route.\nThe form validates with zod via `zodResolver` — swap the mock `onSubmit` for\nyour create-account call. The 'Sign in' cross-link is inert; wire it to your\nrouter.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/sign-up/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/sign-up.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/sign-up/components/auth-shell.tsx",
+          "type": "registry:component",
+          "target": "src/features/auth/components/auth-shell.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/sign-up/components/sign-up-form.tsx",
+          "type": "registry:component",
+          "target": "src/features/auth/components/sign-up-form.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/sign-up/lib/sign-up-schema.ts",
+          "type": "registry:lib",
+          "target": "src/features/auth/lib/sign-up-schema.ts"
+        }
+      ]
+    },
+    {
+      "name": "spreadsheet-viewer",
+      "type": "registry:ui",
+      "title": "Spreadsheet viewer",
+      "description": "Read-only .xlsx viewer on Univer (open-source Luckysheet successor) with the client-side LuckyExcel importer — styles, merges, formulas, theme-aware, layout-neutral.",
+      "dependencies": [
+        "@univerjs/core",
+        "@univerjs/preset-sheets-core",
+        "@univerjs/themes",
+        "@zwight/luckyexcel",
+        "next-themes"
+      ],
+      "meta": {
+        "sfabKind": "block"
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/components/spreadsheet-viewer/spreadsheet-viewer-demo.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "spreadsheet-viewer-page",
+      "type": "registry:block",
+      "title": "Spreadsheet viewer page",
+      "description": "Documents route — a read-only .xlsx spreadsheet on a full shell page, with header actions.",
+      "registryDependencies": ["button", "dialog", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 820
+      },
+      "docs": "Swap `SAMPLE_WORKBOOK` for the workbook you load — the viewer accepts a URL,\na File, or raw bytes, so point it at your document store or an upload.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/spreadsheet-viewer-page/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/documents/spreadsheet-viewer-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/spreadsheet-viewer-page/lib/sample-workbook.ts",
+          "type": "registry:lib",
+          "target": "src/features/documents/lib/sample-workbook.ts"
+        }
+      ]
+    },
+    {
+      "name": "today-overview",
+      "type": "registry:block",
+      "title": "Today overview",
+      "description": "Operator home — primary actions, honest KPI tiles, and action items.",
+      "registryDependencies": ["button", "sidebar"],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 900
+      },
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/today-overview/page.tsx",
+          "type": "registry:page",
+          "target": "src/routes/index.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/today-overview/components/today-overview-content.tsx",
+          "type": "registry:component",
+          "target": "src/features/today/components/today-overview-content.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/today-overview/components/today-kpi-tile.tsx",
+          "type": "registry:component",
+          "target": "src/features/today/components/today-kpi-tile.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/today-overview/components/today-action-items.tsx",
+          "type": "registry:component",
+          "target": "src/features/today/components/today-action-items.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/today-overview/lib/mock-today-metrics.ts",
+          "type": "registry:lib",
+          "target": "src/features/today/lib/mock-today-metrics.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/today-overview/lib/fetch-today-overview.ts",
+          "type": "registry:lib",
+          "target": "src/features/today/lib/fetch-today-overview.ts"
+        },
+        {
+          "path": "packages/registry/registry/blocks/today-overview/hooks/use-today-overview.ts",
+          "type": "registry:hook",
+          "target": "src/features/today/hooks/use-today-overview.ts"
+        }
+      ]
+    },
+    {
+      "name": "type-to-confirm",
+      "type": "registry:block",
+      "title": "Type-to-confirm",
+      "description": "The highest-stakes destroy guard — a dialog whose Delete button unlocks only once the operator types the resource's exact name.",
+      "registryDependencies": [
+        "alert-dialog",
+        "button",
+        "card",
+        "field",
+        "input",
+        "sidebar",
+        "sonner"
+      ],
+      "meta": {
+        "sfabKind": "block",
+        "iframeHeight": 720
+      },
+      "docs": "Reserve `TypeNameConfirmDialog` for irreversible, org-scoped destroys\n(delete organization) — the destructive button stays disabled until the\noperator types the resource's exact name, so a one-click slip can't nuke\nit. The dialog is controlled: open it after your own guard, then run the\nmutation in `onConfirm`. Ordinary deletes only need `destructive-confirm`.",
+      "files": [
+        {
+          "path": "packages/registry/registry/blocks/type-to-confirm/page.tsx",
+          "type": "registry:page",
+          "target": "src/features/confirm/type-to-confirm-page.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/type-to-confirm/components/type-to-confirm-card.tsx",
+          "type": "registry:component",
+          "target": "src/features/confirm/components/type-to-confirm-card.tsx"
+        },
+        {
+          "path": "packages/registry/registry/blocks/type-to-confirm/components/type-name-confirm-dialog.tsx",
+          "type": "registry:component",
+          "target": "src/features/confirm/components/type-name-confirm-dialog.tsx"
+        }
+      ]
+    }
+  ]
+}

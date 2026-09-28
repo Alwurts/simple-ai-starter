@@ -1,0 +1,14 @@
+{
+  "extends": "@workspace/tsconfig/react-library.json",
+  "compilerOptions": {
+    "lib": ["es2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "@cloudflare/workers-types"],
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@workspace/auth/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "../env/src/env.d.ts"],
+  "exclude": ["node_modules"]
+}

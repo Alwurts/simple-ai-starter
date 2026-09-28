@@ -1,0 +1,25 @@
+{
+  "name": "@workspace/core",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./catalog": "./src/catalog/index.ts",
+    "./transaction": "./src/transaction/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@workspace/contract": "workspace:*",
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "nanoid": "^5.1.16"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@workspace/env": "workspace:*",
+    "@workspace/tsconfig": "workspace:*",
+    "typescript": "7.0.2"
+  }
+}

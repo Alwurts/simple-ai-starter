@@ -1,0 +1,273 @@
+"use client";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { authClient } from "@workspace/auth/client";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/shadcn/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/shadcn/dropdown-menu";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@workspace/ui/components/shadcn/sidebar";
+import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
+import { toast } from "@workspace/ui/components/shadcn/sonner";
+import {
+  AlertCircle,
+  ChevronsUpDown,
+  Languages,
+  LogOut,
+  Plus,
+} from "lucide-react";
+import { LanguageMenuItems } from "@/components/common/language-switcher";
+import { ThemeMenuItem } from "@/components/common/theme-toggle";
+import { m } from "@/paraglide/messages.js";
+
+function orgInitials(name: string | undefined) {
+  return name?.slice(0, 2).toUpperCase() ?? "??";
+}
+
+function SidebarFooterSkeleton() {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton aria-label={m.org_loading()} disabled size="lg">
+          <Skeleton className="h-8 w-8 rounded-lg" />
+          <div className="grid flex-1 text-left text-sm leading-tight">
+            <Skeleton className="mb-1 h-4 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <ChevronsUpDown className="ml-auto size-4" />
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
+function SidebarFooterError() {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton disabled size="lg">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+          </div>
+          <div className="grid flex-1 text-left text-sm leading-tight">
+            <span className="truncate font-semibold text-destructive">
+              {m.org_auth_error()}
+            </span>
+            <span className="truncate text-muted-foreground text-xs">
+              {m.org_auth_error_hint()}
+            </span>
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
+export function AppSidebarFooter() {
+  const { isMobile } = useSidebar();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const {
+    data: session,
+    isPending: isSessionPending,
+    error,
+  } = authClient.useSession();
+  const { data: organizations } = authClient.useListOrganizations();
+  const {
+    data: activeOrganization,
+    refetch: refetchActiveOrganization,
+    isPending: isOrgPending,
+  } = authClient.useActiveOrganization();
+  const user = session?.user;
+  const displayOrganization =
+    activeOrganization ??
+    organizations?.find(
+      (organization) =>
+        organization.id === session?.session.activeOrganizationId
+    ) ??
+    organizations?.[0] ??
+    null;
+  const isPending = isSessionPending || (isOrgPending && !displayOrganization);
+  const { mutate: setActiveOrganization } = useMutation({
+    mutationFn: async (organizationId: string) => {
+      await authClient.organization.setActive({
+        organizationId,
+      });
+      return {
+        organizationId,
+      };
+    },
+    onSuccess: ({ organizationId }) => {
+      toast.success(m.org_set_active());
+      navigate({
+        to: "/",
+      });
+      refetchActiveOrganization();
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return (
+            Array.isArray(queryKey) &&
+            queryKey.length > 0 &&
+            queryKey[0] === organizationId
+          );
+        },
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return (
+            Array.isArray(queryKey) &&
+            (queryKey.includes("files") ||
+              queryKey.includes("chats") ||
+              queryKey.includes("projects") ||
+              queryKey.includes("agents") ||
+              queryKey.includes("members"))
+          );
+        },
+      });
+    },
+  });
+  const handleSignOut = async () => {
+    await authClient.signOut();
+    navigate({
+      to: "/login",
+    });
+  };
+  if (isPending) {
+    return <SidebarFooterSkeleton />;
+  }
+  if (error || !user) {
+    return <SidebarFooterError />;
+  }
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <SidebarMenuButton
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                size="lg"
+              />
+            }
+          >
+            <Avatar className="h-8 w-8 rounded-lg">
+              <AvatarImage
+                alt={displayOrganization?.name ?? m.org_organization()}
+                src={displayOrganization?.logo ?? undefined}
+              />
+              <AvatarFallback className="rounded-lg">
+                {orgInitials(displayOrganization?.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">
+                {displayOrganization?.name ?? m.org_no_organization()}
+              </span>
+              <span className="truncate text-xs">{user.email}</span>
+            </div>
+            <ChevronsUpDown className="ml-auto size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            side={isMobile ? "bottom" : "right"}
+            sideOffset={4}
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-muted-foreground text-xs">
+                {m.org_organizations()}
+              </DropdownMenuLabel>
+              {organizations?.map((organization) => (
+                <DropdownMenuItem
+                  className="gap-2 p-2"
+                  key={organization.id}
+                  onClick={() => setActiveOrganization(organization.id)}
+                >
+                  <Avatar className="size-6 rounded-sm">
+                    <AvatarImage src={organization.logo ?? undefined} />
+                    <AvatarFallback className="rounded-sm">
+                      {orgInitials(organization.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {organization.name}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                className="gap-2 p-2"
+                onClick={() =>
+                  navigate({
+                    to: "/onboarding",
+                  })
+                }
+              >
+                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                  <Plus className="size-4" />
+                </div>
+                <div className="font-medium text-muted-foreground">
+                  {m.org_create()}
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage
+                      alt={user.name ?? "User"}
+                      src={user.image ?? undefined}
+                    />
+                    <AvatarFallback className="rounded-lg">
+                      {user.name?.slice(0, 2).toUpperCase() ?? "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">
+                      {user.name ?? "User"}
+                    </span>
+                    <span className="truncate text-xs">{user.email}</span>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Languages className="size-4" />
+                {m.language_label()}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <LanguageMenuItems />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <ThemeMenuItem />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="mr-2 size-4" />
+              {m.auth_sign_out()}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
