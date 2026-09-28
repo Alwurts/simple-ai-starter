@@ -25,10 +25,6 @@ import {
 import { z } from "zod";
 import { buildOrgContext } from "../../context/assemble";
 import {
-  buildPageContextSection,
-  getLatestUserPageContext,
-} from "../../context/page-context";
-import {
   getOrgAgentDisplayTools,
   getOrgAgentTools,
 } from "../../in-app/compose-org-tools";
@@ -277,11 +273,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
     }
     const { header } = await buildOrgContext(organizationId);
 
-    const pageContext = getLatestUserPageContext(this.messages);
-    const pageSection = pageContext
-      ? `${buildPageContextSection(pageContext)}\n\n`
-      : "";
-    const orgBlock = `${header}\n\n${pageSection}${ctx.system}`;
+    const orgBlock = `${header}\n\n${ctx.system}`;
 
     this.ctx.waitUntil(
       parent.touchChat(this.name).catch((err: unknown) => {
@@ -345,15 +337,15 @@ export class OrgChat extends Think<Cloudflare.Env> {
       organizationId: this.organizationId,
       waitUntil: (promise: Promise<unknown>) => this.ctx.waitUntil(promise),
     };
-    const erpTools = getOrgAgentTools(toolsCtx);
+    const productTools = getOrgAgentTools(toolsCtx);
     const displayTools = getOrgAgentDisplayTools(toolsCtx);
 
     return {
-      ...erpTools,
+      ...productTools,
       // Child facet with its own context window — see `OrgSubAgent`.
       delegate: agentTool(OrgSubAgent, {
         description:
-          "Delegate ONE self-contained research or analysis task to a focused sub-agent that works in its own context window with read-only access to org data (catalog products, documents). Use this for multi-step data gathering or analysis that would otherwise clutter this conversation. The sub-agent cannot see this conversation and cannot modify any data — give it a complete, standalone task description. Returns the sub-agent's result summary.",
+          "Delegate ONE self-contained research or analysis task to a focused sub-agent that works in its own context window with read-only access to the org's products. Use this for multi-step data gathering or analysis that would otherwise clutter this conversation. The sub-agent cannot see this conversation and cannot modify any data — give it a complete, standalone task description. Returns the sub-agent's result summary.",
         inputSchema: z.object({
           task: z
             .string()
