@@ -18,15 +18,19 @@ import {
 } from "react";
 import type { OutgoingUserMessage } from "../lib/ai-types";
 
+interface OrgAgentState {
+  chats: ChatSummary[];
+}
+
 interface OrgConnectionValue {
-  /** All chats of the active org, newest first (OrgAgent.listChats order). */
+  /** All chats of the active org, newest first (OrgAgent state order). */
   chats: ChatSummary[];
   chatsLoadState: "loading" | "ready" | "error";
   createChat: (opts?: { title?: string }) => Promise<ChatSummary>;
   deleteChat: (chatId: string) => Promise<void>;
   /** FTS search over the org's chats (`OrgAgent.searchChats`). */
   searchChats: (query: string) => Promise<ChatSearchHit[]>;
-  /** Re-run `listChats` (sidebar Retry after a failed load). */
+  /** Retry fallback: re-run `listChats` RPC (also re-broadcasts state). */
   reloadChats: () => Promise<ChatSummary[]>;
   /** Draft bridged across the draft → createChat → navigate hand-off. */
   pendingMessage: OutgoingUserMessage | null;
@@ -70,12 +74,15 @@ export function OrgConnection({
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const [pendingMessage, setPendingMessage] =
     useState<OutgoingUserMessage | null>(null);
-  const [chats, setChats] = useState<ChatSummary[]>([]);
   const [chatsLoadState, setChatsLoadState] = useState<
     "loading" | "ready" | "error"
   >("loading");
 
-  const orgAgent = useAgent({
+  // The chat list lives in the OrgAgent's broadcast state (upstream directory
+  // pattern): create/rename/delete/touch all re-broadcast, so this stays live
+  // across tabs without per-client re-fetching. listChats RPC remains as the
+  // retry fallback.
+  const orgAgent = useAgent<OrgAgentState>({
     agent: "OrgAgent",
     name: organizationId,
     onMessage: (event) => {
@@ -97,28 +104,21 @@ export function OrgConnection({
     },
   });
 
-  const refreshChats = useCallback(async (): Promise<ChatSummary[]> => {
-    const list = (await orgAgent.call("listChats", [])) as ChatSummary[];
-    const safeList = Array.isArray(list) ? list : [];
-    setChats(safeList);
-    setChatsLoadState("ready");
-    return safeList;
-  }, [orgAgent]);
+  const chats = useMemo(
+    () => (Array.isArray(orgAgent.state?.chats) ? orgAgent.state.chats : []),
+    [orgAgent.state]
+  );
 
-  // biome-ignore lint/plugin/no-use-effect: initial listChats RPC on orgAgent ready
+  // biome-ignore lint/plugin/no-use-effect: derive load state from the socket lifecycle
   useEffect(() => {
-    let cancelled = false;
-    setChatsLoadState("loading");
-    refreshChats().catch((error) => {
-      console.error("[OrgConnection] failed to load chats", error);
-      if (!cancelled) {
-        setChatsLoadState("error");
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshChats]);
+    if (orgAgent.connectionError) {
+      setChatsLoadState("error");
+      return;
+    }
+    if (orgAgent.identified) {
+      setChatsLoadState("ready");
+    }
+  }, [orgAgent.connectionError, orgAgent.identified]);
 
   const createChat = useCallback(
     async (opts?: { title?: string }) => {
@@ -129,37 +129,39 @@ export function OrgConnection({
       if (!chat) {
         throw new Error("createChat returned no chat");
       }
-      await refreshChats();
+      // The list refresh arrives via the agent's state broadcast.
       return chat;
     },
-    [orgAgent, refreshChats]
+    [orgAgent]
   );
 
   const deleteChat = useCallback(
     async (chatId: string) => {
       try {
         await orgAgent.call("deleteChat", [chatId]);
-        await refreshChats();
       } catch (error) {
         console.error("[OrgConnection] failed to delete chat", error);
         toast.error("Couldn't delete chat. Please try again.");
         throw error;
       }
     },
-    [orgAgent, refreshChats]
+    [orgAgent]
   );
 
-  /** Sidebar Retry after a failed initial load: re-run `listChats`. */
+  /** Sidebar Retry after a failed load: re-run `listChats` (re-broadcasts). */
   const reloadChats = useCallback(async () => {
     setChatsLoadState("loading");
     try {
-      return await refreshChats();
+      const list = (await orgAgent.call("listChats", [])) as ChatSummary[];
+      const safeList = Array.isArray(list) ? list : [];
+      setChatsLoadState("ready");
+      return safeList;
     } catch (error) {
       console.error("[OrgConnection] failed to reload chats", error);
       setChatsLoadState("error");
       throw error;
     }
-  }, [refreshChats]);
+  }, [orgAgent]);
 
   const searchChats = useCallback(
     async (query: string): Promise<ChatSearchHit[]> => {
