@@ -721,7 +721,9 @@ function ChatUnavailable({
 }: {
   error: Error & { code: number; reason: string; wasClean: boolean };
 }) {
-  const notFound = error.reason.includes("not found") || error.code === 1006;
+  // connectionError only carries terminal closes (1008/4xxx); an unknown chat
+  // never gets this far (chatRouteState shows "Chat not found" from state).
+  const notFound = error.reason.includes("not found");
   return (
     <Empty className="h-full border-0">
       <EmptyHeader>
