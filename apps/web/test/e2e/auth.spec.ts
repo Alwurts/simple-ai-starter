@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 const LOGIN_URL_PATTERN = /login/;
 const ONBOARDING_URL_PATTERN = /onboarding/;
+// The chat is the signed-in home; a fresh org lands on the new-chat draft.
+const HOME_URL_PATTERN = /\/chat\/(new|[0-9a-f]+)/;
 
 test.describe("auth guards", () => {
   test("unauthenticated user is redirected to login", async ({ page }) => {
@@ -48,7 +50,7 @@ test.describe("login flow", () => {
     await page.waitForLoadState("networkidle");
     await page.locator("input#name").fill("Login Test Org");
     await page.getByRole("button", { name: "Create Organization" }).click();
-    await expect(page).toHaveURL("/", { timeout: 10_000 });
+    await expect(page).toHaveURL(HOME_URL_PATTERN, { timeout: 10_000 });
 
     // Now navigate to login page directly (fresh context without cookies)
     await page.context().clearCookies();
@@ -60,6 +62,6 @@ test.describe("login flow", () => {
     await page.locator("input#password").fill(loginPassword);
     await page.getByRole("button", { name: "Login" }).click();
 
-    await expect(page).toHaveURL("/", { timeout: 10_000 });
+    await expect(page).toHaveURL(HOME_URL_PATTERN, { timeout: 10_000 });
   });
 });
