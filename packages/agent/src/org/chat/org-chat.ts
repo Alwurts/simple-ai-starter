@@ -201,13 +201,14 @@ export class OrgChat extends Think<Cloudflare.Env> {
             error: errorMessage(error),
           });
         })
-        // Primary trigger: Think's heuristic auto-compacts *before* a turn is
-        // assembled once its token estimate crosses this budget, giving real
-        // headroom below the model ceiling (unlike pinning it to the full window).
-        // The budget is per-model — the chat model is fixed per instance, so this
-        // one-time set is correct. `maybeCompactByUsage` layers a stricter
-        // real-usage trigger on top for tool-heavy histories the estimate
-        // under-counts.
+        // Between-turns trigger: agents runs `compactAfter` after every
+        // `appendMessage()` — once the stamped token estimate crosses this
+        // budget, history compacts before the next turn assembles, giving
+        // headroom below the model ceiling. The budget is per-model — the
+        // chat model is fixed per instance, so this one-time set is correct.
+        // Mid-turn growth is `contextOverflow`'s job (see onStart): the
+        // proactive guard compacts on real step usage and the reactive
+        // backstop compacts + retries an overflow-rejected turn.
         .compactAfter(getCompactionLimit(this.resolvedContextWindow))
     );
   }
