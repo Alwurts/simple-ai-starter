@@ -6,33 +6,37 @@ import { env } from "./test-env";
 /**
  * ALW-398 AC-3 — the multi-session backend, aligned to the examples/assistant
  * reference. Drives the real OrgAgent DO over RPC via `runInDurableObject`:
- * - the sub-agent registry is the source of truth for chat existence;
+ * - the dynamic-agent registry is the source of truth for chat existence;
  *   `chat_meta` is decoration merged in by `listChats`.
  * - `createChat` / `listChats` / `deleteChat` behave and persist.
  * - deleting the last chat leaves zero chats — there is no `"default"` re-seed.
- * - `onBeforeSubAgent` gates unknown facets with a 404 and admits known ones.
+ * - `onBeforeSubAgent` gates unknown children with a 404 and admits known ones.
  *
- * Platform note: vitest-pool-workers cannot spawn real sub-agent *facets*
- * (`ctx.exports` / `ctx.facets` are unavailable in the test harness, so
- * `subAgent()` throws). We therefore fake only the registry primitive — a
- * synchronous, `state.storage.sql`-backed table standing in for the facet
- * registry the SDK would otherwise own. Everything exercised below is the real
- * OrgAgent logic; the live turn/transcript path (which needs a model) is
- * verified manually in `pnpm dev`. See the AC-6 findings note.
+ * Platform note: vitest-pool-workers cannot spawn real dynamic-agent *facets*
+ * (`ctx.exports` is unavailable in the test harness, so
+ * `dynamicAgents.get()` throws). We therefore fake only the registry
+ * primitive — a synchronous, `state.storage.sql`-backed table standing in for
+ * the `dynamicAgents` registry the SDK would otherwise own. Everything
+ * exercised below is the real OrgAgent logic; the live turn/transcript path
+ * (which needs a model) is verified manually in `pnpm dev`. See the AC-6
+ * findings note.
  */
 
 /**
- * Replace OrgAgent's sub-agent registry methods with a durable, synchronous
+ * Replace OrgAgent's `dynamicAgents` registry with a durable, synchronous
  * SQL-backed fake on the given live instance. Durable (DO SQLite) so a fresh
  * stub for the same id still sees prior chats — this is what makes the
  * persistence assertion real.
+ *
+ * `dynamicAgents` is a prototype getter without a setter, so the fake is
+ * installed as a shadowing own property via `Object.defineProperty`.
  */
 function installFakeRegistry(o: OrgAgent, sql: SqlStorage): void {
   // runInDurableObject constructs the DO but does not drive the agents async
   // lifecycle (onStart is wrapped and awaited internally). `this.sql` is backed
   // by `ctx.storage.sql` (the same store as `state.storage.sql`), so we create
   // the real chat_meta table here directly — matching OrgAgent.onStart's schema
-  // — plus the fake sub-agent registry table.
+  // — plus the fake registry table.
   sql.exec(
     "CREATE TABLE IF NOT EXISTS chat_meta (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
   );
@@ -40,39 +44,45 @@ function installFakeRegistry(o: OrgAgent, sql: SqlStorage): void {
     "CREATE TABLE IF NOT EXISTS _test_registry (name TEXT PRIMARY KEY, created_at INTEGER NOT NULL)"
   );
 
-  o.subAgent = ((_cls: unknown, name: string) => {
-    sql.exec(
-      "INSERT OR IGNORE INTO _test_registry (name, created_at) VALUES (?, ?)",
-      name,
-      Date.now()
-    );
-    return Promise.resolve(undefined);
-  }) as unknown as OrgAgent["subAgent"];
+  const fake = {
+    get: (_cls: unknown, name: string) => {
+      sql.exec(
+        "INSERT OR IGNORE INTO _test_registry (name, created_at) VALUES (?, ?)",
+        name,
+        Date.now()
+      );
+      return Promise.resolve(undefined);
+    },
+    delete: (_cls: unknown, name: string) => {
+      sql.exec("DELETE FROM _test_registry WHERE name = ?", name);
+      return Promise.resolve();
+    },
+    has: (_clsOrName: unknown, name: string) =>
+      [...sql.exec("SELECT 1 FROM _test_registry WHERE name = ?", name)]
+        .length > 0,
+    list: () =>
+      [
+        ...sql.exec(
+          "SELECT name, created_at FROM _test_registry ORDER BY created_at"
+        ),
+      ].map((row) => ({
+        className: "OrgChat",
+        name: row.name as string,
+        createdAt: row.created_at as number,
+      })),
+  };
 
-  o.deleteSubAgent = ((_cls: unknown, name: string) => {
-    sql.exec("DELETE FROM _test_registry WHERE name = ?", name);
-    return Promise.resolve();
-  }) as unknown as OrgAgent["deleteSubAgent"];
-
-  o.hasSubAgent = ((_cls: unknown, name: string) =>
-    [...sql.exec("SELECT 1 FROM _test_registry WHERE name = ?", name)].length >
-    0) as unknown as OrgAgent["hasSubAgent"];
-
-  o.listSubAgents = (() =>
-    [
-      ...sql.exec(
-        "SELECT name, created_at FROM _test_registry ORDER BY created_at"
-      ),
-    ].map((row) => ({
-      name: row.name as string,
-      createdAt: row.created_at as number,
-    }))) as unknown as OrgAgent["listSubAgents"];
+  Object.defineProperty(o, "dynamicAgents", {
+    value: fake,
+    configurable: true,
+    writable: true,
+  });
 }
 
 describe("OrgAgent multi-session backend (in workerd)", () => {
-  it("404s an unknown facet on the real, un-faked registry", async () => {
-    // No fake here: `onBeforeSubAgent` → `hasSubAgent` reads the real (empty)
-    // registry without spawning, so the gate is exercised end-to-end.
+  it("404s an unknown child on the real, un-faked registry", async () => {
+    // No fake here: `onBeforeSubAgent` → `dynamicAgents.has` reads the real
+    // (empty) registry without spawning, so the gate is exercised end-to-end.
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-real-gate"));
     const res = await runInDurableObject(stub, (o: OrgAgent) =>
       o.onBeforeSubAgent(new Request("http://do/"), {
@@ -162,7 +172,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
 
     expect(unknownStatus).toBe(404);
     expect(legacyDefaultStatus).toBe(404);
-    // A registered facet falls through (undefined) so the framework forwards it.
+    // A registered child falls through (undefined) so the framework forwards it.
     expect(admitted).toBeUndefined();
   });
 
@@ -198,8 +208,8 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
  * `SharedWorkspace` RPC, so a file written from one chat is visible to all.
  *
  * In-pool we exercise the parent-owned workspace directly (the child proxy is a
- * thin one-hop forwarder to exactly these methods; the facet hop itself can't be
- * spawned under vitest-pool-workers). This proves the shared-storage semantics
+ * thin one-hop forwarder to exactly these methods; the dynamic-agent hop itself
+ * can't be spawned under vitest-pool-workers). This proves the shared-storage semantics
  * that make cross-chat visibility work, that text and binary content round-trip,
  * and that a write fires the `onChange` → `broadcast` signal.
  */

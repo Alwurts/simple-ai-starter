@@ -15,7 +15,8 @@ import {
 } from "agents";
 import { agentTool } from "agents/agent-tools";
 import type { ChatResponseResult } from "agents/chat";
-import { createCompactFunction } from "agents/experimental/memory/utils";
+import type { ContextConfig } from "agents/context";
+import { createCompactFunction } from "agents/sessions";
 import {
   generateText,
   type LanguageModel,
@@ -104,17 +105,29 @@ export class OrgChat extends Think<Cloudflare.Env> {
     return this.resolvedChatModel;
   }
 
+  /**
+   * The org's shared memory block (think 0.18 `configureContext`). Writable, so
+   * the model gets `set_context` to update it; the provider round-trips through
+   * the parent `OrgAgent`'s `org_memory` table so every chat in the org shares
+   * one memory. `configureSession` keeps only the compaction policy.
+   */
+  override configureContext(): ContextConfig[] {
+    return [
+      {
+        label: "org_memory",
+        description:
+          "Shared, persistent facts about this organization — conventions, " +
+          "policies, recurring issues. Visible to every chat. Use `set_context` " +
+          "to update when you learn something worth remembering.",
+        maxTokens: 2000,
+        provider: new OrgMemoryProvider(() => this.getParent()),
+      },
+    ];
+  }
+
   override configureSession(session: Session): Session {
     return (
       session
-        .withContext("org_memory", {
-          description:
-            "Shared, persistent facts about this organization — conventions, " +
-            "policies, recurring issues. Visible to every chat. Use `set_context` " +
-            "to update when you learn something worth remembering.",
-          maxTokens: 2000,
-          provider: new OrgMemoryProvider(() => this.getParent()),
-        })
         .onCompaction(
           createCompactFunction({
             // Side inference (outside the turn) resolves through `resolveModel()`
@@ -225,9 +238,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
 
   /**
    * Client-callable — registered after the class body (same pattern as Think's
-   * `approveExecution` / `pendingExecutions`). `@callable()` on OrgChat facet
-   * methods does not reliably land in the agents WeakMap for RPC; post-class
-   * `callable()(proto.method)` does (ALW-500 QA: "Method … is not callable").
+   * `approveExecution` / `pendingExecutions`). `@callable()` on OrgChat dynamic
+   * agent methods does not reliably land in the agents WeakMap for RPC;
+   * post-class `callable()(proto.method)` does (ALW-500 QA: "Method … is not
+   * callable").
    */
   async compactNow(): Promise<{ compacted: boolean }> {
     const result = await this.session.compact();
@@ -342,7 +356,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
 
     return {
       ...productTools,
-      // Child facet with its own context window — see `OrgSubAgent`.
+      // Child dynamic agent with its own context window — see `OrgSubAgent`.
       delegate: agentTool(OrgSubAgent, {
         description:
           "Delegate ONE self-contained research or analysis task to a focused sub-agent that works in its own context window with read-only access to the org's products. Use this for multi-step data gathering or analysis that would otherwise clutter this conversation. The sub-agent cannot see this conversation and cannot modify any data — give it a complete, standalone task description. Returns the sub-agent's result summary.",
@@ -361,9 +375,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 }
 
-// Mirror Think: register facet RPCs on the prototype after the class body so
-// `agent.call(...)` from the browser passes `_isCallable`. Think uses the same
-// `callable()(proto.method, void 0)` form (see think.js after the class body).
+// Mirror Think: register dynamic-agent RPCs on the prototype after the class
+// body so `agent.call(...)` from the browser passes `_isCallable`. Think uses
+// the same `callable()(proto.method, void 0)` form (see think.js after the
+// class body).
 callable()(
   OrgChat.prototype.compactNow,
   undefined as unknown as ClassMethodDecoratorContext

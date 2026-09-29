@@ -15,7 +15,7 @@ import { ChatConnectionContext } from "@/components/chat/window/chat-window";
  * ALW-401 — the "Runs" tab of the expanded-window Inspector: a delegated
  * sub-agent's full transcript, live and **view-only** (no composer — you talk to
  * the parent, the parent delegates). It opens a *second* WebSocket straight to
- * the child facet (`OrgAgent → OrgChat → OrgSubAgent`), so it sees the child's
+ * the child dynamic agent (`OrgAgent → OrgChat → OrgSubAgent`), so it sees the child's
  * own resumable stream: text, reasoning, and its read-only tool calls, rendered
  * through the same `<ChatMessages>` pipeline as a top-level chat. The
  * `/agents/org-agent/:id` gate covers this `/sub/...` path, so no extra auth.
@@ -40,7 +40,7 @@ function RunConnection({ run }: { run: ActiveSubAgentRun }) {
   const helpers = useAgentChat<unknown, OrgChatMessage>({
     agent: childAgent,
     getInitialMessages: null,
-    experimental_throttle: 100,
+    throttle: 100,
   });
 
   const isHydrating = !(childAgent.identified || childAgent.connectionError);
@@ -91,7 +91,7 @@ export function SubAgentRunView({ run }: { run: ActiveSubAgentRun | null }) {
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {/* Remount on run change so the child socket points at the new facet. */}
+        {/* Remount on run change so the child socket points at the new agent. */}
         <RunConnection key={run.runId} run={run} />
       </div>
     </div>
