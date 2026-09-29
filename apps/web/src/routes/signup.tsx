@@ -20,7 +20,6 @@ import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { AuthPage } from "@/components/common/auth-page";
-import { m } from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/signup")({ component: SignUpPage });
 
@@ -34,9 +33,9 @@ function SignUpPage() {
   const navigate = useNavigate();
 
   const signupSchema = z.object({
-    name: z.string({ message: m.auth_signup_name() }).min(2),
-    email: z.email({ message: m.auth_email() }),
-    password: z.string({ message: m.auth_password() }).min(6).max(100),
+    name: z.string({ message: "Name" }).min(2),
+    email: z.email({ message: "Email" }),
+    password: z.string({ message: "Password" }).min(6).max(100),
   });
 
   const form = useForm<SignUpValues>({
@@ -52,9 +51,9 @@ function SignUpPage() {
     });
 
     if (error) {
-      toast.error(error.message ?? m.auth_error_generic());
+      toast.error(error.message ?? "An error occurred");
     } else {
-      toast.success(m.auth_signup_success());
+      toast.success("Account created successfully");
       await navigate({ to: "/onboarding" });
     }
   };
@@ -63,8 +62,8 @@ function SignUpPage() {
     <AuthPage>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>{m.auth_signup_title()}</CardTitle>
-          <CardDescription>{m.auth_signup_description()}</CardDescription>
+          <CardTitle>Create an account</CardTitle>
+          <CardDescription>Create an account to get started</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -74,9 +73,7 @@ function SignUpPage() {
                 name="name"
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      {m.auth_signup_name()}
-                    </FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Name</FieldLabel>
                     <Input
                       {...field}
                       aria-invalid={fieldState.invalid}
@@ -95,9 +92,7 @@ function SignUpPage() {
                 name="email"
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      {m.auth_email()}
-                    </FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                     <Input
                       {...field}
                       aria-invalid={fieldState.invalid}
@@ -117,9 +112,7 @@ function SignUpPage() {
                 name="password"
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      {m.auth_password()}
-                    </FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                     <Input
                       {...field}
                       aria-invalid={fieldState.invalid}
@@ -136,16 +129,16 @@ function SignUpPage() {
               <Field>
                 <Button disabled={form.formState.isSubmitting} type="submit">
                   {form.formState.isSubmitting
-                    ? m.auth_signup_submitting()
-                    : m.auth_signup()}
+                    ? "Creating account..."
+                    : "Sign up"}
                 </Button>
                 <p className="text-center text-muted-foreground text-sm">
-                  {m.auth_signup_have_account()}{" "}
+                  Already have an account?{" "}
                   <Link
                     className="underline-offset-4 hover:underline"
                     to="/login"
                   >
-                    {m.auth_login()}
+                    Login
                   </Link>
                 </p>
               </Field>

@@ -22,7 +22,6 @@ import { Check, Circle } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { AuthPage } from "@/components/common/auth-page";
-import { m } from "@/paraglide/messages.js";
 
 const resetPasswordSearchSchema = z.object({
   token: z.string().optional(),
@@ -57,29 +56,27 @@ function getPasswordRequirements(
   return [
     {
       id: "length",
-      label: m.auth_password_req_length({
-        count: String(MIN_PASSWORD_LENGTH),
-      }),
+      label: `At least ${MIN_PASSWORD_LENGTH} characters`,
       met: password.length >= MIN_PASSWORD_LENGTH,
     },
     {
       id: "lower",
-      label: m.auth_password_req_lower(),
+      label: "One lowercase letter",
       met: LOWERCASE_RE.test(password),
     },
     {
       id: "upper",
-      label: m.auth_password_req_upper(),
+      label: "One uppercase letter",
       met: UPPERCASE_RE.test(password),
     },
     {
       id: "number",
-      label: m.auth_password_req_number(),
+      label: "One number",
       met: NUMBER_RE.test(password),
     },
     {
       id: "match",
-      label: m.auth_password_req_match(),
+      label: "Passwords match",
       met:
         password.length > 0 &&
         confirmPassword.length > 0 &&
@@ -95,9 +92,9 @@ function PasswordRequirementsPanel({
 }) {
   return (
     <div>
-      <p className="font-medium text-sm">{m.auth_password_must_include()}</p>
+      <p className="font-medium text-sm">Password must include</p>
       <p className="mt-1 text-muted-foreground text-xs">
-        {m.auth_password_requirements_hint()}
+        Requirements update as you type.
       </p>
       <ul className="mt-4 space-y-2.5">
         {requirements.map((requirement) => (
@@ -121,9 +118,7 @@ function PasswordRequirementsPanel({
             )}
             <span>{requirement.label}</span>
             <span className="sr-only">
-              {requirement.met
-                ? m.auth_password_req_met()
-                : m.auth_password_req_not_met()}
+              {requirement.met ? "met" : "not met"}
             </span>
           </li>
         ))}
@@ -139,21 +134,21 @@ function ResetPasswordPage() {
   const resetPasswordSchema = z
     .object({
       password: z
-        .string({ message: m.auth_password_required() })
+        .string({ message: "Password is required" })
         .min(
           MIN_PASSWORD_LENGTH,
-          m.auth_password_min({ count: String(MIN_PASSWORD_LENGTH) })
+          `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`
         )
-        .max(100, m.auth_password_max())
-        .regex(LOWERCASE_RE, m.auth_password_lowercase())
-        .regex(UPPERCASE_RE, m.auth_password_uppercase())
-        .regex(NUMBER_RE, m.auth_password_number()),
+        .max(100, "Password must be at most 100 characters.")
+        .regex(LOWERCASE_RE, "Password must include a lowercase letter.")
+        .regex(UPPERCASE_RE, "Password must include an uppercase letter.")
+        .regex(NUMBER_RE, "Password must include a number."),
       confirmPassword: z.string({
-        message: m.auth_password_confirm_required(),
+        message: "Please confirm your password",
       }),
     })
     .refine((values) => values.password === values.confirmPassword, {
-      message: m.auth_password_mismatch(),
+      message: "Passwords do not match.",
       path: ["confirmPassword"],
     });
 
@@ -173,7 +168,7 @@ function ResetPasswordPage() {
 
   const onSubmit = async (values: ResetPasswordValues) => {
     if (!token) {
-      toast.error(m.auth_reset_invalid());
+      toast.error("This reset link is invalid or has expired.");
       return;
     }
 
@@ -183,11 +178,11 @@ function ResetPasswordPage() {
     });
 
     if (resetError) {
-      toast.error(resetError.message ?? m.auth_error_generic());
+      toast.error(resetError.message ?? "An error occurred");
       return;
     }
 
-    toast.success(m.auth_reset_success());
+    toast.success("Password updated. You can log in with your new password.");
     await navigate({ to: "/login" });
   };
 
@@ -198,29 +193,31 @@ function ResetPasswordPage() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>
-            {invalidLink ? m.auth_reset_invalid_title() : m.auth_reset_title()}
+            {invalidLink ? "Reset link expired" : "Choose a new password"}
           </CardTitle>
           <CardDescription>
-            {invalidLink ? m.auth_reset_invalid() : m.auth_reset_description()}
+            {invalidLink
+              ? "This reset link is invalid or has expired."
+              : "Pick a strong password for your account. You will use it the next time you sign in."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {invalidLink ? (
             <div className="mx-auto max-w-sm space-y-4">
               <p className="text-muted-foreground text-sm">
-                {m.auth_reset_request_hint()}
+                Request a new reset link to try again.
               </p>
               <Link
                 className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground text-sm shadow-xs hover:bg-primary/90"
                 to="/forgot-password"
               >
-                {m.auth_reset_request_link()}
+                Request new link
               </Link>
               <Link
                 className="inline-flex h-9 w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm shadow-xs hover:bg-accent hover:text-accent-foreground"
                 to="/login"
               >
-                {m.auth_forgot_back_to_login()}
+                Back to login
               </Link>
             </div>
           ) : (
@@ -233,7 +230,7 @@ function ResetPasswordPage() {
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
                         <FieldLabel htmlFor={field.name}>
-                          {m.auth_reset_new_password()}
+                          New password
                         </FieldLabel>
                         <Input
                           {...field}
@@ -255,7 +252,7 @@ function ResetPasswordPage() {
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
                         <FieldLabel htmlFor={field.name}>
-                          {m.auth_reset_confirm_password()}
+                          Confirm password
                         </FieldLabel>
                         <Input
                           {...field}
@@ -279,15 +276,15 @@ function ResetPasswordPage() {
                       type="submit"
                     >
                       {form.formState.isSubmitting
-                        ? m.auth_reset_updating()
-                        : m.auth_reset_update()}
+                        ? "Updating password..."
+                        : "Update password"}
                     </Button>
                     <p className="text-center text-muted-foreground text-sm">
                       <Link
                         className="underline-offset-4 hover:underline"
                         to="/login"
                       >
-                        {m.auth_forgot_back_to_login()}
+                        Back to login
                       </Link>
                     </p>
                   </Field>

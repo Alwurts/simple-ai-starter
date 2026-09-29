@@ -15,7 +15,6 @@ import { Button } from "@workspace/ui/components/shadcn/button";
 import { AlertCircle } from "lucide-react";
 import { OrgConnection } from "@/features/assistant/connection/org-connection";
 import { useActiveOrganizationId } from "@/hooks/use-organization";
-import { m } from "@/paraglide/messages.js";
 import { AppSidebar } from "../components/layout/app-sidebar";
 
 const ensureOrg = createServerFn({ method: "GET" }).handler(async () => {
@@ -53,16 +52,18 @@ function ProtectedErrorComponent({ error, reset }: ErrorComponentProps) {
       <ShellInset>
         <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
           <AlertCircle className="h-12 w-12 text-destructive" />
-          <h2 className="font-semibold text-xl">{m.error_page_title()}</h2>
+          <h2 className="font-semibold text-xl">Something went wrong</h2>
           <p className="max-w-md text-center text-muted-foreground">
-            {error instanceof Error ? error.message : m.common_unknown_error()}
+            {error instanceof Error
+              ? error.message
+              : "An unexpected error occurred"}
           </p>
           <div className="flex gap-2">
             <Button onClick={() => reset()} variant="outline">
-              {m.common_retry()}
+              Try Again
             </Button>
             <Button onClick={() => router.navigate({ to: "/" })}>
-              {m.error_go_home()}
+              Go Home
             </Button>
           </div>
         </div>
