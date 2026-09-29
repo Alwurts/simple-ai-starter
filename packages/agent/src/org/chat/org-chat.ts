@@ -138,13 +138,27 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   /**
-   * The org's shared memory block (think 0.18 `configureContext`). Writable, so
-   * the model gets `set_context` to update it; the provider round-trips through
-   * the parent `OrgAgent`'s `org_memory` table so every chat in the org shares
-   * one memory. `configureSession` keeps only the compaction policy.
+   * Prompt blocks (think 0.18 `configureContext`). The read-only `org` block
+   * carries the per-org header (org name, member, product stats) — always-on
+   * instructions belong in a context block, not a per-turn `beforeTurn`
+   * override, so Think can freeze, persist and cache the assembled prompt.
+   * The writable `org_memory` block follows it: the model gets `set_context`
+   * to update it, and the provider round-trips through the parent `OrgAgent`'s
+   * `org_memory` table so every chat in the org shares one memory.
    */
   override configureContext(): ContextConfig[] {
     return [
+      {
+        label: "org",
+        provider: {
+          get: async () => {
+            const { header } = await buildOrgContext(
+              this.requireOrganizationId()
+            );
+            return header;
+          },
+        },
+      },
       {
         label: "org_memory",
         description:
@@ -288,7 +302,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
     }));
   }
 
-  override async beforeTurn(ctx: TurnContext) {
+  override beforeTurn(_ctx: TurnContext) {
     // Reject unsupported attachment parts on the inbound user turn before the
     // provider call so text-only models (e.g. zai-coding-plan) never surface an
     // opaque content-type error. Only the latest user message is gated — older
@@ -313,34 +327,30 @@ export class OrgChat extends Think<Cloudflare.Env> {
       }
     }
 
-    const parent = await this.getParent();
-    const organizationId = this.requireOrganizationId();
     // Refresh after hibernation (onConnect does not re-run).
     try {
       this.turnUserId = this.requireConnectedUserId();
     } catch {
       // Keep onConnect value when ALS is unset (approve/resume paths).
     }
-    const { header } = await buildOrgContext(organizationId);
 
-    const orgBlock = `${header}\n\n${ctx.system}`;
-
+    const organizationId = this.requireOrganizationId();
     this.ctx.waitUntil(
-      parent.touchChat(this.name).catch((err: unknown) => {
-        structuredLog({
-          kind: "org_chat_touch_failed",
-          severity: "error",
-          organizationId,
-          chatName: this.name,
-          error: errorMessage(err),
-        });
-      })
+      this.getParent()
+        .then((parent) => parent.touchChat(this.name))
+        .catch((err: unknown) => {
+          structuredLog({
+            kind: "org_chat_touch_failed",
+            severity: "error",
+            organizationId,
+            chatName: this.name,
+            error: errorMessage(err),
+          });
+        })
     );
 
-    return {
-      instructions: orgBlock,
-      model: this.resolvedChatModel,
-    };
+    // No instructions/model overrides: the system prompt is the context
+    // blocks (org header + org_memory) and the model is `getModel()`.
   }
 
   private requireConnectedUserId(): string {
