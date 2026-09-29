@@ -157,6 +157,9 @@ export function OrgConnection({
     async (chatId: string) => {
       try {
         await orgAgent.call("deleteChat", [chatId]);
+        // A just-created chat may exist only as an optimistic entry (its
+        // broadcast never landed) — drop it so no ghost row survives.
+        setOptimisticChats((prev) => prev.filter((chat) => chat.id !== chatId));
       } catch (error) {
         console.error("[OrgConnection] failed to delete chat", error);
         toast.error("Couldn't delete chat. Please try again.");
