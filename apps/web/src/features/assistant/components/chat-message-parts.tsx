@@ -183,7 +183,7 @@ function DefaultToolPart({
               type="button"
               variant="outline"
             >
-              Deny
+              Reject
             </Button>
           </div>
         ) : null}

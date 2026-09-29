@@ -18,7 +18,6 @@
     "hooks": "@workspace/ui/hooks"
   },
   "registries": {
-    "@ai-elements": "https://registry.ai-sdk.dev/{name}.json",
     "@simple-ai": "https://www.simple-ai.dev/r/{name}.json"
   }
 }

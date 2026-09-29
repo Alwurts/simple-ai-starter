@@ -116,14 +116,18 @@ export function ChatSidePanel({
           </ResizablePanelGroup>
         ) : (
           <div
-            className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
+            className="flex h-full min-h-0 flex-col"
             data-slot="chat-side-panel-empty"
           >
-            <p className="font-medium text-sm">Org workspace</p>
-            <p className="max-w-xs text-muted-foreground text-xs">
-              Files the assistant writes for this organization — shared across
-              every chat — can be browsed here, read-only.
-            </p>
+            <div className="border-b px-3 py-2">
+              <p className="font-medium text-sm">Org workspace</p>
+              <p className="text-muted-foreground text-xs">
+                Shared across every chat. Read-only.
+              </p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto">
+              <FileExplorerTree onOpenFile={onOpenFile} tree={tree} />
+            </div>
           </div>
         )}
       </div>

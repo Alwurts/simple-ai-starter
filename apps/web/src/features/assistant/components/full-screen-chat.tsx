@@ -41,10 +41,7 @@ import {
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { useAgent } from "agents/react";
-import {
-  isTextUIPart,
-  lastAssistantMessageIsCompleteWithApprovalResponses,
-} from "ai";
+import { isTextUIPart } from "ai";
 import {
   BotIcon,
   ClipboardCopyIcon,
@@ -70,7 +67,7 @@ import {
   type OutgoingUserMessage,
   toSendableMessage,
 } from "../lib/ai-types";
-import { deriveTitleFromMessage } from "../lib/chat-titles";
+import { firstSendPlan } from "../lib/first-send";
 import { ChatComposer, type PromptMessage } from "./chat-input";
 import { ChatMessageRow } from "./chat-message-parts";
 import { ChatSidePanel } from "./chat-side-panel";
@@ -147,24 +144,16 @@ function DraftView({ title }: { title: string }) {
 
   const handleSubmit = useCallback(
     async (message: PromptMessage) => {
-      const text = message.text.trim();
-      if (!(text || message.files.length > 0)) {
+      const plan = firstSendPlan(message);
+      if (!plan) {
         return;
       }
-      const outgoing: OutgoingUserMessage = {
-        role: "user",
-        parts: [
-          { type: "text", text: text || "Sent with attachments" },
-          ...message.files,
-        ],
-      };
       setDraftError(null);
-      const draftTitle = deriveTitleFromMessage(outgoing.parts);
       try {
         const chat = await createChat(
-          draftTitle ? { title: draftTitle } : undefined
+          plan.title ? { title: plan.title } : undefined
         );
-        setPendingMessage(outgoing);
+        setPendingMessage(plan.outgoing);
         navigate({
           params: { chatId: chat.id },
           replace: true,
@@ -248,7 +237,10 @@ function ChatView({ chatId, title }: ChatViewProps) {
     // throttling is default-on since agents 0.22 (at 50ms); we keep the
     // pre-0.22 interval.
     throttle: 100,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+    // Approvals continue via the agents hook: `addToolApprovalResponse` sends
+    // a `cf_agent_tool_approval` frame with `autoContinue`. The previous chat
+    // did not set `sendAutomaticallyWhen` — that would also submit the
+    // transcript as a second chat request on top of the approval frame.
   });
 
   // ALW-500: invalidate React Query when agent write tools complete.
@@ -412,16 +404,13 @@ function ChatView({ chatId, title }: ChatViewProps) {
         footer={
           <ChatComposer
             onSubmit={(message) => {
-              const text = message.text.trim();
-              return sendMessage(
-                toSendableMessage({
-                  role: "user",
-                  parts: [
-                    { type: "text", text: text || "Sent with attachments" },
-                    ...message.files,
-                  ],
-                })
-              ).then(() => undefined);
+              const plan = firstSendPlan(message);
+              if (!plan) {
+                return;
+              }
+              return sendMessage(toSendableMessage(plan.outgoing)).then(
+                () => undefined
+              );
             }}
             onStop={helpers.stop}
             status={helpers.status}
@@ -475,16 +464,7 @@ function ChatSidePanelController({
   onOpenFile: (path: string, name: string) => void;
 }) {
   const tree = useWorkspaceTree();
-  return (
-    <ChatSidePanel
-      {...props}
-      onOpenFile={(path, name) => {
-        onOpenFile(path, name);
-        tree.openFile(path, name);
-      }}
-      tree={tree}
-    />
-  );
+  return <ChatSidePanel {...props} onOpenFile={onOpenFile} tree={tree} />;
 }
 
 function MessageListOrEmpty({

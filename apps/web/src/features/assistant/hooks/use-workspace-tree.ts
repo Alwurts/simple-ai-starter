@@ -101,17 +101,23 @@ export function useWorkspaceTree(): WorkspaceTree {
   }, [loadDir]);
 
   // On a workspace change, refetch every already-loaded directory plus the open
-  // file so the tree and preview reflect the latest state.
+  // file so the tree and preview reflect the latest state. Version 0 is the
+  // mount — the root fetch above already covers it.
   // biome-ignore lint/plugin/no-use-effect: refetch loaded dirs/file when workspaceVersion bumps
   useEffect(() => {
-    if (workspaceVersion === 0) {
+    const targets = workspaceRefreshTargets(
+      workspaceVersion,
+      loadedDirsRef.current,
+      selected?.path ?? null
+    );
+    if (!targets) {
       return;
     }
-    for (const dir of loadedDirsRef.current) {
+    for (const dir of targets.dirs) {
       loadDir(dir);
     }
-    if (selected) {
-      loadFile(selected.path);
+    if (targets.filePath) {
+      loadFile(targets.filePath);
     }
   }, [workspaceVersion, loadDir, loadFile, selected]);
 
@@ -168,6 +174,22 @@ export function useWorkspaceTree(): WorkspaceTree {
     openFile,
     closeFile,
   };
+}
+
+/**
+ * What a `workspace-change` bump should refetch. `workspaceVersion === 0` is
+ * the initial render (no broadcast yet), so the caller skips it and avoids a
+ * second root fetch on mount.
+ */
+export function workspaceRefreshTargets(
+  workspaceVersion: number,
+  loadedDirs: Iterable<string>,
+  openFilePath: string | null
+): { dirs: string[]; filePath: string | null } | null {
+  if (workspaceVersion === 0) {
+    return null;
+  }
+  return { dirs: [...loadedDirs], filePath: openFilePath };
 }
 
 /** Text vs binary decision from mime type (with an extension fallback). */
