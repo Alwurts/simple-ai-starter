@@ -41,10 +41,10 @@ export class OrgAgent extends Agent<Cloudflare.Env> {
     { className, name }: { className: string; name: string }
   ): Promise<Response | undefined> {
     // Existence is registry-owned: a chat exists iff it is a registered
-    // sub-agent (spawned by `createChat`). Gate unknown facets with a 404 —
-    // this hook never creates. Mirrors the examples/assistant reference; the
-    // client creates a chat explicitly before connecting to its facet.
-    if (!this.hasSubAgent(className, name)) {
+    // dynamic agent (spawned by `createChat`). Gate unknown children with a
+    // 404 — this hook never creates. Mirrors the examples/assistant reference;
+    // the client creates a chat explicitly before connecting to it.
+    if (!this.dynamicAgents.has(className, name)) {
       return Promise.resolve(
         new Response(`${className} "${name}" not found`, { status: 404 })
       );
@@ -56,7 +56,8 @@ export class OrgAgent extends Agent<Cloudflare.Env> {
     // Fan a lightweight file-change signal to every client connected to this
     // OrgAgent (all chat tabs) so a workspace-backed UI can refresh live across
     // chats/tabs. Best-effort `broadcast` (not `setState`) — file churn should
-    // not trigger heavier state re-broadcasts. Does not notify sibling facets.
+    // not trigger heavier state re-broadcasts. Does not notify sibling
+    // dynamic agents.
     this.broadcast(JSON.stringify({ type: "workspace-change", event }));
   }
 
@@ -94,7 +95,7 @@ export class OrgAgent extends Agent<Cloudflare.Env> {
 
   @callable()
   listChats(): ChatSummary[] {
-    const registry = this.listSubAgents(OrgChat);
+    const registry = this.dynamicAgents.list(OrgChat);
     const metaRows = this.sql<ChatRow>`
       SELECT id, title, created_at, updated_at FROM chat_meta`;
     const metaById = new Map(metaRows.map((row) => [row.id, row]));
@@ -119,7 +120,7 @@ export class OrgAgent extends Agent<Cloudflare.Env> {
     const now = Date.now();
     const title = opts?.title?.trim() || defaultChatTitle(now);
 
-    await this.subAgent(OrgChat, id);
+    await this.dynamicAgents.get(OrgChat, id);
     this.sql`INSERT INTO chat_meta (id, title, created_at, updated_at)
       VALUES (${id}, ${title}, ${now}, ${now})`;
 
@@ -142,10 +143,10 @@ export class OrgAgent extends Agent<Cloudflare.Env> {
 
   @callable()
   async deleteChat(id: string): Promise<void> {
-    // Registry is authoritative: drop the facet first, then its decoration row.
-    // No re-seed — an org with zero chats is a valid state; the client creates
-    // the next chat on demand (draft → createChat).
-    await this.deleteSubAgent(OrgChat, id);
+    // Registry is authoritative: drop the dynamic agent first, then its
+    // decoration row. No re-seed — an org with zero chats is a valid state; the
+    // client creates the next chat on demand (draft → createChat).
+    await this.dynamicAgents.delete(OrgChat, id);
     this.sql`DELETE FROM chat_meta WHERE id = ${id}`;
   }
 

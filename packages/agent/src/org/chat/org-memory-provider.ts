@@ -1,4 +1,4 @@
-import type { WritableContextProvider } from "agents/experimental/memory/session";
+import type { WritableContextProvider } from "agents/context";
 import type { OrgAgent } from "../org-agent";
 
 type OrgAgentParent = Pick<OrgAgent, "readOrgMemory" | "writeOrgMemory">;

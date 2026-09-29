@@ -1,6 +1,6 @@
 import { type Session, Think, type TurnContext } from "@cloudflare/think";
 import { errorMessage, structuredLog } from "@workspace/log";
-import { createCompactFunction } from "agents/experimental/memory/utils";
+import { createCompactFunction } from "agents/sessions";
 import { generateText, type LanguageModel, type ToolSet } from "ai";
 import { buildOrgContext } from "../../context/assemble";
 import { getOrgAgentReadOnlyTools } from "../../in-app/compose-org-tools";
@@ -21,7 +21,7 @@ Do the task thoroughly, then return a concise, self-contained result the parent 
  * to run a self-contained research/analysis task in its OWN context window
  * (keeping heavy work out of the main chat's tokens) with read-only org reach.
  *
- * Topology: it is a facet under `OrgChat` under `OrgAgent`
+ * Topology: it is a dynamic agent (facet) under `OrgChat` under `OrgAgent`
  * (`OrgAgent → OrgChat → OrgSubAgent`), so it needs no wrangler binding or
  * migration — just a named export from the worker entry — and the existing
  * `/agents/org-agent/` gate org-scopes the whole subtree. Its `organizationId`
@@ -44,7 +44,7 @@ export class OrgSubAgent extends Think<Cloudflare.Env> {
 
   // `parentPath` is root-first: [{ OrgAgent, org }, { OrgChat, chatId }]. The
   // organization is the OrgAgent ancestor at the root — the trusted source of
-  // scope for this facet (the model cannot forge it).
+  // scope for this dynamic agent (the model cannot forge it).
   private resolveOrganizationId(): string {
     const organizationId = this.parentPath[0]?.name;
     if (!organizationId) {

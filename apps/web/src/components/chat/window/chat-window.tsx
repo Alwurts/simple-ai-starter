@@ -91,7 +91,7 @@ interface ChatConnectionValue {
    * card; replay-durable across reconnect. Empty until the child starts.
    */
   getSubAgentRuns: (toolCallId: string) => SubAgentRun[];
-  /** RPC into the OrgChat facet (Think `@callable`s). */
+  /** RPC into the OrgChat dynamic agent (Think `@callable`s). */
   callAgent: (method: string, args?: unknown[]) => Promise<unknown>;
 }
 
@@ -395,8 +395,10 @@ function ChatConnection({
     // stream. This matches the Think reference client. (ALW-401)
     getInitialMessages: null,
     // Coalesce streaming token updates (matches the Think reference client) so
-    // a fast stream doesn't re-render the message list on every delta.
-    experimental_throttle: 100,
+    // a fast stream doesn't re-render the message list on every delta. Pinned:
+    // throttling is default-on since agents 0.22 (at 50ms); we keep the
+    // pre-0.22 interval.
+    throttle: 100,
   });
 
   helpersRef.current = helpers;
