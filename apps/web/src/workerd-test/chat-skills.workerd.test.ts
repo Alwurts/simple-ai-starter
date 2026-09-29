@@ -14,4 +14,10 @@ describe("skill tool surface (D-010)", () => {
     expect(Object.hasOwn(OrgChat.prototype, "getSkills")).toBe(true);
     expect(Object.hasOwn(OrgSubAgent.prototype, "getSkills")).toBe(false);
   });
+
+  it("registers no skill script runner (run_skill_script stays off)", () => {
+    expect(Object.hasOwn(OrgChat.prototype, "getSkillScriptRunner")).toBe(
+      false
+    );
+  });
 });

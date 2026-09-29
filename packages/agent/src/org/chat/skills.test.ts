@@ -1,7 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import raw from "./skills/product-copy/SKILL.md?raw";
 
 /**
  * D-010 — the one bundled example skill. `OrgChat.getSkills()` returns the
@@ -9,22 +7,11 @@ import { describe, expect, it } from "vitest";
  * `src/org/chat/skills/` (an empty-catalog stub replaces that virtual module
  * under vitest — see apps/web/test/agents-skills-shim.ts), so the contract
  * this test pins is the SKILL.md itself: frontmatter with a name + description
- * (the catalog the model sees), the memory-first instruction in the body, and
- * no `scripts/` directory — the starter never wires `getSkillScriptRunner`, so
- * `run_skill_script` stays unregistered.
- *
- * The frontmatter shape is checked with the plugin's own split (--- yaml ---,
- * then body) rather than `agents/skills`' parser, whose barrel import pulls
- * `cloudflare:workers` and cannot load in the node test project.
+ * (the catalog the model sees) and the memory-first instruction in the body.
+ * The file is imported as a string (`?raw`) because packages/agent has no node
+ * types, and the no-scripts/no-runner rule is pinned in
+ * apps/web/src/workerd-test/chat-skills.workerd.test.ts.
  */
-
-const skillDir = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "skills",
-  "product-copy"
-);
-
-const raw = readFileSync(join(skillDir, "SKILL.md"), "utf8");
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 const NAME_LINE_RE = /^name: product-copy$/m;
@@ -55,7 +42,7 @@ describe("product-copy skill (bundled via agents:skills)", () => {
     expect(body).toContain("org_memory");
   });
 
-  it("bundles no scripts (run_skill_script stays unregistered)", () => {
-    expect(readdirSync(skillDir).sort()).toEqual(["SKILL.md"]);
+  it("bundles no script references (script running stays off)", () => {
+    expect(raw).not.toContain("scripts/");
   });
 });
