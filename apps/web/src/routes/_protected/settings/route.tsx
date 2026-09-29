@@ -16,7 +16,6 @@ import {
   type SettingsNavSection,
   SettingsSectionLayout,
 } from "@/components/organization/settings/settings-nav";
-import { m } from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_protected/settings")({
   component: SettingsLayout,
@@ -25,15 +24,15 @@ export const Route = createFileRoute("/_protected/settings")({
 function settingsSections(): SettingsNavSection[] {
   return [
     {
-      label: m.settings_section_organization(),
+      label: "Organization",
       items: [
         {
           to: "/settings/general",
-          label: m.settings_general(),
+          label: "General",
         },
         {
           to: "/settings/members",
-          label: m.settings_members(),
+          label: "Members",
         },
       ],
     },
@@ -53,11 +52,11 @@ function SettingsLayout() {
         <ShellHeader>
           <ShellHeaderSidebarTrigger className="-ml-1" />
           <AppBreadcrumbs
-            ellipsisAriaLabel={m.breadcrumb_ellipsis_aria()}
-            homeLabel={m.nav_home()}
+            ellipsisAriaLabel="Show hidden breadcrumb segments"
+            homeLabel="Today"
             items={[
               {
-                title: m.settings_title(),
+                title: "Settings",
               },
             ]}
           />
@@ -65,8 +64,10 @@ function SettingsLayout() {
         </ShellHeader>
         <ShellContent>
           <div className="flex h-[50vh] flex-col items-center justify-center gap-4">
-            <p className="text-muted-foreground">{m.org_no_active()}</p>
-            <Button render={<Link to="/onboarding" />}>{m.org_create()}</Button>
+            <p className="text-muted-foreground">No active organization</p>
+            <Button render={<Link to="/onboarding" />}>
+              Create an organization
+            </Button>
           </div>
         </ShellContent>
       </ShellPage>
@@ -77,11 +78,11 @@ function SettingsLayout() {
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
         <AppBreadcrumbs
-          ellipsisAriaLabel={m.breadcrumb_ellipsis_aria()}
-          homeLabel={m.nav_home()}
+          ellipsisAriaLabel="Show hidden breadcrumb segments"
+          homeLabel="Today"
           items={[
             {
-              title: m.settings_title(),
+              title: "Settings",
             },
           ]}
         />
@@ -102,11 +103,11 @@ function SettingsSkeleton({ sections }: { sections: SettingsNavSection[] }) {
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
         <AppBreadcrumbs
-          ellipsisAriaLabel={m.breadcrumb_ellipsis_aria()}
-          homeLabel={m.nav_home()}
+          ellipsisAriaLabel="Show hidden breadcrumb segments"
+          homeLabel="Today"
           items={[
             {
-              title: m.settings_title(),
+              title: "Settings",
             },
           ]}
         />

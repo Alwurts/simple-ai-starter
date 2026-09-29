@@ -4,14 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-const STEPS = [
-  "pnpm lint:check",
-  "pnpm i18n:lint",
-  "pnpm typecheck",
-  "pnpm i18n:compile",
-  "pnpm test",
-  "pnpm build",
-];
+const STEPS = ["pnpm lint:check", "pnpm typecheck", "pnpm test", "pnpm build"];
 
 const CI_FILE = ".github/workflows/ci.yml";
 const SETUP_STEPS = new Set(["pnpm install --frozen-lockfile"]);

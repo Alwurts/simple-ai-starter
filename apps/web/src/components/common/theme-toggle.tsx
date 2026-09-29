@@ -4,7 +4,6 @@ import { DropdownMenuItem } from "@workspace/ui/components/shadcn/dropdown-menu"
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback } from "react";
-import { m } from "@/paraglide/messages.js";
 
 export function ThemeMenuItem() {
   const { theme, setTheme } = useTheme() as {
@@ -20,7 +19,7 @@ export function ThemeMenuItem() {
     <DropdownMenuItem onSelect={toggleTheme}>
       <SunIcon className="hidden [html.dark_&]:block" />
       <MoonIcon className="hidden [html.light_&]:block" />
-      {m.theme_toggle()}
+      Toggle theme
     </DropdownMenuItem>
   );
 }

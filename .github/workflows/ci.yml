@@ -27,8 +27,6 @@ jobs:
 
       - run: pnpm lint:check
 
-      - run: pnpm i18n:lint
-
   typecheck:
     runs-on: ubuntu-24.04
     steps:
@@ -58,9 +56,6 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-
-      # Paraglide outdir is gitignored — compile before vitest resolves @/paraglide/*
-      - run: pnpm i18n:compile
 
       - run: pnpm test
 

@@ -29,7 +29,6 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useInviteMember } from "@/hooks/use-organization";
 import { roleMessage } from "@/lib/role-label";
-import { m } from "@/paraglide/messages.js";
 
 interface InviteMemberData {
   email: string;
@@ -56,7 +55,7 @@ export function InviteMemberForm({
   const canInviteOwner = hasRoleRank(currentRole, "owner");
 
   const formSchema = z.object({
-    email: z.string().email({ message: m.invite_email_invalid() }),
+    email: z.string().email({ message: "Invalid email address" }),
     role: z.enum(["member", "admin", "owner"]),
   });
 
@@ -72,8 +71,10 @@ export function InviteMemberForm({
     return (
       <FieldGroup className={className}>
         <Field>
-          <FieldLabel>{m.invite_title()}</FieldLabel>
-          <FieldDescription>{m.invite_admin_only()}</FieldDescription>
+          <FieldLabel>Invite member</FieldLabel>
+          <FieldDescription>
+            Only administrators can invite or manage members.
+          </FieldDescription>
         </Field>
       </FieldGroup>
     );
@@ -87,21 +88,20 @@ export function InviteMemberForm({
       ROLE_RANK[currentRole as RoleName] < ROLE_RANK[values.role]
     ) {
       toast.error(
-        m.invite_rbac_denied({
-          role: roleMessage(currentRole as RoleName),
-          targetRole: roleMessage(values.role),
-        })
+        `As ${roleMessage(currentRole as RoleName)}, you can't invite a ${roleMessage(values.role)}`
       );
       return;
     }
 
     try {
       await inviteMember.mutateAsync(values);
-      toast.success(m.invite_success());
+      toast.success("Member invited successfully");
       form.reset();
       onSuccess?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : m.invite_failed());
+      toast.error(
+        error instanceof Error ? error.message : "Failed to invite member"
+      );
     }
   }
 
@@ -117,12 +117,12 @@ export function InviteMemberForm({
                 className="min-w-0 flex-1"
                 data-invalid={fieldState.invalid}
               >
-                <FieldLabel htmlFor={field.name}>{m.auth_email()}</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                 <Input
                   {...field}
                   aria-invalid={fieldState.invalid}
                   id={field.name}
-                  placeholder={m.auth_email_placeholder()}
+                  placeholder="m@example.com"
                   type="email"
                 />
                 {fieldState.invalid && (
@@ -139,19 +139,19 @@ export function InviteMemberForm({
                 className="w-full sm:w-40 sm:shrink-0"
                 data-invalid={fieldState.invalid}
               >
-                <FieldLabel htmlFor={field.name}>{m.invite_role()}</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Role</FieldLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger className="w-full" id={field.name}>
-                    <SelectValue placeholder={m.invite_role_placeholder()}>
+                    <SelectValue placeholder="Select role">
                       {roleMessage(field.value as RoleName)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {canInviteOwner && (
-                      <SelectItem value="owner">{m.role_owner()}</SelectItem>
+                      <SelectItem value="owner">Owner</SelectItem>
                     )}
-                    <SelectItem value="admin">{m.role_admin()}</SelectItem>
-                    <SelectItem value="member">{m.role_member()}</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="member">Operator</SelectItem>
                   </SelectContent>
                 </Select>
                 {fieldState.invalid && (
@@ -167,7 +167,7 @@ export function InviteMemberForm({
             disabled={inviteMember.isPending}
             type="submit"
           >
-            {inviteMember.isPending ? m.invite_sending() : m.invite_send()}
+            {inviteMember.isPending ? "Inviting..." : "Send Invitation"}
           </Button>
         </Field>
       </FieldGroup>

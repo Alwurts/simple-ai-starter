@@ -10,7 +10,6 @@ import {
 import { Separator } from "@workspace/ui/components/shadcn/separator";
 import { OrganizationDangerZone } from "@/components/organization/settings/organization-danger-zone";
 import { OrganizationDetailsForm } from "@/components/organization/settings/organization-details-form";
-import { m } from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_protected/settings/general")({
   component: GeneralSettingsPage,
@@ -27,8 +26,10 @@ function GeneralSettingsPage() {
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>{m.org_details_title()}</CardTitle>
-          <CardDescription>{m.org_details_description()}</CardDescription>
+          <CardTitle>Organization details</CardTitle>
+          <CardDescription>
+            Update your organization name and slug
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <OrganizationDetailsForm organization={activeOrganization} />

@@ -18,7 +18,6 @@ Run from the **monorepo root** (not inside a package):
 | Type check | `pnpm typecheck` |
 | Format + lint (fix) | `pnpm lint:fix` |
 | Lint (check only) | `pnpm lint:check` |
-| i18n sync / lint | `pnpm i18n:sync` / `pnpm i18n:lint` |
 | Tests | `pnpm test` |
 | Build | `pnpm build` |
 | Everything CI runs (before you push) | `pnpm verify` |
@@ -56,11 +55,9 @@ Run from the **monorepo root** (not inside a package):
 - **Why a choice was made** → [`docs/decisions/`](docs/decisions/) — ADRs, under a
   strict significance bar ([template](docs/decisions/template.md)).
 - **How to do/extend something here** → [`docs/guides/`](docs/guides/).
-  Multi-language UI → [`docs/guides/i18n.md`](docs/guides/i18n.md) + skill
-  `.agents/skills/i18n`.
 - **Procedural domain knowledge, loaded on demand** → `.agents/skills/`
   (`wrangler`, `durable-objects`, `workers-best-practices`,
-  `agents-sdk`, `web-perf`, `ai-sdk`, `shadcn`, `i18n`,
+  `agents-sdk`, `web-perf`, `ai-sdk`, `shadcn`,
   `template-architecture`, `components-composition`). Use the relevant skill
   when a task matches its domain.
 - **Cloudflare skills are hash-pinned in-repo** (`skills-lock.json`) so a

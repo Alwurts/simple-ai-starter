@@ -5,7 +5,6 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { app as honoApp } from "./hono";
-import { paraglideMiddleware } from "./paraglide/server.js";
 
 export { OrgAgent } from "@workspace/agent/org";
 // OrgChat and OrgSubAgent are facets (sub-agents) of OrgAgent, resolved by the
@@ -73,10 +72,6 @@ async function handleRequest(
 
 export default {
   fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
-    // Cookie strategy only — no URL locale prefixes. Middleware still scopes
-    // getLocale() per request for SSR message resolution.
-    return paraglideMiddleware(request, ({ request: localizedRequest }) =>
-      handleRequest(localizedRequest, env, ctx)
-    );
+    return handleRequest(request, env, ctx);
   },
 };

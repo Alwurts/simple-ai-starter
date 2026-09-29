@@ -16,7 +16,6 @@ import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useUpdateOrganization } from "@/hooks/use-organization";
-import { m } from "@/paraglide/messages.js";
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -24,14 +23,15 @@ function organizationDetailsSchema() {
   return z.object({
     name: z
       .string()
-      .min(2, { message: m.org_name_min() })
-      .max(100, { message: m.org_name_max() }),
+      .min(2, { message: "Name must be at least 2 characters" })
+      .max(100, { message: "Name must be less than 100 characters" }),
     slug: z
       .string()
-      .min(2, { message: m.org_slug_min() })
-      .max(50, { message: m.org_slug_max() })
+      .min(2, { message: "Slug must be at least 2 characters" })
+      .max(50, { message: "Slug must be less than 50 characters" })
       .regex(SLUG_PATTERN, {
-        message: m.org_slug_pattern(),
+        message:
+          "Slug can only contain lowercase letters, numbers, and hyphens",
       }),
   });
 }
@@ -71,10 +71,10 @@ export function OrganizationDetailsForm({
   async function onSubmit(values: OrganizationDetailsData) {
     try {
       await updateOrganization.mutateAsync(values);
-      toast.success(m.org_details_updated());
+      toast.success("Organization details updated successfully");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : m.org_details_update_failed()
+        error instanceof Error ? error.message : "Failed to update organization"
       );
     }
   }
@@ -87,13 +87,13 @@ export function OrganizationDetailsForm({
           name="name"
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={field.name}>{m.org_field_name()}</FieldLabel>
+              <FieldLabel htmlFor={field.name}>Name</FieldLabel>
               <Input
                 {...field}
                 aria-invalid={fieldState.invalid}
                 disabled={!canEditSettings}
                 id={field.name}
-                placeholder={m.org_name_placeholder()}
+                placeholder="My company"
                 type="text"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -105,13 +105,13 @@ export function OrganizationDetailsForm({
           name="slug"
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={field.name}>{m.org_field_slug()}</FieldLabel>
+              <FieldLabel htmlFor={field.name}>Slug</FieldLabel>
               <Input
                 {...field}
                 aria-invalid={fieldState.invalid}
                 disabled={!canEditSettings}
                 id={field.name}
-                placeholder={m.org_slug_placeholder()}
+                placeholder="my-company"
                 type="text"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -124,10 +124,12 @@ export function OrganizationDetailsForm({
             disabled={!canEditSettings || updateOrganization.isPending}
             type="submit"
           >
-            {updateOrganization.isPending ? m.common_saving() : m.common_save()}
+            {updateOrganization.isPending ? "Saving..." : "Save Changes"}
           </Button>
           {!canEditSettings && (
-            <FieldDescription>{m.org_details_admin_only()}</FieldDescription>
+            <FieldDescription>
+              Only administrators can edit organization details.
+            </FieldDescription>
           )}
         </Field>
       </FieldGroup>

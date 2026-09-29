@@ -131,10 +131,8 @@ export function hasRoleRank(
 }
 
 /**
- * Fallback English role labels for non-UI / server strings. Prefer
- * `apps/web` Paraglide messages (`role_owner` / `role_admin` / `role_member`)
- * for user-visible chrome. `member` surfaces as "Operator" — copy-only rename;
- * the stored value remains `member`.
+ * English role labels for non-UI / server strings. `member` surfaces as
+ * "Operator" — copy-only rename; the stored value remains `member`.
  */
 export const ROLE_LABELS: Record<RoleName, string> = {
   owner: "Owner",

@@ -13,7 +13,6 @@ import { Button } from "@workspace/ui/components/shadcn/button";
 import { Field, FieldLabel } from "@workspace/ui/components/shadcn/field";
 import { Input } from "@workspace/ui/components/shadcn/input";
 import { useId, useState } from "react";
-import { m } from "@/paraglide/messages.js";
 
 /**
  * Type-to-confirm — a guard for an irreversible, org-scoped destroy. The
@@ -30,7 +29,7 @@ export function TypeNameConfirmDialog({
   resourceName,
   title,
   description,
-  confirmLabel = m.common_delete(),
+  confirmLabel = "Delete",
   onConfirm,
 }: {
   open: boolean;
@@ -61,7 +60,7 @@ export function TypeNameConfirmDialog({
         </AlertDialogHeader>
         <Field>
           <FieldLabel htmlFor={inputId}>
-            {m.common_type_to_confirm({ name: resourceName })}
+            {`Type ${resourceName} to confirm`}
           </FieldLabel>
           <Input
             autoComplete="off"
@@ -72,7 +71,7 @@ export function TypeNameConfirmDialog({
           />
         </Field>
         <AlertDialogFooter>
-          <AlertDialogCancel>{m.common_cancel()}</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <Button
             disabled={!matches}
             onClick={() => {

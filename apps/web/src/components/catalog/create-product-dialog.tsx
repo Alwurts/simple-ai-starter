@@ -13,7 +13,6 @@ import { DEFAULT_CURRENCY, majorToMinor } from "@workspace/ui/lib/money";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useCreateProduct } from "@/hooks/use-products";
-import { m } from "@/paraglide/messages.js";
 import { ProductForm, type ProductFormValues } from "./product-form";
 export function CreateProductDialog() {
   const [open, setOpen] = useState(false);
@@ -29,12 +28,14 @@ export function CreateProductDialog() {
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger render={<Button size="sm" />}>
         <Plus className="mr-2 h-4 w-4" />
-        {m.catalog_create()}
+        Add Product
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{m.catalog_add_title()}</DialogTitle>
-          <DialogDescription>{m.catalog_add_description()}</DialogDescription>
+          <DialogTitle>Add New Product</DialogTitle>
+          <DialogDescription>
+            Create a new product record in your catalog.
+          </DialogDescription>
         </DialogHeader>
         <ProductForm
           isLoading={createProduct.isPending}

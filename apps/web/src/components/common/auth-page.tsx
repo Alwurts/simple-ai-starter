@@ -1,6 +1,5 @@
 import { cn } from "@workspace/ui/lib/utils";
 import type { ReactNode } from "react";
-import { LanguageSwitcher } from "@/components/common/language-switcher";
 
 export function AuthPage({
   children,
@@ -16,9 +15,6 @@ export function AuthPage({
         className
       )}
     >
-      <div className="absolute top-4 right-4">
-        <LanguageSwitcher />
-      </div>
       {children}
     </div>
   );

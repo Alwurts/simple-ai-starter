@@ -30,9 +30,8 @@ import {
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useCancelInvitation, useRemoveMember } from "@/hooks/use-organization";
-import { intlLocale } from "@/lib/locale";
+import { INTL_LOCALE } from "@/lib/locale";
 import { roleMessage } from "@/lib/role-label";
-import { m } from "@/paraglide/messages.js";
 
 interface Member {
   id: string;
@@ -79,13 +78,13 @@ export function MembersTable({ members }: MembersTableProps) {
       await removeMember.mutateAsync({ memberIdOrEmail: member.id });
       toast.success(
         session?.user?.id === member.userId
-          ? m.members_left()
-          : m.members_removed()
+          ? "You've left the organization"
+          : "Member removed successfully"
       );
       setMemberPendingRemoval(undefined);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : m.members_remove_failed()
+        error instanceof Error ? error.message : "Failed to remove member"
       );
     } finally {
       setRemovingMemberId(undefined);
@@ -99,11 +98,9 @@ export function MembersTable({ members }: MembersTableProps) {
 
   const removeConfirmLabel = (() => {
     if (removeMember.isPending) {
-      return pendingIsCurrentUser ? m.members_leaving() : m.members_removing();
+      return pendingIsCurrentUser ? "Leaving..." : "Removing...";
     }
-    return pendingIsCurrentUser
-      ? m.members_leave_organization()
-      : m.members_remove_member();
+    return pendingIsCurrentUser ? "Leave organization" : "Remove member";
   })();
 
   const onConfirmRemove = () => {
@@ -117,13 +114,11 @@ export function MembersTable({ members }: MembersTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{m.members_column_avatar()}</TableHead>
-            <TableHead>{m.members_column_name()}</TableHead>
-            <TableHead>{m.members_column_email()}</TableHead>
-            <TableHead>{m.members_column_role()}</TableHead>
-            <TableHead className="text-right">
-              {m.members_column_actions()}
-            </TableHead>
+            <TableHead>Avatar</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -136,9 +131,10 @@ export function MembersTable({ members }: MembersTableProps) {
               isCurrentUser && member.role === "owner" && ownerCount < 2;
             let actionTitle: string | undefined;
             if (isSoleOwner) {
-              actionTitle = m.members_last_owner();
+              actionTitle =
+                "You're the only owner. Transfer ownership before leaving.";
             } else if (!canAct) {
-              actionTitle = m.invite_remove_admin_only();
+              actionTitle = "Only administrators can remove members.";
             }
 
             return (
@@ -165,8 +161,8 @@ export function MembersTable({ members }: MembersTableProps) {
                     variant="ghost"
                   >
                     {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-                    {!isLoading && isCurrentUser && m.members_leave()}
-                    {!(isLoading || isCurrentUser) && m.members_remove()}
+                    {!isLoading && isCurrentUser && "Leave"}
+                    {!(isLoading || isCurrentUser) && "Remove"}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -187,29 +183,18 @@ export function MembersTable({ members }: MembersTableProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pendingIsCurrentUser
-                ? m.members_leave_title()
-                : m.members_remove_title({
-                    name:
-                      memberPendingRemoval?.user.name ??
-                      m.members_this_member(),
-                  })}
+                ? "Leave organization?"
+                : `Remove ${memberPendingRemoval?.user.name ?? "this member"}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingIsCurrentUser
-                ? m.members_leave_description({
-                    org: activeOrganization?.name ?? "",
-                  })
-                : m.members_remove_description({
-                    name:
-                      memberPendingRemoval?.user.name ??
-                      m.members_this_member(),
-                    org: activeOrganization?.name ?? "",
-                  })}
+                ? `You will lose access to ${activeOrganization?.name ?? ""}. You can rejoin only if another member invites you again.`
+                : `This will remove ${memberPendingRemoval?.user.name ?? "this member"} from ${activeOrganization?.name ?? ""}. They will lose access immediately.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={removeMember.isPending}>
-              {m.common_cancel()}
+              Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -250,7 +235,7 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
   const formatDate = (dateString: Date | string) => {
     const date =
       typeof dateString === "string" ? new Date(dateString) : dateString;
-    return date.toLocaleDateString(intlLocale(), {
+    return date.toLocaleDateString(INTL_LOCALE, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -260,13 +245,11 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
   const handleCancelInvitation = async (invitation: Invitation) => {
     try {
       await cancelInvitation.mutateAsync(invitation.id);
-      toast.success(m.members_invitation_cancelled());
+      toast.success("Invitation cancelled");
       setInvitationPendingCancel(undefined);
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : m.members_cancel_invitation_failed()
+        error instanceof Error ? error.message : "Failed to cancel invitation"
       );
     }
   };
@@ -280,7 +263,7 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
   if (invitations.length === 0) {
     return (
       <p className="py-8 text-center text-muted-foreground text-sm">
-        {m.members_pending_empty()}
+        No pending invitations
       </p>
     );
   }
@@ -290,14 +273,12 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{m.members_column_email()}</TableHead>
-            <TableHead>{m.members_column_role()}</TableHead>
-            <TableHead>{m.members_column_status()}</TableHead>
-            <TableHead>{m.members_column_expires()}</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Expires</TableHead>
             {canManageMembers && (
-              <TableHead className="text-right">
-                {m.members_column_actions()}
-              </TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -316,7 +297,7 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
                     onClick={() => setInvitationPendingCancel(invitation)}
                     variant="ghost"
                   >
-                    {m.members_cancel_invitation()}
+                    Cancel
                   </Button>
                 </TableCell>
               )}
@@ -335,27 +316,21 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {m.members_cancel_invitation_title()}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Cancel invitation?</AlertDialogTitle>
             <AlertDialogDescription>
-              {m.members_cancel_invitation_description({
-                email: invitationPendingCancel?.email ?? "",
-              })}
+              {`This will revoke the pending invitation for ${invitationPendingCancel?.email ?? ""}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={cancelInvitation.isPending}>
-              {m.common_cancel()}
+              Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={cancelInvitation.isPending}
               onClick={onConfirmCancel}
             >
-              {cancelInvitation.isPending
-                ? m.members_cancelling()
-                : m.members_cancel_invitation()}
+              {cancelInvitation.isPending ? "Cancelling..." : "Cancel"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

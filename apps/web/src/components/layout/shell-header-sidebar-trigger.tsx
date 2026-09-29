@@ -1,7 +1,6 @@
 "use client";
 
 import { ShellHeaderSidebarTrigger as ShellHeaderSidebarTriggerBase } from "@workspace/ui/components/brand/shell";
-import { m } from "@/paraglide/messages.js";
 
 export function ShellHeaderSidebarTrigger({
   className,
@@ -11,7 +10,7 @@ export function ShellHeaderSidebarTrigger({
   return (
     <ShellHeaderSidebarTriggerBase
       className={className}
-      toggleLabel={m.sidebar_toggle()}
+      toggleLabel="Toggle Sidebar"
     />
   );
 }

@@ -4,7 +4,6 @@ import {
   Package,
   Settings,
 } from "lucide-react";
-import { m } from "@/paraglide/messages.js";
 
 export interface PlatformNavigationItem {
   title: string;
@@ -12,12 +11,12 @@ export interface PlatformNavigationItem {
   icon: LucideIcon;
 }
 
-/** Single source for sidebar + ⌘K Pages group — titles follow active locale. */
+/** Single source for sidebar + ⌘K Pages group. */
 export function getPlatformNavigationItems(): PlatformNavigationItem[] {
   return [
     { title: "Chat", url: "/", icon: MessageSquare },
-    { title: m.nav_catalog(), url: "/catalog", icon: Package },
-    { title: m.nav_settings(), url: "/settings", icon: Settings },
+    { title: "Catalog", url: "/catalog", icon: Package },
+    { title: "Settings", url: "/settings", icon: Settings },
   ];
 }
 

@@ -17,18 +17,17 @@ import { slug as slugify } from "github-slugger";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { client } from "@/lib/client";
-import { m } from "@/paraglide/messages.js";
 
 function createOrganizationSchema() {
   return z.object({
     name: z
       .string()
-      .min(3, { message: m.org_create_name_min() })
-      .max(100, { message: m.org_name_max() }),
+      .min(3, { message: "Name must be at least 3 characters" })
+      .max(100, { message: "Name must be less than 100 characters" }),
     slug: z
       .string()
-      .min(3, { message: m.org_create_slug_min() })
-      .max(50, { message: m.org_create_slug_max() }),
+      .min(3, { message: "Slug must be at least 3 characters" })
+      .max(50, { message: "Slug must be less than 50 characters" }),
   });
 }
 
@@ -78,7 +77,7 @@ export function CreateOrganizationForm({
       const { available } = await response.json();
 
       if (!available) {
-        toast.error(m.org_slug_exists());
+        toast.error("Slug already exists");
         return;
       }
 
@@ -99,10 +98,10 @@ export function CreateOrganizationForm({
           onSuccess();
         }
       } else {
-        toast.error(error?.message ?? m.org_create_failed());
+        toast.error(error?.message ?? "Failed to create organization");
       }
     } catch {
-      toast.error(m.org_create_failed());
+      toast.error("Failed to create organization");
     }
   }
 
@@ -114,7 +113,7 @@ export function CreateOrganizationForm({
           name="name"
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={field.name}>{m.org_field_name()}</FieldLabel>
+              <FieldLabel htmlFor={field.name}>Name</FieldLabel>
               <Input
                 {...field}
                 aria-invalid={fieldState.invalid}
@@ -136,7 +135,7 @@ export function CreateOrganizationForm({
           name="slug"
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={field.name}>{m.org_field_slug()}</FieldLabel>
+              <FieldLabel htmlFor={field.name}>Slug</FieldLabel>
               <Input
                 {...field}
                 aria-invalid={fieldState.invalid}
@@ -159,8 +158,8 @@ export function CreateOrganizationForm({
             type="submit"
           >
             {form.formState.isSubmitting
-              ? m.org_creating()
-              : m.org_create_button()}
+              ? "Creating..."
+              : "Create Organization"}
           </Button>
         </Field>
       </FieldGroup>

@@ -42,8 +42,7 @@ import {
   useProduct,
   useUpdateProduct,
 } from "@/hooks/use-products";
-import { intlLocale } from "@/lib/locale";
-import { m } from "@/paraglide/messages.js";
+import { INTL_LOCALE } from "@/lib/locale";
 export const Route = createFileRoute("/_protected/catalog/$id")({
   component: ProductPage,
 });
@@ -58,10 +57,10 @@ function ProductDetailsReadOnly({ product }: ProductDetailsReadOnlyProps) {
     <div className="space-y-4">
       <div>
         <h4 className="mb-1 font-medium text-muted-foreground text-sm">
-          {m.common_description()}
+          Description
         </h4>
         <p className="text-foreground/90 text-sm leading-relaxed">
-          {product.description || m.catalog_no_description()}
+          {product.description || "No description provided."}
         </p>
       </div>
     </div>
@@ -83,7 +82,7 @@ function ProductPage() {
     return (
       <ShellPage>
         <div className="flex h-full flex-col items-center justify-center gap-4">
-          <h2 className="font-semibold text-xl">{m.common_loading()}</h2>
+          <h2 className="font-semibold text-xl">Loading…</h2>
         </div>
       </ShellPage>
     );
@@ -115,7 +114,7 @@ function ProductPage() {
         </ShellHeader>
         <div
           aria-busy="true"
-          aria-label={m.common_loading()}
+          aria-label="Loading…"
           className="p-6"
           role="status"
         >
@@ -127,8 +126,8 @@ function ProductPage() {
   if (isProductError || !product) {
     return (
       <ResourceNotFound
-        backLabel={m.catalog_back()}
-        title={m.catalog_not_found()}
+        backLabel="Back to Catalog"
+        title="Product not found"
         to="/catalog"
       />
     );
@@ -138,11 +137,11 @@ function ProductPage() {
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
         <AppBreadcrumbs
-          ellipsisAriaLabel={m.breadcrumb_ellipsis_aria()}
-          homeLabel={m.nav_home()}
+          ellipsisAriaLabel="Show hidden breadcrumb segments"
+          homeLabel="Today"
           items={[
             {
-              title: m.catalog_title(),
+              title: "Catalog",
               href: "/catalog",
             },
             {
@@ -153,34 +152,34 @@ function ProductPage() {
         <ShellHeaderActions>
           {isEditing ? (
             <Button
-              aria-label={m.common_cancel()}
+              aria-label="Cancel"
               onClick={() => setIsEditing(false)}
               size="sm"
               variant="ghost"
             >
               <X className="size-4" />
-              <span className="hidden sm:inline">{m.common_cancel()}</span>
+              <span className="hidden sm:inline">Cancel</span>
             </Button>
           ) : (
             <>
               <Button
-                aria-label={m.common_edit()}
+                aria-label="Edit"
                 onClick={() => setIsEditing(true)}
                 size="sm"
                 variant="outline"
               >
                 <Pencil className="size-4" />
-                <span className="hidden sm:inline">{m.common_edit()}</span>
+                <span className="hidden sm:inline">Edit</span>
               </Button>
               <Button
-                aria-label={m.common_delete()}
+                aria-label="Delete"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => setIsDeleteDialogOpen(true)}
                 size="sm"
                 variant="outline"
               >
                 <Trash2 className="size-4" />
-                <span className="hidden sm:inline">{m.common_delete()}</span>
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </>
           )}
@@ -194,28 +193,24 @@ function ProductPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="font-medium text-sm">
-                {m.catalog_column_price()}
-              </CardTitle>
+              <CardTitle className="font-medium text-sm">Price</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="font-bold text-2xl">
                 {formatMoneyMinor(product.price ?? 0, DEFAULT_CURRENCY, {
-                  locale: intlLocale(),
+                  locale: INTL_LOCALE,
                 })}
               </div>
-              <p className="text-muted-foreground text-xs">
-                {m.catalog_per_unit()}
-              </p>
+              <p className="text-muted-foreground text-xs">Per unit</p>
             </CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>{m.catalog_details()}</CardTitle>
-            <CardDescription>{m.catalog_details_description()}</CardDescription>
+            <CardTitle>Product Details</CardTitle>
+            <CardDescription>Basic information and settings.</CardDescription>
           </CardHeader>
           <CardContent>
             {isEditing ? (
@@ -253,25 +248,21 @@ function ProductPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {m.common_confirm_delete_title()}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {m.catalog_delete_description({ name: product.name })}
+              {`This will permanently delete the product ${product.name}. This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteProduct.isPending}>
-              {m.common_cancel()}
+              Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteProduct.isPending}
               onClick={handleDelete}
             >
-              {deleteProduct.isPending
-                ? m.common_deleting()
-                : m.catalog_delete_product()}
+              {deleteProduct.isPending ? "Deleting..." : "Delete Product"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
