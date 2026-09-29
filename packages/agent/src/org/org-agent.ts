@@ -4,7 +4,7 @@ import {
   type WorkspaceChangeEvent,
 } from "@cloudflare/shell";
 import { errorMessage, structuredLog } from "@workspace/log";
-import { Agent, callable } from "agents";
+import { Agent, type Connection, callable } from "agents";
 import type {
   ChatMessageHit,
   ChatSearchHit,
@@ -123,6 +123,20 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
    */
   private refreshChatState(): void {
     this.setState({ ...this.state, chats: this.listChats() });
+  }
+
+  /**
+   * The chat list is server-derived (registry + chat_meta) and org-wide, so a
+   * client must never be able to push one — reject any connection-sourced
+   * update (agents state.md › Validating State Updates).
+   */
+  override validateStateChange(
+    _nextState: OrgAgentState,
+    source: Connection | "server"
+  ): void {
+    if (source !== "server") {
+      throw new Error("OrgAgent state is server-managed");
+    }
   }
 
   @callable()
