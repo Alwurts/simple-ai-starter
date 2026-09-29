@@ -7,6 +7,7 @@ import {
   Think,
   type TurnContext,
 } from "@cloudflare/think";
+import { createExecuteTool } from "@cloudflare/think/tools/execute";
 import { createFetchTools } from "@cloudflare/think/tools/fetch";
 import { auth } from "@workspace/auth";
 import { errorMessage, structuredLog } from "@workspace/log";
@@ -412,6 +413,17 @@ export class OrgChat extends Think<Cloudflare.Env> {
         ? createFetchTools({ allowlist: fetchAllowlistForHosts(fetchHosts) })
         : {};
 
+    // D-010: code execution (codemode). The one-liner infers state.* from
+    // this.workspace and the executor from env.LOADER; the sandbox sees ONLY
+    // the org's own product tools — `update_product` / `delete_product` keep
+    // needsApproval, which inside the sandbox maps to the codemode runtime's
+    // durable pause/approve/resume (resolved client-side via Think's
+    // `approveExecution` / `rejectExecution` callables). No browser (no
+    // BROWSER binding) and no delegate/display tools reach the sandbox.
+    // Running code is itself approval-gated: the AI SDK pauses before the
+    // tool runs, so every execution waits on the user first.
+    const executeTool = createExecuteTool(this, { tools: productTools });
+
     return {
       ...fetchTools,
       ...productTools,
@@ -430,6 +442,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
         displayName: "Sub-agent",
       }),
       ...displayTools,
+      execute: {
+        ...executeTool,
+        needsApproval: true,
+      },
     };
   }
 }

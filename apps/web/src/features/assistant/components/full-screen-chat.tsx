@@ -281,6 +281,33 @@ function ChatView({ chatId, title }: ChatViewProps) {
     [helpers]
   );
 
+  // Codemode executions (the `execute` tool) pause durably instead of using
+  // the AI SDK approval flow: Think resolves them via these callables, replays
+  // the run and auto-continues the chat. `pendingExecutions(executionId)`
+  // returns the FULL pending args (the transcript copy is truncated) so the
+  // approval card can show what would actually run before Approve enables.
+  const handleExecutionApproval = useCallback(
+    (executionId: string, approved: boolean) => {
+      const call = approved ? "approveExecution" : "rejectExecution";
+      return chatAgent.call(call, [executionId]).catch((error: unknown) => {
+        console.error(`[FullScreenChat] ${call} failed`, error);
+        toast.error("Couldn't resolve the execution. Please try again.", {
+          position: "top-center",
+        });
+        throw error;
+      });
+    },
+    [chatAgent]
+  );
+
+  const handleLoadPendingExecution = useCallback(
+    (executionId: string) =>
+      chatAgent.call("pendingExecutions", [executionId]) as Promise<
+        { args?: unknown; connector: string; method: string; seq?: number }[]
+      >,
+    [chatAgent]
+  );
+
   const handleRegenerate = useCallback(
     (messageId: string) => {
       setSendError(null);
@@ -399,6 +426,8 @@ function ChatView({ chatId, title }: ChatViewProps) {
                     <MessageListOrEmpty
                       messages={helpers.messages}
                       streamingMessageId={streamingMessageId}
+                      onExecutionApproval={handleExecutionApproval}
+                      onLoadPendingExecution={handleLoadPendingExecution}
                       onRegenerate={handleRegenerate}
                       onToolApproval={handleToolApproval}
                     />
@@ -488,11 +517,19 @@ function MessageListOrEmpty({
   streamingMessageId,
   onRegenerate,
   onToolApproval,
+  onExecutionApproval,
+  onLoadPendingExecution,
 }: {
   messages: OrgChatMessage[];
   streamingMessageId: string | null;
   onRegenerate: (messageId: string) => void;
   onToolApproval: (id: string, approved: boolean) => void;
+  onExecutionApproval: (executionId: string, approved: boolean) => void;
+  onLoadPendingExecution: (
+    executionId: string
+  ) => Promise<
+    { args?: unknown; connector: string; method: string; seq?: number }[]
+  >;
 }) {
   if (messages.length === 0) {
     return <EmptyConversation />;
@@ -508,6 +545,8 @@ function MessageListOrEmpty({
           <ChatMessageRow
             isStreaming={streamingMessageId === message.id}
             message={message}
+            onExecutionApproval={onExecutionApproval}
+            onLoadPendingExecution={onLoadPendingExecution}
             onRegenerate={onRegenerate}
             onToolApproval={onToolApproval}
           />

@@ -41,7 +41,15 @@ import {
   type UIMessagePart,
   type UITools,
 } from "ai";
-import { CheckIcon, CircleIcon, CopyIcon, RefreshCwIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CircleIcon,
+  CopyIcon,
+  PlayIcon,
+  RefreshCwIcon,
+  ShieldAlertIcon,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { OrgChatMessage } from "../lib/ai-types";
 import { getToolName } from "../lib/tool-name";
@@ -104,6 +112,59 @@ function PlanPart({
 
 export const PRODUCT_LIST_TOOL_NAME = "display_product_list";
 
+export const EXECUTE_TOOL_NAME = "execute";
+
+/** Sandbox tool call recorded on a paused/completed codemode execution. */
+interface ExecutionCall {
+  args?: unknown;
+  connector: string;
+  method: string;
+  seq?: number;
+  state?: string;
+}
+
+/** The `execute` tool's output — codemode's durable run outcomes. */
+type ExecuteToolOutput =
+  | {
+      executionId: string;
+      logs?: string[];
+      pending: ExecutionCall[];
+      status: "paused";
+    }
+  | {
+      executionId: string;
+      logs?: string[];
+      result?: unknown;
+      status: "completed";
+    }
+  | { executionId: string; error: string; logs?: string[]; status: "error" }
+  | { reason?: string; status: "rejected" };
+
+function executeOutputOf(part: { output?: unknown }): ExecuteToolOutput | null {
+  if (
+    part.output &&
+    typeof part.output === "object" &&
+    "status" in part.output &&
+    typeof (part.output as { status: unknown }).status === "string"
+  ) {
+    return part.output as ExecuteToolOutput;
+  }
+  return null;
+}
+
+/** A paused codemode run waiting on approve/reject (Approve must see full args). */
+export function isPausedExecutionPart(part: {
+  output?: unknown;
+  state?: string;
+  toolName?: string;
+  type: string;
+}): boolean {
+  return (
+    getToolName(part as DynamicToolUIPart) === EXECUTE_TOOL_NAME &&
+    executeOutputOf(part)?.status === "paused"
+  );
+}
+
 /**
  * The one custom tool card: a completed `display_product_list` echo renders as
  * a product card; every other tool (incl. `display_memory`, workspace file
@@ -119,20 +180,25 @@ export function isProductListCardPart(
 }
 
 /**
- * Parts that stay inside the collapsed Worked group. A pending approval and a
- * finished `display_product_list` card stay in the message flow so the user
- * can act on them without opening the group. After approve/reject the tool
- * is no longer `approval-requested`, so it folds back in.
+ * Parts that stay inside the collapsed Worked group. A pending approval, a
+ * paused codemode run, and a finished `display_product_list` card stay in the
+ * message flow so the user can act on them without opening the group. After
+ * approve/reject the tool is no longer `approval-requested` / `paused`, so it
+ * folds back in.
  */
 export function isCollapsedWorkedPart(part: {
-  type: string;
+  output?: unknown;
   state?: string;
   toolName?: string;
+  type: string;
 }): boolean {
   if (part.type === "text" || part.type === "step-start") {
     return false;
   }
   if (part.state === "approval-requested") {
+    return false;
+  }
+  if (isPausedExecutionPart(part)) {
     return false;
   }
   if (
@@ -211,6 +277,181 @@ function DefaultToolPart({
   );
 }
 
+function CodeBlock({ code }: { code: string }) {
+  return (
+    <div className="overflow-hidden rounded-md border bg-muted/40">
+      <MarkdownBody className="px-3 py-2 text-xs [&_pre]:bg-transparent">
+        {`\`\`\`ts\n${code}\n\`\`\``}
+      </MarkdownBody>
+    </div>
+  );
+}
+
+/**
+ * A codemode execution awaiting the user: the run paused on a gated sandbox
+ * call and the chat continues only via `approveExecution` /
+ * `rejectExecution` (Think resumes the run by replay; the outcome replaces
+ * this paused output). The transcript's `pending` array is a truncated
+ * preview, so the authoritative args are re-fetched via `pendingExecutions`
+ * and the Approve button stays disabled until they are loaded.
+ */
+function PausedExecutionCard({
+  code,
+  output,
+  onLoadPendingExecution,
+  onExecutionApproval,
+}: {
+  code: string;
+  output: Extract<ExecuteToolOutput, { status: "paused" }>;
+  onLoadPendingExecution?:
+    | ((executionId: string) => Promise<ExecutionCall[]>)
+    | undefined;
+  onExecutionApproval?:
+    | ((executionId: string, approved: boolean) => void)
+    | undefined;
+}) {
+  const [pending, setPending] = useState<ExecutionCall[]>(output.pending);
+  const [pendingLoaded, setPendingLoaded] = useState(
+    () => !onLoadPendingExecution
+  );
+  const [loadError, setLoadError] = useState(false);
+  const loaded = pendingLoaded && !loadError;
+
+  // biome-ignore lint/plugin/no-use-effect: fetch the authoritative pending args once per paused execution
+  useEffect(() => {
+    if (!onLoadPendingExecution) {
+      return;
+    }
+    let cancelled = false;
+    setLoadError(false);
+    onLoadPendingExecution(output.executionId)
+      .then((actions) => {
+        if (cancelled) {
+          return;
+        }
+        if (actions.length > 0) {
+          setPending(actions);
+        }
+        setPendingLoaded(true);
+      })
+      .catch((error: unknown) => {
+        console.error("[chat] pendingExecutions failed", error);
+        if (!cancelled) {
+          setLoadError(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [onLoadPendingExecution, output.executionId]);
+
+  return (
+    <Tool defaultOpen>
+      <ToolHeader
+        input={output.pending}
+        state="approval-requested"
+        title="execute — code needs your approval"
+        type="tool-execute"
+      />
+      <ToolContent>
+        <CodeBlock code={code} />
+        {pending.map((call) => (
+          <div
+            className="flex flex-col gap-0.5 rounded-md border px-3 py-2 text-xs"
+            key={`${call.connector}-${call.method}-${call.seq ?? 0}`}
+          >
+            <span className="flex items-center gap-1.5 font-medium">
+              <ShieldAlertIcon className="size-3.5" />
+              {call.connector}.{call.method}
+            </span>
+            {call.args == null ? null : (
+              <pre className="overflow-x-auto font-mono text-muted-foreground">
+                {JSON.stringify(call.args, null, 2)}
+              </pre>
+            )}
+          </div>
+        ))}
+        {loadError ? (
+          <p className="text-destructive text-xs">
+            Couldn't load the full pending action args. Retry by reopening.
+          </p>
+        ) : null}
+        <div className="flex gap-2 py-1">
+          <Button
+            disabled={!loaded}
+            onClick={() => onExecutionApproval?.(output.executionId, true)}
+            size="xs"
+            type="button"
+          >
+            <PlayIcon />
+            Approve
+          </Button>
+          <Button
+            disabled={!loaded}
+            onClick={() => onExecutionApproval?.(output.executionId, false)}
+            size="xs"
+            type="button"
+            variant="outline"
+          >
+            Reject
+          </Button>
+        </div>
+      </ToolContent>
+    </Tool>
+  );
+}
+
+/** Readable rendering of a settled codemode run (code in, result/logs out). */
+function ExecuteToolBody({ part }: { part: DynamicToolUIPart | ToolUIPart }) {
+  const output = executeOutputOf(part);
+  const code = inputCodeOf(part);
+
+  if (part.state === "approval-requested") {
+    return (
+      <div className="flex flex-col gap-2">
+        {code ? <CodeBlock code={code} /> : null}
+        <p className="text-muted-foreground text-xs">
+          This will run the code in a sandbox. Approve to continue.
+        </p>
+      </div>
+    );
+  }
+
+  if (!output) {
+    return <ToolOutput errorText={part.errorText} output={part.output} />;
+  }
+
+  return (
+    <div className="flex flex-col gap-2 text-xs">
+      {code ? <CodeBlock code={code} /> : null}
+      {"logs" in output && output.logs && output.logs.length > 0 ? (
+        <div className="flex flex-col gap-0.5">
+          <p className="text-muted-foreground">Logs</p>
+          <pre className="overflow-x-auto font-mono">
+            {output.logs.join("\n")}
+          </pre>
+        </div>
+      ) : null}
+      {output.status === "completed" ? (
+        <div className="flex flex-col gap-0.5">
+          <p className="text-muted-foreground">Result</p>
+          <pre className="overflow-x-auto font-mono">
+            {JSON.stringify(output.result, null, 2)}
+          </pre>
+        </div>
+      ) : null}
+      {output.status === "error" ? (
+        <p className="text-destructive">{output.error}</p>
+      ) : null}
+      {output.status === "rejected" ? (
+        <p className="text-muted-foreground">
+          Rejected{output.reason ? `: ${output.reason}` : ""}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function ToolBody({ part }: { part: DynamicToolUIPart | ToolUIPart }) {
   const deniedReason =
     part.state === "output-denied" ? part.approval?.reason : undefined;
@@ -247,14 +488,68 @@ function ToolPartSwitch({
   messageId,
   partIndex,
   onToolApproval,
+  onExecutionApproval,
+  onLoadPendingExecution,
 }: {
   part: DynamicToolUIPart | ToolUIPart;
   messageId: string;
   partIndex: number;
   onToolApproval?: (id: string, approved: boolean) => void;
+  onExecutionApproval?: (executionId: string, approved: boolean) => void;
+  onLoadPendingExecution?: (executionId: string) => Promise<ExecutionCall[]>;
 }) {
   if (isProductListCardPart(part)) {
     return <ProductListCard output={part.output} />;
+  }
+  if (getToolName(part) === EXECUTE_TOOL_NAME) {
+    const paused = executeOutputOf(part);
+    if (paused?.status === "paused") {
+      return (
+        <PausedExecutionCard
+          code={inputCodeOf(part)}
+          onLoadPendingExecution={onLoadPendingExecution}
+          onExecutionApproval={onExecutionApproval}
+          output={paused}
+        />
+      );
+    }
+    return (
+      <Tool
+        defaultOpen={part.state === "approval-requested"}
+        key={`${messageId}-tool-${partIndex}`}
+      >
+        <ToolHeader
+          input={part.input}
+          state={part.state}
+          title="execute"
+          type="tool-execute"
+        />
+        <ToolContent>
+          <ExecuteToolBody part={part} />
+          {part.state === "approval-requested" &&
+          part.approval?.id &&
+          onToolApproval ? (
+            <div className="flex gap-2 py-1">
+              <Button
+                onClick={() => onToolApproval(part.approval?.id ?? "", true)}
+                size="xs"
+                type="button"
+              >
+                Approve
+              </Button>
+              <Button
+                onClick={() => onToolApproval(part.approval?.id ?? "", false)}
+                size="xs"
+                type="button"
+                variant="outline"
+              >
+                Reject
+              </Button>
+            </div>
+          ) : null}
+        </ToolContent>
+      </Tool>
+    );
   }
   return (
     <DefaultToolPart
@@ -266,6 +561,12 @@ function ToolPartSwitch({
   );
 }
 
+function inputCodeOf(part: { input?: unknown }): string {
+  return part.input && typeof part.input === "object" && "code" in part.input
+    ? String((part.input as { code: unknown }).code)
+    : "";
+}
+
 function OrgMessagePart({
   part,
   messageId,
@@ -274,6 +575,8 @@ function OrgMessagePart({
   isStreaming,
   role,
   onToolApproval,
+  onExecutionApproval,
+  onLoadPendingExecution,
 }: {
   part: UIMessagePart<AIDataPart, UITools>;
   messageId: string;
@@ -282,6 +585,8 @@ function OrgMessagePart({
   isStreaming: boolean;
   role: OrgChatMessage["role"];
   onToolApproval?: (id: string, approved: boolean) => void;
+  onExecutionApproval?: (executionId: string, approved: boolean) => void;
+  onLoadPendingExecution?: (executionId: string) => Promise<ExecutionCall[]>;
 }) {
   if (part.type === "text") {
     if (role === "user") {
@@ -321,6 +626,8 @@ function OrgMessagePart({
       <ToolPartSwitch
         key={`${messageId}-tool-${partIndex}`}
         messageId={messageId}
+        onExecutionApproval={onExecutionApproval}
+        onLoadPendingExecution={onLoadPendingExecution}
         onToolApproval={onToolApproval}
         part={part as DynamicToolUIPart | ToolUIPart}
         partIndex={partIndex}
@@ -354,11 +661,15 @@ export function ChatMessageRow({
   message,
   isStreaming = false,
   onToolApproval,
+  onExecutionApproval,
+  onLoadPendingExecution,
   onRegenerate,
 }: {
   message: OrgChatMessage;
   isStreaming?: boolean;
   onToolApproval?: (id: string, approved: boolean) => void;
+  onExecutionApproval?: (executionId: string, approved: boolean) => void;
+  onLoadPendingExecution?: (executionId: string) => Promise<ExecutionCall[]>;
   onRegenerate?: (messageId: string) => void;
 }) {
   const textForCopy = message.parts
@@ -378,6 +689,8 @@ export function ChatMessageRow({
       isStreaming={isStreaming}
       key={`${message.id}-part-${partIndex}`}
       messageId={message.id}
+      onExecutionApproval={onExecutionApproval}
+      onLoadPendingExecution={onLoadPendingExecution}
       onToolApproval={onToolApproval}
       part={part}
       partIndex={partIndex}

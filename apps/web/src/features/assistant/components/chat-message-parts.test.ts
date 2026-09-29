@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { getToolName } from "../lib/tool-name";
 import {
   isCollapsedWorkedPart,
+  isPausedExecutionPart,
   isProductListCardPart,
   PRODUCT_LIST_TOOL_NAME,
 } from "./chat-message-parts";
@@ -179,5 +180,72 @@ describe("assistant part grouping", () => {
       { kind: "worked", types: ["tool-update_product"] },
       { kind: "visible", type: "text" },
     ]);
+  });
+});
+
+describe("codemode execute part (D-010)", () => {
+  const pausedPart = {
+    type: "tool-execute",
+    state: "output-available",
+    toolCallId: "tc_exec",
+    input: { code: "return 1;" },
+    output: {
+      status: "paused",
+      executionId: "ex_1",
+      pending: [
+        {
+          executionId: "ex_1",
+          seq: 1,
+          connector: "tools",
+          method: "update_product",
+        },
+      ],
+    },
+  };
+
+  it("keeps a paused execution outside the collapsed group so it is actionable", () => {
+    expect(
+      kindsOf([
+        { type: "reasoning", text: "planning" },
+        pausedPart,
+        { type: "text", text: "I need your approval." },
+      ])
+    ).toEqual([
+      { kind: "worked", types: ["reasoning"] },
+      { kind: "visible", type: "tool-execute" },
+      { kind: "visible", type: "text" },
+    ]);
+  });
+
+  it("folds the execution back in once it completes", () => {
+    expect(
+      kindsOf([
+        {
+          ...pausedPart,
+          output: { status: "completed", executionId: "ex_1", result: 1 },
+        },
+        { type: "text", text: "Done." },
+      ])
+    ).toEqual([
+      { kind: "worked", types: ["tool-execute"] },
+      { kind: "visible", type: "text" },
+    ]);
+  });
+
+  it("detects only paused execute outputs", () => {
+    expect(isPausedExecutionPart(pausedPart)).toBe(true);
+    expect(
+      isPausedExecutionPart({
+        ...pausedPart,
+        output: { status: "completed", executionId: "ex_1" },
+      })
+    ).toBe(false);
+    expect(
+      isPausedExecutionPart({
+        type: "tool-list_products",
+        state: "output-available",
+        output: { ok: true },
+      })
+    ).toBe(false);
   });
 });
