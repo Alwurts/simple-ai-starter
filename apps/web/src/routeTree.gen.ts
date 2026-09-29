@@ -20,6 +20,7 @@ import { Route as ProtectedSettingsRouteRouteImport } from './routes/_protected/
 import { Route as AcceptInvitationIdRouteImport } from './routes/accept-invitation.$id'
 import { Route as ProtectedCatalogIndexRouteImport } from './routes/_protected/catalog/index'
 import { Route as ProtectedCatalogIdRouteImport } from './routes/_protected/catalog/$id'
+import { Route as ProtectedChatChatIdRouteImport } from './routes/_protected/chat.$chatId'
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSettingsGeneralRouteImport } from './routes/_protected/settings/general'
 import { Route as ProtectedSettingsMembersRouteImport } from './routes/_protected/settings/members'
@@ -78,6 +79,11 @@ const ProtectedCatalogIdRoute = ProtectedCatalogIdRouteImport.update({
   path: '/catalog/$id',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedChatChatIdRoute = ProtectedChatChatIdRouteImport.update({
+  id: '/chat/$chatId',
+  path: '/chat/$chatId',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof ProtectedSettingsRouteRouteWithChildren
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
   '/catalog/$id': typeof ProtectedCatalogIdRoute
+  '/chat/$chatId': typeof ProtectedChatChatIdRoute
   '/settings/general': typeof ProtectedSettingsGeneralRoute
   '/settings/members': typeof ProtectedSettingsMembersRoute
   '/catalog/': typeof ProtectedCatalogIndexRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
   '/': typeof ProtectedIndexRoute
   '/catalog/$id': typeof ProtectedCatalogIdRoute
+  '/chat/$chatId': typeof ProtectedChatChatIdRoute
   '/settings/general': typeof ProtectedSettingsGeneralRoute
   '/settings/members': typeof ProtectedSettingsMembersRoute
   '/catalog': typeof ProtectedCatalogIndexRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/_protected/catalog/$id': typeof ProtectedCatalogIdRoute
+  '/_protected/chat/$chatId': typeof ProtectedChatChatIdRoute
   '/_protected/settings/general': typeof ProtectedSettingsGeneralRoute
   '/_protected/settings/members': typeof ProtectedSettingsMembersRoute
   '/_protected/catalog/': typeof ProtectedCatalogIndexRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/accept-invitation/$id'
     | '/catalog/$id'
+    | '/chat/$chatId'
     | '/settings/general'
     | '/settings/members'
     | '/catalog/'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$id'
     | '/'
     | '/catalog/$id'
+    | '/chat/$chatId'
     | '/settings/general'
     | '/settings/members'
     | '/catalog'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$id'
     | '/_protected/'
     | '/_protected/catalog/$id'
+    | '/_protected/chat/$chatId'
     | '/_protected/settings/general'
     | '/_protected/settings/members'
     | '/_protected/catalog/'
@@ -279,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedCatalogIdRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/chat/$chatId': {
+      id: '/_protected/chat/$chatId'
+      path: '/chat/$chatId'
+      fullPath: '/chat/$chatId'
+      preLoaderRoute: typeof ProtectedChatChatIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/settings/': {
       id: '/_protected/settings/'
       path: '/'
@@ -325,6 +344,7 @@ interface ProtectedRouteChildren {
   ProtectedSettingsRouteRoute: typeof ProtectedSettingsRouteRouteWithChildren
   ProtectedIndexRoute: typeof ProtectedIndexRoute
   ProtectedCatalogIdRoute: typeof ProtectedCatalogIdRoute
+  ProtectedChatChatIdRoute: typeof ProtectedChatChatIdRoute
   ProtectedCatalogIndexRoute: typeof ProtectedCatalogIndexRoute
 }
 
@@ -332,6 +352,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedSettingsRouteRoute: ProtectedSettingsRouteRouteWithChildren,
   ProtectedIndexRoute: ProtectedIndexRoute,
   ProtectedCatalogIdRoute: ProtectedCatalogIdRoute,
+  ProtectedChatChatIdRoute: ProtectedChatChatIdRoute,
   ProtectedCatalogIndexRoute: ProtectedCatalogIndexRoute,
 }
 

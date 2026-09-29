@@ -10,15 +10,12 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { auth } from "@workspace/auth";
 import { getUserOrganization } from "@workspace/core/auth";
 import { db } from "@workspace/db";
-import {
-  Shell,
-  ShellFooter,
-  ShellInset,
-} from "@workspace/ui/components/brand/shell";
+import { Shell, ShellInset } from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import { AlertCircle } from "lucide-react";
+import { OrgConnection } from "@/features/assistant/connection/org-connection";
+import { useActiveOrganizationId } from "@/hooks/use-organization";
 import { m } from "@/paraglide/messages.js";
-import { ChatDockMount } from "../components/chat/dock/chat-dock-mount";
 import { AppSidebar } from "../components/layout/app-sidebar";
 
 const ensureOrg = createServerFn({ method: "GET" }).handler(async () => {
@@ -74,6 +71,29 @@ function ProtectedErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
+/**
+ * The chat is the signed-in home, so the org's agent connection wraps the
+ * whole protected area: the sidebar thread list and the chat page share one
+ * `OrgAgent` socket.
+ */
+function ProtectedLayout() {
+  const organizationId = useActiveOrganizationId();
+  // `ensureOrg` guarantees an active org past the guard; the session query
+  // just resolves a tick later on first paint.
+  if (!organizationId) {
+    return null;
+  }
+  return (
+    <OrgConnection organizationId={organizationId}>
+      <Shell sidebar={<AppSidebar />}>
+        <ShellInset>
+          <Outlet />
+        </ShellInset>
+      </Shell>
+    </OrgConnection>
+  );
+}
+
 export const Route = createFileRoute("/_protected")({
   beforeLoad: async ({ location }) => {
     const result = await ensureOrg();
@@ -93,15 +113,6 @@ export const Route = createFileRoute("/_protected")({
 
     return { user: result.session.user };
   },
-  component: () => (
-    <Shell sidebar={<AppSidebar />}>
-      <ShellInset>
-        <Outlet />
-      </ShellInset>
-      <ShellFooter>
-        <ChatDockMount />
-      </ShellFooter>
-    </Shell>
-  ),
+  component: ProtectedLayout,
   errorComponent: ProtectedErrorComponent,
 });
