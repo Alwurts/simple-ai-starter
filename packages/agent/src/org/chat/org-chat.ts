@@ -101,6 +101,12 @@ export class OrgChat extends Think<Cloudflare.Env> {
     return organizationId;
   }
 
+  /**
+   * Capture the acting user id for tool execute / approve-resume. The
+   * security boundary is the Worker gate in `apps/web/src/server.ts` (session
+   * + active-org check before any `/agents/` route) — Think may stream the
+   * transcript before this runs, so onConnect is identification, not a gate.
+   */
   override async onConnect(
     connection: Connection,
     ctx: ConnectionContext
@@ -270,6 +276,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
    * and `contextOverflow` reactive + proactive (real-usage, mid-turn) with
    * this session's `onCompaction` function.
    */
+  @callable()
   async compactNow(): Promise<{ compacted: boolean }> {
     const result = await this.session.compact();
     // The session's `compact` change event re-syncs Think's transcript cache.
@@ -278,9 +285,9 @@ export class OrgChat extends Think<Cloudflare.Env> {
 
   /**
    * Parent-callable — `OrgAgent.searchChats` fans a query out to each
-   * registered chat through this method (dynamic-agent stubs expose plain
-   * child methods; no `@callable` needed, and `@callable` does not land for
-   * dynamic-agent methods anyway — see the `compactNow` note below).
+   * registered chat through this method. Deliberately NOT `@callable()`: it
+   * is a parent-side side effect, not something a browser should trigger
+   * directly (upstream directory pattern).
    *
    * Uses this chat's own Sessions FTS5 index (built lazily on first search,
    * text parts only) and trims each hit to a windowed snippet.
@@ -443,12 +450,3 @@ export class OrgChat extends Think<Cloudflare.Env> {
     };
   }
 }
-
-// Mirror Think: register dynamic-agent RPCs on the prototype after the class
-// body so `agent.call(...)` from the browser passes `_isCallable`. Think uses
-// the same `callable()(proto.method, void 0)` form (see think.js after the
-// class body).
-callable()(
-  OrgChat.prototype.compactNow,
-  undefined as unknown as ClassMethodDecoratorContext
-);
