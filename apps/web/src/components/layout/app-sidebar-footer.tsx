@@ -15,9 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/shadcn/dropdown-menu";
 import {
@@ -28,14 +25,7 @@ import {
 } from "@workspace/ui/components/shadcn/sidebar";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
-import {
-  AlertCircle,
-  ChevronsUpDown,
-  Languages,
-  LogOut,
-  Plus,
-} from "lucide-react";
-import { LanguageMenuItems } from "@/components/common/language-switcher";
+import { AlertCircle, ChevronsUpDown, LogOut, Plus } from "lucide-react";
 import { ThemeMenuItem } from "@/components/common/theme-toggle";
 
 function orgInitials(name: string | undefined) {
@@ -249,15 +239,6 @@ export function AppSidebarFooter() {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Languages className="size-4" />
-                Language
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <LanguageMenuItems />
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
             <ThemeMenuItem />
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>

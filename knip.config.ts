@@ -8,8 +8,8 @@ import type { KnipConfig } from "knip";
 //   exports / scripts. Prefer deleting redundant entries over listing everything.
 // - `!` suffix = follow imports but don't check that file's own exports.
 // - `ignoreDependencies` documents deps used through channels static analysis
-//   can't see (CSS @import/@plugin, tsconfig ambient include, inlang project
-//   plugins, peer-resolution). Each entry needs a one-line reason.
+//   can't see (CSS @import/@plugin, tsconfig ambient include, peer-resolution).
+//   Each entry needs a one-line reason.
 const config: KnipConfig = {
   workspaces: {
     "apps/web": {
@@ -64,14 +64,6 @@ const config: KnipConfig = {
     },
     "packages/env": {
       project: ["src/**/*.ts"],
-    },
-    "packages/i18n": {
-      project: ["src/**/*.ts", "project.inlang/**"],
-      ignoreDependencies: [
-        // Loaded by project.inlang settings, not JS imports.
-        "@inlang/plugin-m-function-matcher",
-        "@inlang/plugin-message-format",
-      ],
     },
     "packages/ui": {
       entry: ["src/**/*.tsx", "src/**/*.ts"],

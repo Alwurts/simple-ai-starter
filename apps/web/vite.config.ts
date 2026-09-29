@@ -1,5 +1,4 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
-import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
@@ -37,14 +36,6 @@ const config = defineConfig({
     tailwindcss(),
     tanstackStart(),
     viteReact(),
-    paraglideVitePlugin({
-      project: "../../packages/i18n/project.inlang",
-      outdir: "./src/paraglide",
-      outputStructure: "message-modules",
-      cookieName: "PARAGLIDE_LOCALE",
-      strategy: ["cookie", "baseLocale"],
-      emitTsDeclarations: true,
-    }),
   ],
 });
 
