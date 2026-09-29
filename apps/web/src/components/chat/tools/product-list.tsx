@@ -39,9 +39,6 @@ function ProductRow({ productId }: { productId: string }) {
       <span className="min-w-0 flex-1 truncate font-medium">
         {product.name}
       </span>
-      <span className="shrink-0 text-muted-foreground text-xs">
-        {product.sku}
-      </span>
     </Link>
   );
 }

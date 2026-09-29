@@ -19,10 +19,10 @@ export const CURRENCY_MINOR_EXPONENT: Record<string, number> = {
 const DEFAULT_MINOR_EXPONENT = 2;
 
 /**
- * The base's default display currency, kept in one seam so a downstream app can
- * swap it (or thread a per-org currency) without hunting call sites. Transaction
- * documents carry their own `currencyCode`; this is only the fallback for
- * surfaces (e.g. catalog) that render an amount with no currency of its own yet.
+ * The template's default display currency, kept in one seam so a downstream app
+ * can swap it (or thread a per-org currency) without hunting call sites. This is
+ * the fallback for surfaces (e.g. the products example) that render an amount
+ * with no currency of its own yet.
  */
 export const DEFAULT_CURRENCY = "USD";
 
@@ -66,8 +66,8 @@ export function majorToMinor(major: number, currencyCode: string): MoneyMinor {
 }
 
 /**
- * Display formatting for money — routes all currency rendering through one seam
- * (operator-ux §3). Uses locale + currency code; never hardcode USD.
+ * Display formatting for money — routes all currency rendering through one seam.
+ * Uses locale + currency code; never hardcode USD.
  */
 export function formatMoneyMinor(
   amountMinor: MoneyMinor,

@@ -21,19 +21,15 @@ import {
   getColumnFilterValue,
   type TableFilterDefinition,
 } from "@workspace/ui/lib/table-filter-types";
-import { Package } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { CreateProductDialog } from "@/components/catalog/create-product-dialog";
 import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
-import { useSetPageContext } from "@/components/providers/page-context";
 import { type Product, useProducts } from "@/hooks/use-products";
 import { intlLocale } from "@/lib/locale";
-import { pickListPageView } from "@/lib/page-context-view";
 import {
   sortableHeaderAriaLabel,
   tableToolbarLabels,
 } from "@/lib/table-toolbar-labels";
-import { getUploadUrl } from "@/lib/uploads";
 import { m } from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_protected/catalog/")({
@@ -84,19 +80,6 @@ function CatalogPage() {
   const searchParams = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { data: productsResponse, isLoading } = useProducts(searchParams);
-
-  useSetPageContext(
-    useMemo(
-      () => ({
-        title: "Products",
-        description: "Product catalog",
-        entityType: "products",
-        entityId: "list",
-        view: pickListPageView(searchParams),
-      }),
-      [searchParams]
-    )
-  );
 
   const pagination = useMemo<PaginationState>(
     () => ({
@@ -190,30 +173,6 @@ function CatalogPage() {
 
   const columns: DataTableColumnDef<Product>[] = [
     {
-      id: "image",
-      meta: { label: m.catalog_column_image() },
-      enableSorting: false,
-      header: () => <span className="sr-only">{m.catalog_column_image()}</span>,
-      cell: ({ row }) => {
-        const imageUrl = row.original.imageUrl;
-        return (
-          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
-            {imageUrl ? (
-              <img
-                alt=""
-                className="size-full object-cover"
-                height={40}
-                src={getUploadUrl(imageUrl)}
-                width={40}
-              />
-            ) : (
-              <Package className="size-4 text-muted-foreground" />
-            )}
-          </div>
-        );
-      },
-    },
-    {
       id: "name",
       meta: { label: m.catalog_column_name() },
       accessorKey: "name",
@@ -235,18 +194,6 @@ function CatalogPage() {
           </Link>
         );
       },
-    },
-    {
-      id: "sku",
-      meta: { label: m.catalog_column_sku() },
-      accessorKey: "sku",
-      enableSorting: false,
-      header: ({ column }) => (
-        <SortableHeader
-          column={column}
-          getAriaLabel={sortableHeaderAriaLabel}
-        />
-      ),
     },
     {
       id: "price",

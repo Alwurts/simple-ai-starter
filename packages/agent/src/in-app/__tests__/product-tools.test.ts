@@ -124,7 +124,7 @@ describe("product tools — ToolResult contract", () => {
   it("update_product returns not_found without throwing on resolve miss", async () => {
     vi.mocked(resolveProductRef).mockRejectedValue(
       new DomainError(
-        'Product not found: no match for id, name, or sku "missing"',
+        'Product not found: no match for id or name "missing"',
         "not_found"
       )
     );
@@ -143,7 +143,7 @@ describe("product tools — ToolResult contract", () => {
 
     expect(result).toEqual({
       ok: false,
-      error: 'Product not found: no match for id, name, or sku "missing"',
+      error: 'Product not found: no match for id or name "missing"',
       code: "not_found",
     });
   });

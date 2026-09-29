@@ -4,7 +4,7 @@
 /**
  * ALW-305: vitest pool-workers exposes bindings on `env` from
  * `cloudflare:workers`. Extend ProvidedEnv so in-workerd tests type-check against
- * our production wrangler bindings (DB, R2_BUCKET).
+ * our production wrangler bindings (DB).
  *
  * Test-only fixture bindings (TEST_COUNTER) are NOT added here: they live in
  * wrangler.test.jsonc and are typed locally via src/workerd-test/test-env.ts,

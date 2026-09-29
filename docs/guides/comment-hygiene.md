@@ -32,20 +32,18 @@ not on every sibling file.
 
 ```ts
 // Bad — narrates the next line
-// Check if already reversed.
-const [existing] = await db.select(...).where(eq(payments.reversesPaymentId, paymentId));
+// Look up the product by id in this org.
+const product = await getProduct(id, orgId);
 
 // Good — the query + error message are self-describing; no comment needed
-const [existing] = await db.select(...).where(eq(payments.reversesPaymentId, paymentId));
-if (existing) {
-  throw new DomainError("Payment already reversed", "conflict");
+const product = await getProduct(id, orgId);
+if (!product) {
+  throw new DomainError(`Product not found: ${id}`, "not_found");
 }
 
-// Good — documents a race the types cannot express
-// 5. EXECUTE — one atomic batch. If a concurrent first-time request with
-//    the same idempotency key raced past the pre-check, the
-//    payments_org_idem_uniq UNIQUE constraint fires here; the catch handler
-//    re-reads and returns the existing payment instead of a raw 500 (F2).
+// Good — documents a platform quirk the types cannot express
+// Survive DO hibernation (onConnect does not re-run on wake).
+connection.setState({ userId });
 ```
 
 ```tsx
@@ -66,9 +64,10 @@ Linter directives stay, but **always with a reason** on the same line:
 ## Files of Interest
 
 - `AGENTS.md` — short Code standards bullets + link here
-- `packages/core/src/transaction/payments.ts` — batch assembler; keep race/idempotency comments, drop step banners
-- `packages/core/src/transaction/finalize.ts` — folio race + credit-limit ordering comments are keepers
+- `packages/core/src/catalog/products.ts` — org-scoped product queries/writes; keep the ref-resolution (ambiguity → `conflict`) rationale, drop step banners
+- `packages/agent/src/tool-parts/catalog/products.ts` — tool-piece naming/description contracts (keep)
 - `packages/agent/src/tools/guard.ts` — RBAC / mutation boundary (always keep)
-- `packages/agent/src/tools/transaction/payments.ts` — row-cap rationale (one copy for context safety)
+- `packages/agent/src/org/chat/org-chat.ts` — hibernation / WebSocket-ALS platform quirks (keep)
+- `apps/web/test/migration-safety.workerd.test.ts` — D1 FK-pragma invariant (ADR-007; always keep)
 - `apps/web/src/components/chat/window/chat-window.tsx` — ticket-linked framework rationale (keep)
 - Prior art: sfab ALW-338 / PR #362; starter ALW-334 / PRs #10–#11

@@ -1,11 +1,4 @@
-import {
-  FileText,
-  Home,
-  type LucideIcon,
-  Package,
-  Settings,
-  Users,
-} from "lucide-react";
+import { Home, type LucideIcon, Package, Settings } from "lucide-react";
 import { m } from "@/paraglide/messages.js";
 
 export interface PlatformNavigationItem {
@@ -19,8 +12,6 @@ export function getPlatformNavigationItems(): PlatformNavigationItem[] {
   return [
     { title: m.nav_home(), url: "/", icon: Home },
     { title: m.nav_catalog(), url: "/catalog", icon: Package },
-    { title: m.nav_entities(), url: "/entities", icon: Users },
-    { title: m.nav_documents(), url: "/documents", icon: FileText },
     { title: m.nav_settings(), url: "/settings", icon: Settings },
   ];
 }

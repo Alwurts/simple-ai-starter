@@ -24,13 +24,3 @@ export interface AgentToolsContext {
   userId: string;
   waitUntil: (promise: Promise<unknown>) => void;
 }
-
-export interface OrgPageContext {
-  page: string;
-  params: {
-    entityType?: string;
-    entityId?: string;
-    title?: string;
-    view?: Record<string, string | number | boolean>;
-  };
-}

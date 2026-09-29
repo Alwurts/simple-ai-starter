@@ -3,7 +3,7 @@
  *
  * Emits one JSON object per call to the Workers Logs console mirror. Downstream
  * consumers (dashboard filters, detectors) parse the same envelope. Console-first;
- * secondary sinks (D1 activity UI) are a separate concern (ALW-699).
+ * ops-only — this helper never writes to D1.
  *
  * @see docs/engineering/structured-logging.md
  */

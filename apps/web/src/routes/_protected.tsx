@@ -20,7 +20,6 @@ import { AlertCircle } from "lucide-react";
 import { m } from "@/paraglide/messages.js";
 import { ChatDockMount } from "../components/chat/dock/chat-dock-mount";
 import { AppSidebar } from "../components/layout/app-sidebar";
-import { PageContextProvider } from "../components/providers/page-context";
 
 const ensureOrg = createServerFn({ method: "GET" }).handler(async () => {
   const headers = getRequestHeaders();
@@ -95,16 +94,14 @@ export const Route = createFileRoute("/_protected")({
     return { user: result.session.user };
   },
   component: () => (
-    <PageContextProvider>
-      <Shell sidebar={<AppSidebar />}>
-        <ShellInset>
-          <Outlet />
-        </ShellInset>
-        <ShellFooter>
-          <ChatDockMount />
-        </ShellFooter>
-      </Shell>
-    </PageContextProvider>
+    <Shell sidebar={<AppSidebar />}>
+      <ShellInset>
+        <Outlet />
+      </ShellInset>
+      <ShellFooter>
+        <ChatDockMount />
+      </ShellFooter>
+    </Shell>
   ),
   errorComponent: ProtectedErrorComponent,
 });

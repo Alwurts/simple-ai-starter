@@ -17,7 +17,7 @@ const decoratorBabel = babel({
  * run:
  * - `node` — pure unit tests (money math, RBAC logic). Plain node environment,
  *   no bindings. Fast. Matches every `*.test.ts` that is NOT `*.workerd.test.ts`.
- * - `workers` — in-workerd tests via @cloudflare/vitest-pool-workers: the D1/R2
+ * - `workers` — in-workerd tests via @cloudflare/vitest-pool-workers: the D1
  *   API integration suite (SELF-based) and the DurableObject reference test.
  *   Runs against wrangler.test.jsonc (the test-only worker). Matches
  *   `*.workerd.test.ts`.

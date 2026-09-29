@@ -18,8 +18,8 @@ describe("getProducts", () => {
   });
 
   it("returns products for the org", async () => {
-    await seedProduct(orgId, { name: "Product A", sku: "SKU-A" });
-    await seedProduct(orgId, { name: "Product B", sku: "SKU-B" });
+    await seedProduct(orgId, { name: "Product A" });
+    await seedProduct(orgId, { name: "Product B" });
 
     const { getProducts } = await import("@workspace/core/catalog");
     const products = await getProducts(orgId);
@@ -71,11 +71,9 @@ describe("createProduct", () => {
     const { createProduct } = await import("@workspace/core/catalog");
     const result = await createProduct({
       orgId,
-      sku: "NEW-SKU",
       name: "New Product",
     });
     expect(result).toHaveLength(1);
-    expect(result[0].sku).toBe("NEW-SKU");
     expect(result[0].name).toBe("New Product");
     expect(result[0].organizationId).toBe(orgId);
   });
@@ -84,15 +82,12 @@ describe("createProduct", () => {
     const { createProduct } = await import("@workspace/core/catalog");
     const result = await createProduct({
       orgId,
-      sku: "FULL-SKU",
       name: "Full Product",
       description: "A description",
       price: 4999,
-      minStockLevel: 20,
     });
     expect(result[0].description).toBe("A description");
     expect(result[0].price).toBe(4999);
-    expect(result[0].minStockLevel).toBe(20);
   });
 });
 
@@ -175,27 +170,17 @@ describe("deleteProduct", () => {
 
 describe("resolveProductRef", () => {
   it("resolves by product id", async () => {
-    const seeded = await seedProduct(orgId, {
-      name: "By Id",
-      sku: "BY-ID",
-    });
+    const seeded = await seedProduct(orgId, { name: "By Id" });
     const { resolveProductRef } = await import("@workspace/core/catalog");
     const product = await resolveProductRef(orgId, seeded.id);
     expect(product.id).toBe(seeded.id);
   });
 
   it("resolves by exact product name", async () => {
-    await seedProduct(orgId, { name: "Widget Pro", sku: "WP-001" });
+    await seedProduct(orgId, { name: "Widget Pro" });
     const { resolveProductRef } = await import("@workspace/core/catalog");
     const product = await resolveProductRef(orgId, "Widget Pro");
     expect(product.name).toBe("Widget Pro");
-  });
-
-  it("resolves by exact sku", async () => {
-    await seedProduct(orgId, { name: "Gadget", sku: "GAD-99" });
-    const { resolveProductRef } = await import("@workspace/core/catalog");
-    const product = await resolveProductRef(orgId, "GAD-99");
-    expect(product.sku).toBe("GAD-99");
   });
 
   it("throws not_found when ref matches nothing", async () => {
@@ -208,19 +193,10 @@ describe("resolveProductRef", () => {
   });
 
   it("throws conflict when name is ambiguous", async () => {
-    await seedProduct(orgId, { name: "Duplicate", sku: "DUP-A" });
-    await seedProduct(orgId, { name: "Duplicate", sku: "DUP-B" });
+    await seedProduct(orgId, { name: "Duplicate" });
+    await seedProduct(orgId, { name: "Duplicate" });
     const { resolveProductRef } = await import("@workspace/core/catalog");
     await expect(resolveProductRef(orgId, "Duplicate")).rejects.toMatchObject({
-      code: "conflict",
-    });
-  });
-
-  it("throws conflict when sku is ambiguous", async () => {
-    await seedProduct(orgId, { name: "Item A", sku: "SAME-SKU" });
-    await seedProduct(orgId, { name: "Item B", sku: "SAME-SKU" });
-    const { resolveProductRef } = await import("@workspace/core/catalog");
-    await expect(resolveProductRef(orgId, "SAME-SKU")).rejects.toMatchObject({
       code: "conflict",
     });
   });

@@ -30,7 +30,7 @@ Run from the **monorepo root** (not inside a package):
 
 ## Conventions (the short version)
 
-- **Live IA is the truth:** Catalog / Entities / Documents (`apps/web/src/components/layout/platform-navigation.ts`); `docs/architecture/operator-ux.md` is a candidate pack note, not the shell.
+- **Live IA is the truth:** Catalog / Settings (`apps/web/src/components/layout/platform-navigation.ts`).
 - **Layer-sliced, feature-keyed.** A capability is the same key `<cap>` repeated
   across layers (`db` → `contract` → `core` → surfaces → `ui`/`components`). Find
   one slice, you know where the other five live. → [`docs/architecture.md`](docs/architecture.md)
@@ -40,7 +40,7 @@ Run from the **monorepo root** (not inside a package):
 - **Naming = role over technology** (`db` not `db-d1`, `contract` not `types`,
   `env` not `cloudflare-env`); scope stays `@workspace/*`.
 - **Timestamps are ISO `text`** for domain tables; money columns are integer
-  minor units (ADR-006).
+  minor units (cents).
 - **Boundaries are mechanical** — the `package.json` dep graph + the
   `cloudflare:workers`/server-only import guard make illegal cross-layer imports
   fail on their own. Don't add a wiring file; `import { db } from "@workspace/db"`.
@@ -50,8 +50,9 @@ Run from the **monorepo root** (not inside a package):
 ## Where things live (index)
 
 - **What the system is** → [`docs/architecture.md`](docs/architecture.md) — the
-  layer map + a worked `customer` slice; the **transaction hub** every commercial
-  flow grafts onto → [`docs/architecture/transaction-core.md`](docs/architecture/transaction-core.md).
+  layer map + a worked `products` slice; the org agent (five product tools,
+  memory, shared workspace, `delegate` sub-agent, approvals, compaction) →
+  [`docs/guides/writing-agent-tools.md`](docs/guides/writing-agent-tools.md).
 - **Why a choice was made** → [`docs/decisions/`](docs/decisions/) — ADRs, under a
   strict significance bar ([template](docs/decisions/template.md)).
 - **How to do/extend something here** → [`docs/guides/`](docs/guides/).

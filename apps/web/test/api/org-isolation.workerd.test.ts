@@ -44,7 +44,6 @@ describe("Product org isolation", () => {
   it("Org B cannot list Org A's products", async () => {
     await post(PRODUCTS_API, orgA.cookie, {
       name: "Org A Product",
-      sku: "OA-001",
     });
 
     const res = await get(PRODUCTS_API, orgB.cookie);
@@ -55,7 +54,6 @@ describe("Product org isolation", () => {
   it("Org B cannot read Org A's product by ID", async () => {
     const createRes = await post(PRODUCTS_API, orgA.cookie, {
       name: "Secret Product",
-      sku: "SP-001",
     });
     const created = (await createRes.json()) as { id: string };
 
@@ -66,7 +64,6 @@ describe("Product org isolation", () => {
   it("Org B cannot update Org A's product", async () => {
     const createRes = await post(PRODUCTS_API, orgA.cookie, {
       name: "Original",
-      sku: "UP-001",
     });
     const created = (await createRes.json()) as { id: string };
 
@@ -82,7 +79,6 @@ describe("Product org isolation", () => {
   it("Org B cannot delete Org A's product", async () => {
     const createRes = await post(PRODUCTS_API, orgA.cookie, {
       name: "Protected",
-      sku: "DEL-001",
     });
     const created = (await createRes.json()) as { id: string };
 
@@ -97,7 +93,6 @@ describe("Search org isolation", () => {
   it("Org B cannot find Org A's products via search", async () => {
     await post(PRODUCTS_API, orgA.cookie, {
       name: "Searchable Widget",
-      sku: "SW-001",
     });
 
     const res = await get(`${SEARCH_API}?q=Searchable`, orgB.cookie);

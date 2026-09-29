@@ -8,5 +8,4 @@ export type {
   AgentToolsContext,
   ChatSummary,
   OrgMemorySnapshot,
-  OrgPageContext,
 } from "./types";

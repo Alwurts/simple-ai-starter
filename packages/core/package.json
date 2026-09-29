@@ -4,7 +4,6 @@
   "private": true,
   "exports": {
     "./catalog": "./src/catalog/index.ts",
-    "./transaction": "./src/transaction/index.ts",
     "./*": "./src/*.ts"
   },
   "scripts": {
@@ -13,8 +12,7 @@
   "dependencies": {
     "@workspace/contract": "workspace:*",
     "@workspace/db": "workspace:*",
-    "drizzle-orm": "^0.44.7",
-    "nanoid": "^5.1.16"
+    "drizzle-orm": "^0.44.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",

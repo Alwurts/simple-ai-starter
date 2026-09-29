@@ -6,7 +6,6 @@ import { Button } from "@workspace/ui/components/shadcn/button";
 import {
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -20,7 +19,6 @@ import {
 import { Controller, useForm } from "react-hook-form";
 import type { z } from "zod";
 import { m } from "@/paraglide/messages.js";
-import { ImageUpload } from "./image-upload";
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 
@@ -43,11 +41,8 @@ export function ProductForm({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: defaultValues?.name ?? "",
-      sku: defaultValues?.sku ?? "",
       price: defaultValues?.price ?? 0,
-      minStockLevel: defaultValues?.minStockLevel ?? 5,
       description: defaultValues?.description ?? null,
-      imageUrl: defaultValues?.imageUrl ?? null,
     },
   });
 
@@ -59,136 +54,60 @@ export function ProductForm({
       <FieldGroup className="gap-4">
         <Controller
           control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel className="text-muted-foreground">
-                {m.catalog_product_image()}
+          name="name"
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel
+                className="text-muted-foreground"
+                htmlFor={field.name}
+              >
+                {m.common_name()}
               </FieldLabel>
-              <ImageUpload onChange={field.onChange} value={field.value} />
+              <FieldContent>
+                <Input
+                  {...field}
+                  aria-invalid={fieldState.invalid}
+                  id={field.name}
+                  placeholder={m.catalog_name_placeholder()}
+                />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </FieldContent>
             </Field>
           )}
         />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Controller
-            control={form.control}
-            name="name"
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  className="text-muted-foreground"
-                  htmlFor={field.name}
-                >
-                  {m.common_name()}
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    aria-invalid={fieldState.invalid}
-                    id={field.name}
-                    placeholder={m.catalog_name_placeholder()}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </FieldContent>
-              </Field>
-            )}
-          />
-
-          <Controller
-            control={form.control}
-            name="sku"
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  className="text-muted-foreground"
-                  htmlFor={field.name}
-                >
-                  {m.catalog_column_sku()}
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    aria-invalid={fieldState.invalid}
-                    id={field.name}
-                    placeholder={m.catalog_sku_placeholder()}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </FieldContent>
-              </Field>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Controller
-            control={form.control}
-            name="price"
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  className="text-muted-foreground"
-                  htmlFor={field.name}
-                >
-                  {m.catalog_column_price()}
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    aria-invalid={fieldState.invalid}
-                    id={field.name}
-                    onChange={(e) =>
-                      field.onChange(Number.parseFloat(e.target.value))
-                    }
-                    step="0.01"
-                    type="number"
-                    value={formatMajorInputValue(field.value, DEFAULT_CURRENCY)}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </FieldContent>
-              </Field>
-            )}
-          />
-
-          <Controller
-            control={form.control}
-            name="minStockLevel"
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  className="text-muted-foreground"
-                  htmlFor={field.name}
-                >
-                  {m.catalog_low_stock()}
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    aria-invalid={fieldState.invalid}
-                    id={field.name}
-                    onChange={(e) =>
-                      field.onChange(Number.parseInt(e.target.value, 10))
-                    }
-                    type="number"
-                    value={field.value}
-                  />
-                  <FieldDescription>
-                    {m.catalog_low_stock_hint()}
-                  </FieldDescription>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </FieldContent>
-              </Field>
-            )}
-          />
-        </div>
+        <Controller
+          control={form.control}
+          name="price"
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel
+                className="text-muted-foreground"
+                htmlFor={field.name}
+              >
+                {m.catalog_column_price()}
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  aria-invalid={fieldState.invalid}
+                  id={field.name}
+                  onChange={(e) =>
+                    field.onChange(Number.parseFloat(e.target.value))
+                  }
+                  step="0.01"
+                  type="number"
+                  value={formatMajorInputValue(field.value, DEFAULT_CURRENCY)}
+                />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </FieldContent>
+            </Field>
+          )}
+        />
 
         <Controller
           control={form.control}

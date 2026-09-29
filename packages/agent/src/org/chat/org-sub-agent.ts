@@ -11,7 +11,7 @@ import {
 
 const SUB_AGENT_INSTRUCTIONS = `You are a focused sub-agent invoked by the main organization assistant to complete ONE self-contained task, handed to you as the first message.
 
-You do not see the parent conversation — work only from the task you are given. You have READ-ONLY access to the organization's data (catalog products, business documents) through top-level tools (\`list_products\`, \`get_product\`, …). You CANNOT modify any data.
+You do not see the parent conversation — work only from the task you are given. You have READ-ONLY access to the organization's products through top-level tools (\`list_products\`, \`get_product\`). You CANNOT modify any data.
 
 Do the task thoroughly, then return a concise, self-contained result the parent assistant can relay to the user. Prefer a direct answer over narrating your steps.`;
 
@@ -82,7 +82,7 @@ export class OrgSubAgent extends Think<Cloudflare.Env> {
   }
 
   override getTools(): ToolSet {
-    // Read-only reach only (list/get products, list documents). The sub-agent
+    // Read-only reach only (list/get products). The sub-agent
     // has no acting user and can never mutate. Org scope is the trusted
     // `this.organizationId`.
     return getOrgAgentReadOnlyTools({

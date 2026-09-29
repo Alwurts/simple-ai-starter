@@ -5,7 +5,7 @@ const ONBOARDING_URL_PATTERN = /onboarding/;
 
 test.describe("auth guards", () => {
   test("unauthenticated user is redirected to login", async ({ page }) => {
-    await page.goto("/inventory");
+    await page.goto("/catalog");
     await expect(page).toHaveURL(LOGIN_URL_PATTERN, { timeout: 10_000 });
   });
 

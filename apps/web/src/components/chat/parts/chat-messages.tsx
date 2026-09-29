@@ -49,7 +49,6 @@ import type {
   OrgChatMessage,
   OutgoingMessage,
 } from "@/components/chat/dock/chat-tabs-store";
-import { MessageContextBadge } from "@/components/chat/message-context-badge";
 import { ChatMessageActions } from "@/components/chat/parts/message-actions";
 import { m } from "@/paraglide/messages.js";
 import { ChatErrorMessage } from "./chat-error-message";
@@ -122,18 +121,13 @@ function ChatMessage({
     (part): part is FileUIPart & { type: "file" } => part.type === "file"
   );
   const otherParts = message.parts.filter((part) => part.type !== "file");
-  const pageContext =
-    message.role === "user" ? message.metadata?.pageContext : undefined;
   const align = message.role === "user" ? "end" : "start";
 
   return (
     <Message align={align}>
       <MessageContent>
-        {pageContext || fileParts.length > 0 ? (
+        {fileParts.length > 0 ? (
           <ChatTokenGroup>
-            {pageContext ? (
-              <MessageContextBadge pageContext={pageContext} />
-            ) : null}
             {fileParts.map((part, partIndex) => (
               <FileToken key={`${message.id}-file-${partIndex}`} part={part} />
             ))}

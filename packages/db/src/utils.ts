@@ -31,9 +31,8 @@ export const timestamps = {
   updatedAt,
 };
 
-// Integer minor units — the smallest currency unit (cents, centavos). Replaces
-// the float `numeric → number` placeholder per ADR-006; floats never touch money.
-// Math lives in `@workspace/core/money`; formatting in `@workspace/ui/lib/money`.
+// Integer minor units — the smallest currency unit (cents, centavos); floats
+// never touch money. Formatting lives in `@workspace/ui/lib/money`.
 export const moneyMinor = customType<{ data: number; driverData: number }>({
   dataType() {
     return "integer";

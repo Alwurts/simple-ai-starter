@@ -11,15 +11,15 @@ beforeEach(async () => {
 
 describe("searchCatalog", () => {
   it("returns empty results for unmatched query", async () => {
-    await seedProduct(orgId, { name: "Widget", sku: "W-001" });
+    await seedProduct(orgId, { name: "Widget" });
     const { searchCatalog } = await import("@workspace/core/catalog");
     const results = await searchCatalog(orgId, "xyznonexistent");
     expect(results).toHaveLength(0);
   });
 
   it("finds products by name", async () => {
-    await seedProduct(orgId, { name: "Blue Widget", sku: "BW-001" });
-    await seedProduct(orgId, { name: "Red Gadget", sku: "RG-001" });
+    await seedProduct(orgId, { name: "Blue Widget" });
+    await seedProduct(orgId, { name: "Red Gadget" });
 
     const { searchCatalog } = await import("@workspace/core/catalog");
     const results = await searchCatalog(orgId, "Widget");
@@ -28,19 +28,22 @@ describe("searchCatalog", () => {
     expect(results[0].metadata.type).toBe("product");
   });
 
-  it("finds products by SKU", async () => {
-    await seedProduct(orgId, { name: "Some Product", sku: "UNIQUE-SKU-99" });
+  it("finds products by description", async () => {
+    await seedProduct(orgId, {
+      name: "Some Product",
+      description: "UNIQUE-DESC phrase",
+    });
 
     const { searchCatalog } = await import("@workspace/core/catalog");
-    const results = await searchCatalog(orgId, "UNIQUE-SKU");
+    const results = await searchCatalog(orgId, "UNIQUE-DESC");
     expect(results).toHaveLength(1);
-    expect(results[0].metadata.sku).toBe("UNIQUE-SKU-99");
+    expect(results[0].metadata.description).toBe("UNIQUE-DESC phrase");
   });
 
   it("does not return products from other orgs", async () => {
     const otherUser = await seedUser();
     const otherOrg = await seedOrganization(otherUser.id);
-    await seedProduct(otherOrg.id, { name: "Secret Widget", sku: "SW-001" });
+    await seedProduct(otherOrg.id, { name: "Secret Widget" });
 
     const { searchCatalog } = await import("@workspace/core/catalog");
     const results = await searchCatalog(orgId, "Secret");
@@ -51,7 +54,6 @@ describe("searchCatalog", () => {
     for (let i = 0; i < 12; i++) {
       await seedProduct(orgId, {
         name: `Bulk Product ${i}`,
-        sku: `BP-${i}`,
       });
     }
 
@@ -61,7 +63,7 @@ describe("searchCatalog", () => {
   });
 
   it("performs case-insensitive search", async () => {
-    await seedProduct(orgId, { name: "UPPERCASE WIDGET", sku: "UW-001" });
+    await seedProduct(orgId, { name: "UPPERCASE WIDGET" });
 
     const { searchCatalog } = await import("@workspace/core/catalog");
     const results = await searchCatalog(orgId, "uppercase");

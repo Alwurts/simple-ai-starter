@@ -12,22 +12,14 @@ import {
 } from "@workspace/ui/components/shadcn/command";
 import {
   CornerDownLeft,
-  FileText,
   Loader2,
   type LucideIcon,
   Package,
-  Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import {
-  documentFolioLabel,
-  documentTypeLabel,
-} from "@/components/documents/document-type";
 import { getPlatformNavigationItems } from "@/components/layout/platform-navigation";
 import { useCatalogSearch } from "@/hooks/use-catalog-search";
-import { useDocumentsList } from "@/hooks/use-documents";
-import { useEntities } from "@/hooks/use-entities";
 import { m } from "@/paraglide/messages.js";
 
 const MIN_QUERY_LENGTH = 2;
@@ -50,31 +42,8 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
   const canSearchRecords = open && trimmedDebounced.length >= MIN_QUERY_LENGTH;
 
   const catalogSearch = useCatalogSearch(trimmedDebounced, canSearchRecords);
-  const documentsSearch = useDocumentsList(
-    {
-      page: 1,
-      pageSize: 8,
-      sortOrder: "desc",
-      search: trimmedDebounced,
-    },
-    { enabled: canSearchRecords }
-  );
-  const entitiesSearch = useEntities(
-    {
-      page: 1,
-      pageSize: 8,
-      sortOrder: "asc",
-      sortBy: "name",
-      search: trimmedDebounced,
-    },
-    { enabled: canSearchRecords }
-  );
 
-  const isSearching =
-    canSearchRecords &&
-    (catalogSearch.isFetching ||
-      documentsSearch.isFetching ||
-      entitiesSearch.isFetching);
+  const isSearching = canSearchRecords && catalogSearch.isFetching;
 
   const pages = useMemo(() => {
     const platformNavigationItems = getPlatformNavigationItems();
@@ -90,14 +59,8 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
   }, [query]);
 
   const products = canSearchRecords ? (catalogSearch.data?.results ?? []) : [];
-  const documents = canSearchRecords ? (documentsSearch.data?.data ?? []) : [];
-  const entities = canSearchRecords ? (entitiesSearch.data?.data ?? []) : [];
 
-  const hasResults =
-    pages.length > 0 ||
-    products.length > 0 ||
-    documents.length > 0 ||
-    entities.length > 0;
+  const hasResults = pages.length > 0 || products.length > 0;
 
   const onQueryChange = useCallback(
     (value: string) => {
@@ -204,41 +167,9 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
                 icon={Package}
                 key={product.metadata.id}
                 onSelect={() => navigateTo(product.path)}
-                subtitle={product.metadata.sku || product.snippet}
+                subtitle={product.metadata.description || product.snippet}
                 title={product.metadata.title}
                 value={`product:${product.metadata.id}`}
-              />
-            ))}
-          </CommandGroup>
-        )}
-
-        {documents.length > 0 && (
-          <CommandGroup heading={m.search_group_documents()}>
-            {documents.map((doc) => (
-              <PaletteItem
-                badge={documentTypeLabel(doc.type)}
-                icon={FileText}
-                key={doc.id}
-                onSelect={() => navigateTo(`/documents/${doc.id}`)}
-                subtitle={doc.entityName ?? m.search_walk_in()}
-                title={`${documentTypeLabel(doc.type)} ${documentFolioLabel(doc)}`}
-                value={`document:${doc.id}`}
-              />
-            ))}
-          </CommandGroup>
-        )}
-
-        {entities.length > 0 && (
-          <CommandGroup heading={m.search_group_entities()}>
-            {entities.map((entity) => (
-              <PaletteItem
-                badge={entity.type}
-                icon={Users}
-                key={entity.id}
-                onSelect={() => navigateTo(`/entities/${entity.id}`)}
-                subtitle={entity.type}
-                title={entity.name}
-                value={`entity:${entity.id}`}
               />
             ))}
           </CommandGroup>

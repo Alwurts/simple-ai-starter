@@ -5,7 +5,7 @@ import { Button } from "@workspace/ui/components/shadcn/button";
 interface ResourceNotFoundProps {
   title: string;
   backLabel: string;
-  to: "/catalog" | "/entities" | "/documents";
+  to: "/catalog";
 }
 
 export function ResourceNotFound({

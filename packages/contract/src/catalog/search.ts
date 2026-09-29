@@ -5,7 +5,7 @@ export const searchMetadataSchema = z.discriminatedUnion("type", [
     type: z.literal("product"),
     id: z.string(),
     title: z.string(),
-    sku: z.string(),
+    description: z.string().nullable(),
   }),
 ]);
 

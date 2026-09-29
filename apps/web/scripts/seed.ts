@@ -1,10 +1,10 @@
 /**
- * Local first-run seed (ALW-332).
+ * Local first-run seed.
  *
  * Inserts a demo user + organization (owner membership + a credential account)
- * into the **local** D1 so a fresh clone can sign in immediately instead of
- * facing an empty database. Idempotent: fixed IDs + `INSERT OR IGNORE` make
- * re-runs a no-op.
+ * and a few example products into the **local** D1 so a fresh clone can sign in
+ * and try the app immediately instead of facing an empty database. Idempotent:
+ * fixed IDs + `INSERT OR IGNORE` make re-runs a no-op.
  *
  * Runs in plain Node (not the Workers runtime), so it reaches the local D1 via
  * `getPlatformProxy` — the same Miniflare-backed SQLite that `pnpm db:migrate`
@@ -34,117 +34,43 @@ const DEMO_ORG_ID = "seed-org-demo";
 const DEMO_MEMBER_ID = "seed-member-demo";
 const DEMO_ACCOUNT_ID = "seed-account-demo";
 
-const DEMO_EMAIL = "demo@sfab.dev";
+const DEMO_EMAIL = "demo@simple-ai.dev";
 const DEMO_PASSWORD = "demo1234";
 const DEMO_NAME = "Demo User";
 const DEMO_ORG_NAME = "Demo Org";
 const DEMO_ORG_SLUG = "demo-org";
 
-const DEMO_ENTITIES = [
-  {
-    id: "seed-ent-acme",
-    name: "Northside Retail",
-    type: "customer",
-  },
-  {
-    id: "seed-ent-northwind",
-    name: "Northwind Supplies",
-    type: "supplier",
-  },
-  {
-    id: "seed-ent-contoso",
-    name: "Contoso Cafe",
-    type: "customer",
-  },
-] as const;
-
+// Prices are integer minor units (cents).
 const DEMO_PRODUCTS = [
   {
     id: "seed-prod-widget",
     name: "Artisan Widget",
-    sku: "WDG-001",
+    description: "A hand-finished widget for everyday use.",
     price: 1999,
-    cost: 800,
   },
   {
     id: "seed-prod-mug",
     name: "Ceramic Mug",
-    sku: "MUG-100",
+    description: "A 350ml stoneware mug.",
     price: 1299,
-    cost: 400,
   },
   {
     id: "seed-prod-syrup",
     name: "Espresso Syrup",
-    sku: "SYR-ESP",
+    description: "Vanilla syrup for espresso drinks.",
     price: 899,
-    cost: 250,
-  },
-] as const;
-
-const DEMO_LINE_ITEMS = [
-  {
-    id: "seed-line-quote-acme-1",
-    documentId: "seed-doc-quote-acme",
-    productId: "seed-prod-widget",
-    description: "Artisan Widget",
-    quantity: 2,
-    unitPrice: 1999,
-    taxRate: 0,
-    taxableBase: 3998,
-    taxAmount: 0,
   },
   {
-    id: "seed-line-invoice-contoso-1",
-    documentId: "seed-doc-invoice-contoso",
-    productId: "seed-prod-mug",
-    description: "Ceramic Mug",
-    quantity: 10,
-    unitPrice: 1250,
-    taxRate: 0,
-    taxableBase: 12_500,
-    taxAmount: 0,
-  },
-] as const;
-
-const DEMO_DOCUMENTS = [
-  {
-    id: "seed-doc-quote-acme",
-    type: "quote",
-    family: "commercial",
-    direction: "sales",
-    status: "draft",
-    entityId: "seed-ent-acme",
-    entityName: "Northside Retail",
-    series: "Q",
-    folio: 1001,
-    subtotal: 3998,
-    taxTotal: 0,
-    total: 3998,
-    amountPaid: 0,
-    balanceDue: 0,
-    paymentStatus: "unpaid",
-    issuedAt: null as string | null,
-    postingDate: null as string | null,
+    id: "seed-prod-kettle",
+    name: "Gooseneck Kettle",
+    description: "Precision-pour kettle for brewing.",
+    price: 5999,
   },
   {
-    id: "seed-doc-invoice-contoso",
-    type: "invoice",
-    family: "fiscal",
-    direction: "sales",
-    status: "finalized",
-    entityId: "seed-ent-contoso",
-    entityName: "Contoso Cafe",
-    series: "INV",
-    folio: 2042,
-    subtotal: 12_500,
-    taxTotal: 0,
-    total: 12_500,
-    amountPaid: 0,
-    balanceDue: 12_500,
-    paymentStatus: "unpaid",
-    issuedAt: null as string | null,
-    postingDate: null as string | null,
+    id: "seed-prod-scale",
+    name: "Coffee Scale",
+    description: "0.1g-precision scale with a timer.",
+    price: 3450,
   },
 ] as const;
 
@@ -189,84 +115,17 @@ async function main() {
           "INSERT OR IGNORE INTO member (id, organization_id, user_id, role, created_at) VALUES (?, ?, ?, ?, ?)"
         )
         .bind(DEMO_MEMBER_ID, DEMO_ORG_ID, DEMO_USER_ID, "owner", now),
-      ...DEMO_ENTITIES.map((entity) =>
-        db
-          .prepare(
-            "INSERT OR IGNORE INTO entities (id, organization_id, name, type, balance, credit_balance, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 0, ?, ?)"
-          )
-          .bind(
-            entity.id,
-            DEMO_ORG_ID,
-            entity.name,
-            entity.type,
-            nowIso,
-            nowIso
-          )
-      ),
       ...DEMO_PRODUCTS.map((product) =>
         db
           .prepare(
-            "INSERT OR IGNORE INTO products (id, organization_id, sku, name, price, cost, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT OR IGNORE INTO products (id, organization_id, name, description, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
           )
           .bind(
             product.id,
             DEMO_ORG_ID,
-            product.sku,
             product.name,
+            product.description,
             product.price,
-            product.cost,
-            nowIso,
-            nowIso
-          )
-      ),
-      ...DEMO_DOCUMENTS.map((doc) => {
-        const issuedAt =
-          doc.issuedAt ?? (doc.status === "finalized" ? nowIso : null);
-        const postingDate =
-          doc.postingDate ?? (doc.status === "finalized" ? nowIso : null);
-        return db
-          .prepare(
-            "INSERT OR IGNORE INTO documents (id, organization_id, type, family, direction, status, entity_id, entity_name, currency_code, subtotal, discount_total, tax_total, total, amount_paid, balance_due, payment_status, series, folio, issued_at, posting_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'USD', ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-          )
-          .bind(
-            doc.id,
-            DEMO_ORG_ID,
-            doc.type,
-            doc.family,
-            doc.direction,
-            doc.status,
-            doc.entityId,
-            doc.entityName,
-            doc.subtotal,
-            doc.taxTotal,
-            doc.total,
-            doc.amountPaid,
-            doc.balanceDue,
-            doc.paymentStatus,
-            doc.series,
-            doc.folio,
-            issuedAt,
-            postingDate,
-            nowIso,
-            nowIso
-          );
-      }),
-      ...DEMO_LINE_ITEMS.map((line) =>
-        db
-          .prepare(
-            "INSERT OR IGNORE INTO line_items (id, organization_id, document_id, product_id, description, quantity, unit_price, discount, tax_rate, tax_mode, tax_amount, taxable_base, fulfillment_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'exclusive', ?, ?, 'none', ?, ?)"
-          )
-          .bind(
-            line.id,
-            DEMO_ORG_ID,
-            line.documentId,
-            line.productId,
-            line.description,
-            line.quantity,
-            line.unitPrice,
-            line.taxRate,
-            line.taxAmount,
-            line.taxableBase,
             nowIso,
             nowIso
           )

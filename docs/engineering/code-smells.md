@@ -61,9 +61,7 @@ in lockstep.
 `no-use-layout-effect`) on the call site.
 
 **Fixed (ALW-695).** Dropped prop→local sync effects in favor of derive /
-event / render-time adjust — e.g. page-context pin snapshot in the pin
-handler (`apps/web/src/components/chat/parts/chat-input.tsx:287`), search
-debounce from `onValueChange`
+event / render-time adjust — e.g. search debounce from `onValueChange`
 (`apps/web/src/components/search/search-command.tsx:102`), streaming duration
 from the `isStreaming` edge
 (`packages/ui/src/components/ai-elements/reasoning.tsx:116`).

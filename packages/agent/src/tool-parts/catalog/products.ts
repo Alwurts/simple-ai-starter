@@ -17,11 +17,12 @@ import type { ToolContext } from "../context";
 
 const productRefSchema = z
   .string()
-  .describe("Product id (ULID), or exact product name, or exact SKU");
+  .describe("Product id (ULID), or exact product name");
 
 export const listProductsName = "list_products";
 
-export const listProductsDescription = "List all catalog products.";
+export const listProductsDescription =
+  "List all of this organization's products.";
 
 export const listProductsInputSchema = z.object({});
 
@@ -65,7 +66,8 @@ export async function createProductExecute(
 
 export const updateProductName = "update_product";
 
-export const updateProductDescription = "Update an existing product.";
+export const updateProductDescription =
+  "Update an existing product. Requires explicit user approval.";
 
 export const updateProductInputSchema = z.object({
   id: productRefSchema,

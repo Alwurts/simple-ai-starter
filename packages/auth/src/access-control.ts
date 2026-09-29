@@ -1,8 +1,7 @@
 /**
  * Role-based access control (RBAC) spine — the single `can(action, ctx)` seam.
  *
- * Design (locked with the owner, 2026-06-20; see
- * `docs/architecture/operator-ux.md` §6):
+ * Design:
  * - **Role-rank, not a fine-grained matrix.** `owner > admin > operator`. The
  *   rank is expressed by *which actions each role's statement list contains*, so
  *   there is no parallel hand-rolled engine — we configure better-auth's
@@ -13,13 +12,9 @@
  * - **`dynamicAccessControl` stays OFF** (the plugin default). Orgs assign people
  *   to these fixed roles; they cannot invent roles at runtime.
  * - **Single seam.** Every gate routes through {@link can} so call sites read
- *   `can("payment:reverse", ctx)`, never `role === "admin"`. `can` is built on
+ *   `can("catalog:write", ctx)`, never `role === "admin"`. `can` is built on
  *   the role's network-free `authorize()` so the *same* function works on the
  *   server (Hono/core) and the client (UI show/disable/explain).
- *
- * The `credit:bypass`, `payment:reverse`, and `document:void` actions are
- * defined here but have no live call site yet — they are consumed by the
- * Transaction Core surfaces (ALW-299), which this spine blocks.
  */
 import { createAccessControl } from "better-auth/plugins/access";
 import {
@@ -36,14 +31,8 @@ import {
  */
 export const statement = {
   ...defaultStatements,
-  /** Catalog writes (create, update products). Low-stakes. */
+  /** Catalog writes (create, update, delete products). Low-stakes. */
   catalog: ["write"],
-  /** Bypass an over-limit fiado sale ("Acepto/Continuar"). Admin+ only. */
-  credit: ["bypass"],
-  /** Reverse a finalized payment. Admin+ only. */
-  payment: ["reverse"],
-  /** Create/finalize documents (operator+) and void them (admin+ only). */
-  document: ["write", "void"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -51,30 +40,23 @@ export const ac = createAccessControl(statement);
 /**
  * **operator** — better-auth's `member` baseline (no org/member writes) plus
  * low-stakes catalog edits. The role key MUST stay `member`: it is the value
- * stored in `member.role`. "operador" is a display label only.
+ * stored in `member.role`. "Operator" is a display label only.
  */
 export const member = ac.newRole({
   ...memberAc.statements,
   catalog: ["write"],
-  document: ["write"],
 });
 
-/** **admin** — member management + org settings + the sensitive money/credit gates. */
+/** **admin** — member management + org settings + catalog writes. */
 export const admin = ac.newRole({
   ...adminAc.statements,
   catalog: ["write"],
-  credit: ["bypass"],
-  payment: ["reverse"],
-  document: ["write", "void"],
 });
 
 /** **owner** — everything admin can do, plus org deletion (from `ownerAc`). */
 export const owner = ac.newRole({
   ...ownerAc.statements,
   catalog: ["write"],
-  credit: ["bypass"],
-  payment: ["reverse"],
-  document: ["write", "void"],
 });
 
 /**
@@ -91,16 +73,8 @@ export type RoleName = keyof typeof roles;
  * touching call sites.
  */
 export const ACTION_PERMISSIONS = {
-  /** Create/update products. Operator+ (low-stakes). */
+  /** Create/update/delete products. Operator+ (low-stakes). */
   "catalog:write": { catalog: ["write"] },
-  /** Create/finalize documents. Operator+. */
-  "document:write": { document: ["write"] },
-  /** Bypass an over-limit fiado sale. Admin+. (Wired by Transaction Core / ALW-299.) */
-  "credit:bypass": { credit: ["bypass"] },
-  /** Reverse a finalized payment. Admin+. (Wired by Transaction Core / ALW-299.) */
-  "payment:reverse": { payment: ["reverse"] },
-  /** Void a finalized document. Admin+. (Wired by Transaction Core / ALW-299.) */
-  "document:void": { document: ["void"] },
   /** Invite / remove / change a member's role. Admin+. */
   "member:manage": { member: ["create", "update", "delete"] },
   /** Change organization settings. Admin+. */
