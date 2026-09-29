@@ -31,13 +31,25 @@ function bigText(chars: number, marker: string): string {
   return `${marker} ${"lorem ipsum dolor sit amet ".repeat(Math.ceil(chars / 28))}`;
 }
 
+type MockModelOptions = NonNullable<
+  ConstructorParameters<typeof MockLanguageModelV3>[0]
+>;
+
 const MOCK_MODEL = new MockLanguageModelV3({
-  doGenerate: async () => ({
+  doGenerate: (async () => ({
     content: [{ type: "text", text: SUMMARY_TEXT }],
     finishReason: "stop",
-    usage: { inputTokens: 10, outputTokens: 10, totalTokens: 20 },
+    usage: {
+      inputTokens: {
+        total: 10,
+        noCache: 10,
+        cacheRead: 0,
+        cacheWrite: 0,
+      },
+      outputTokens: { total: 10, text: 10, reasoning: 0 },
+    },
     warnings: [],
-  }),
+  })) as unknown as NonNullable<MockModelOptions["doGenerate"]>,
 });
 
 /**
@@ -53,6 +65,15 @@ function orgChatOverSession(session: Session): OrgChat {
   mutable.syncMessagesFromStorage = async () => undefined;
   mutable.resolveModel = () => MOCK_MODEL;
   return chat;
+}
+
+/** `maybeCompactByUsage` is private; the test drives it directly. */
+function compactByUsage(chat: OrgChat, inputTokens: number): Promise<void> {
+  return (
+    chat as unknown as {
+      maybeCompactByUsage: (tokens: number) => Promise<void>;
+    }
+  ).maybeCompactByUsage(inputTokens);
 }
 
 /**
@@ -112,7 +133,7 @@ describe("OrgChat compaction behaviour (in workerd)", () => {
       // summarize)) + compactAfter(getCompactionLimit(window)).
       chat.configureSession(thinkSessionAdapter(rawSession) as never);
 
-      await chat.maybeCompactByUsage(getCompactionLimit(200_000) + 1);
+      await compactByUsage(chat, getCompactionLimit(200_000) + 1);
       return rawSession.getHistory();
     });
 
@@ -136,7 +157,7 @@ describe("OrgChat compaction behaviour (in workerd)", () => {
     expect(overlay).toBeDefined();
     expect(
       overlay?.parts.some(
-        (part) => part.type === "text" && part.text.includes(SUMMARY_TEXT)
+        (part) => part.type === "text" && part.text?.includes(SUMMARY_TEXT)
       )
     ).toBe(true);
   });
@@ -152,7 +173,7 @@ describe("OrgChat compaction behaviour (in workerd)", () => {
       const chat = orgChatOverSession(rawSession);
       chat.configureSession(thinkSessionAdapter(rawSession) as never);
 
-      await chat.maybeCompactByUsage(getCompactionLimit(200_000) - 1);
+      await compactByUsage(chat, getCompactionLimit(200_000) - 1);
       return rawSession.getHistory();
     });
 
@@ -160,7 +181,7 @@ describe("OrgChat compaction behaviour (in workerd)", () => {
     expect(
       history.some((message) =>
         message.parts.some(
-          (part) => part.type === "text" && part.text.includes("MIDDLE-3")
+          (part) => part.type === "text" && part.text?.includes("MIDDLE-3")
         )
       )
     ).toBe(true);
