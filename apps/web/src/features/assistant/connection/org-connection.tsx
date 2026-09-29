@@ -1,6 +1,10 @@
 "use client";
 
-import type { ChatSummary, WorkspaceFileInfo } from "@workspace/agent/types";
+import type {
+  ChatSearchHit,
+  ChatSummary,
+  WorkspaceFileInfo,
+} from "@workspace/agent/types";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { useAgent } from "agents/react";
 import {
@@ -20,6 +24,8 @@ interface OrgConnectionValue {
   chatsLoadState: "loading" | "ready" | "error";
   createChat: (opts?: { title?: string }) => Promise<ChatSummary>;
   deleteChat: (chatId: string) => Promise<void>;
+  /** FTS search over the org's chats (`OrgAgent.searchChats`). */
+  searchChats: (query: string) => Promise<ChatSearchHit[]>;
   /** Re-run `listChats` (sidebar Retry after a failed load). */
   reloadChats: () => Promise<ChatSummary[]>;
   /** Draft bridged across the draft → createChat → navigate hand-off. */
@@ -155,6 +161,17 @@ export function OrgConnection({
     }
   }, [refreshChats]);
 
+  const searchChats = useCallback(
+    async (query: string): Promise<ChatSearchHit[]> => {
+      await orgAgent.ready;
+      const hits = (await orgAgent.call("searchChats", [query])) as
+        | ChatSearchHit[]
+        | null;
+      return Array.isArray(hits) ? hits : [];
+    },
+    [orgAgent]
+  );
+
   const listWorkspace = useCallback(
     async (path = "/"): Promise<WorkspaceFileInfo[]> => {
       await orgAgent.ready;
@@ -188,6 +205,7 @@ export function OrgConnection({
       pendingMessage,
       readWorkspaceFile,
       reloadChats,
+      searchChats,
       setPendingMessage,
       workspaceVersion,
     }),
@@ -201,6 +219,7 @@ export function OrgConnection({
       pendingMessage,
       readWorkspaceFile,
       reloadChats,
+      searchChats,
       workspaceVersion,
     ]
   );

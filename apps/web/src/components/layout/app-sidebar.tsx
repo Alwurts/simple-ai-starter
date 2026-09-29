@@ -1,8 +1,10 @@
 "use client";
 
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import type { ChatSearchHit } from "@workspace/agent/types";
 import { authClient } from "@workspace/auth/client";
 import { LogoMark } from "@workspace/ui/components/icons/logo-monochrome";
+import { Input } from "@workspace/ui/components/shadcn/input";
 import {
   Sidebar,
   SidebarContent,
@@ -18,8 +20,15 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@workspace/ui/components/shadcn/sidebar";
-import { Loader2Icon, MessageSquarePlusIcon, Search, X } from "lucide-react";
-import { useRef, useState } from "react";
+import {
+  Loader2Icon,
+  MessageSquarePlusIcon,
+  Search,
+  SearchX,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useDebouncedCallback } from "use-debounce";
 import { AppSidebarFooter } from "@/components/layout/app-sidebar-footer";
 import {
   getPlatformNavigationItems,
@@ -135,7 +144,8 @@ export function AppSidebarMainNavigation() {
 
 /** Org thread list (`OrgAgent.listChats`, newest first) with New chat + delete. */
 export function AppSidebarChats() {
-  const { chats, chatsLoadState, deleteChat, reloadChats } = useOrgConnection();
+  const { chats, chatsLoadState, deleteChat, reloadChats, searchChats } =
+    useOrgConnection();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
@@ -180,6 +190,10 @@ export function AppSidebarChats() {
         <span className="sr-only">New chat</span>
       </SidebarGroupAction>
       <SidebarGroupContent>
+        <ChatSearchBox
+          closeOnNavigate={closeOnNavigate}
+          searchChats={searchChats}
+        />
         <SidebarMenu>
           <ChatListGroupRows
             chats={chats}
@@ -192,6 +206,134 @@ export function AppSidebarChats() {
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
+  );
+}
+
+const CHAT_SEARCH_MIN_QUERY = 2;
+const CHAT_SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * Conversation search in the Chats group (D-010): a debounced query fans out
+ * to `OrgAgent.searchChats` (FTS over each chat's transcript) and renders
+ * matching chats with a snippet. Clicking a hit opens that chat.
+ */
+function ChatSearchBox({
+  closeOnNavigate,
+  searchChats,
+}: {
+  closeOnNavigate: () => void;
+  searchChats: (query: string) => Promise<ChatSearchHit[]>;
+}) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [hits, setHits] = useState<ChatSearchHit[]>([]);
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle"
+  );
+  const debouncedSetQuery = useDebouncedCallback(
+    setDebouncedQuery,
+    CHAT_SEARCH_DEBOUNCE_MS
+  );
+
+  const trimmed = debouncedQuery.trim();
+  const active = trimmed.length >= CHAT_SEARCH_MIN_QUERY;
+
+  // biome-ignore lint/plugin/no-use-effect: debounced search RPC on query change
+  useEffect(() => {
+    if (!active) {
+      setStatus("idle");
+      setHits([]);
+      return;
+    }
+    let cancelled = false;
+    setStatus("loading");
+    searchChats(trimmed)
+      .then((results) => {
+        if (cancelled) {
+          return;
+        }
+        setHits(results);
+        setStatus("ready");
+      })
+      .catch((error: unknown) => {
+        console.error("[AppSidebar] chat search failed", error);
+        if (!cancelled) {
+          setStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [active, searchChats, trimmed]);
+
+  const clear = () => {
+    setQuery("");
+    setDebouncedQuery("");
+    debouncedSetQuery.cancel();
+  };
+
+  const onOpenHit = (hit: ChatSearchHit) => {
+    clear();
+    closeOnNavigate();
+    navigate({ params: { chatId: hit.chatId }, to: "/chat/$chatId" });
+  };
+
+  return (
+    <div className="mb-1 flex flex-col gap-1 px-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="h-8 bg-sidebar pl-7 text-sidebar-foreground"
+          onChange={(event) => {
+            setQuery(event.target.value);
+            debouncedSetQuery(event.target.value);
+          }}
+          placeholder="Search chats…"
+          value={query}
+        />
+        {query ? (
+          <button
+            aria-label="Clear search"
+            className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground"
+            onClick={clear}
+            type="button"
+          >
+            <X className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+      {status === "loading" ? (
+        <span className="flex items-center gap-1.5 px-1 py-0.5 text-muted-foreground text-xs">
+          <Loader2Icon className="size-3 animate-spin" />
+          Searching…
+        </span>
+      ) : null}
+      {status === "error" ? (
+        <span className="px-1 py-0.5 text-destructive text-xs">
+          Couldn't search. Try again.
+        </span>
+      ) : null}
+      {status === "ready" && hits.length === 0 ? (
+        <span className="flex items-center gap-1.5 px-1 py-0.5 text-muted-foreground text-xs">
+          <SearchX className="size-3" />
+          No matching messages
+        </span>
+      ) : null}
+      {hits.map((hit) => (
+        <button
+          className="flex flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          key={`${hit.chatId}-${hit.messageId}`}
+          onClick={() => onOpenHit(hit)}
+          type="button"
+        >
+          <span className="truncate font-medium text-xs">{hit.chatTitle}</span>
+          <span className="line-clamp-2 text-muted-foreground text-xs">
+            {hit.snippet}
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 

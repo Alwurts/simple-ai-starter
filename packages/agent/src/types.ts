@@ -19,6 +19,24 @@ export interface OrgMemorySnapshot {
   updatedAt: number | null;
 }
 
+/**
+ * One FTS hit inside a single chat's transcript (`OrgChat.searchMessages`).
+ * Chat identity (id + title) is stamped by `OrgAgent.searchChats`, which fans
+ * the query out to each registered chat.
+ */
+export interface ChatMessageHit {
+  messageId: string;
+  role: string;
+  snippet: string;
+  createdAt: string | null;
+}
+
+/** A search hit attributed to the chat that contains it (sidebar results). */
+export interface ChatSearchHit extends ChatMessageHit {
+  chatId: string;
+  chatTitle: string;
+}
+
 export interface AgentToolsContext {
   organizationId: string;
   userId: string;

@@ -3,9 +3,20 @@ import {
   Workspace,
   type WorkspaceChangeEvent,
 } from "@cloudflare/shell";
+import { errorMessage, structuredLog } from "@workspace/log";
 import { Agent, callable } from "agents";
-import type { ChatSummary, OrgMemorySnapshot } from "../types";
+import type {
+  ChatMessageHit,
+  ChatSearchHit,
+  ChatSummary,
+  OrgMemorySnapshot,
+} from "../types";
 import { OrgChat } from "./chat";
+import {
+  mergeChatSearchResults,
+  SEARCH_MAX_CHATS,
+  SEARCH_MAX_HITS_PER_CHAT,
+} from "./chat/search";
 
 interface ChatRow {
   created_at: number;
@@ -148,6 +159,42 @@ export class OrgAgent extends Agent<Cloudflare.Env> {
     // client creates the next chat on demand (draft → createChat).
     await this.dynamicAgents.delete(OrgChat, id);
     this.sql`DELETE FROM chat_meta WHERE id = ${id}`;
+  }
+
+  /**
+   * Org-scoped conversation search (D-010): fan the query out to at most the
+   * `SEARCH_MAX_CHATS` most recent chats, each through its own Sessions FTS5
+   * index (`OrgChat.searchMessages`), and merge into one newest-first list.
+   * Every chat lives under this org's DO and the `/agents/org-agent/` route
+   * gate, so results can never cross orgs. A chat that fails to search is
+   * skipped (logged) rather than failing the whole query.
+   */
+  @callable()
+  async searchChats(query: string): Promise<ChatSearchHit[]> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+    const recent = this.listChats().slice(0, SEARCH_MAX_CHATS);
+    const hitsPerChat = new Map<string, ChatMessageHit[]>();
+    for (const chat of recent) {
+      try {
+        const child = await this.dynamicAgents.get(OrgChat, chat.id);
+        hitsPerChat.set(
+          chat.id,
+          await child.searchMessages(trimmed, SEARCH_MAX_HITS_PER_CHAT)
+        );
+      } catch (error) {
+        structuredLog({
+          kind: "org_chat_search_failed",
+          severity: "error",
+          organizationId: this.name,
+          chatName: chat.id,
+          error: errorMessage(error),
+        });
+      }
+    }
+    return mergeChatSearchResults(recent, hitsPerChat);
   }
 
   // The generic fs methods below are internal (used by the SharedWorkspace

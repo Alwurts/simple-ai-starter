@@ -35,10 +35,12 @@ import {
   type OrgChatModelCapabilities,
   resolveOrgChatModel,
 } from "../../inference/chat-models";
+import type { ChatMessageHit } from "../../types";
 import { resolveTurnUserId } from "../bootstrap";
 import { OrgAgent } from "../org-agent";
 import { OrgMemoryProvider } from "./org-memory-provider";
 import { OrgSubAgent } from "./org-sub-agent";
+import { SEARCH_MAX_HITS_PER_CHAT, snippetAround } from "./search";
 import { SharedWorkspace } from "./shared-workspace";
 
 type OrgAgentParent = Pick<
@@ -250,6 +252,32 @@ export class OrgChat extends Think<Cloudflare.Env> {
     }
     await this.syncMessagesFromStorage();
     return { compacted: true };
+  }
+
+  /**
+   * Parent-callable — `OrgAgent.searchChats` fans a query out to each
+   * registered chat through this method (dynamic-agent stubs expose plain
+   * child methods; no `@callable` needed, and `@callable` does not land for
+   * dynamic-agent methods anyway — see the `compactNow` note below).
+   *
+   * Uses this chat's own Sessions FTS5 index (built lazily on first search,
+   * text parts only) and trims each hit to a windowed snippet.
+   */
+  async searchMessages(
+    query: string,
+    limit = SEARCH_MAX_HITS_PER_CHAT
+  ): Promise<ChatMessageHit[]> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+    const results = await this.session.search(trimmed, { limit });
+    return results.map((result) => ({
+      messageId: result.id,
+      role: result.role,
+      snippet: snippetAround(result.content, trimmed),
+      createdAt: result.createdAt ?? null,
+    }));
   }
 
   override async beforeTurn(ctx: TurnContext) {
