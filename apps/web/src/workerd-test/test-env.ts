@@ -11,6 +11,7 @@
 
 import { env as runtimeEnv } from "cloudflare:workers";
 import type { OrgAgent } from "@workspace/agent/org";
+import type { SessionHost } from "./session-host-do";
 import type { TestCounter } from "./test-counter-do";
 
 export const env = runtimeEnv as typeof runtimeEnv & {
@@ -18,4 +19,6 @@ export const env = runtimeEnv as typeof runtimeEnv & {
   // ALW-398: OrgAgent is bound in wrangler.test.jsonc for the multi-session
   // backend test; typed here so tests get RPC-method inference on the stub.
   OrgAgent: DurableObjectNamespace<OrgAgent>;
+  // Compaction behaviour test: the plain-DO Sessions host.
+  SESSION_HOST: DurableObjectNamespace<SessionHost>;
 };
