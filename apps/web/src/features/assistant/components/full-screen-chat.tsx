@@ -304,20 +304,30 @@ function ChatView({ chatId, title }: ChatViewProps) {
     navigator.clipboard.writeText(text).catch(() => undefined);
   }, [helpers.messages]);
 
-  const handleCompact = useCallback(async () => {
-    try {
-      const result = (await chatAgent.call("compactNow", [])) as {
-        compacted: boolean;
-      };
-      toast.success(
-        result?.compacted
-          ? "Conversation compacted."
-          : "Nothing to compact yet."
-      );
-    } catch (error) {
-      console.error("[ChatConnection] compactNow failed", error);
-      toast.error("Couldn't compact the conversation.");
-    }
+  const handleCompact = useCallback(() => {
+    const pending = toast.loading("Compacting conversation…", {
+      position: "top-center",
+    });
+    return chatAgent
+      .call("compactNow", [])
+      .then((result) => {
+        const compacted =
+          typeof result === "object" &&
+          result !== null &&
+          "compacted" in result &&
+          result.compacted === true;
+        toast.success(
+          compacted ? "Conversation compacted" : "Nothing to compact yet",
+          { id: pending, position: "top-center" }
+        );
+      })
+      .catch((error: unknown) => {
+        console.error("[ChatConnection] compactNow failed", error);
+        toast.error("Couldn't compact the conversation.", {
+          id: pending,
+          position: "top-center",
+        });
+      });
   }, [chatAgent]);
 
   const handleDelete = useCallback(async () => {

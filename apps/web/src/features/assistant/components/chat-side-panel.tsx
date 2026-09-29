@@ -1,11 +1,6 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/shadcn/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@workspace/ui/components/shadcn/resizable";
 import { cn } from "@workspace/ui/lib/utils";
 import {
   FileIcon,
@@ -97,23 +92,19 @@ export function ChatSidePanel({
         data-slot="chat-side-panel-content"
       >
         {activeTab ? (
-          <ResizablePanelGroup
+          <div
+            className="@container/files h-full min-h-0"
             data-slot="chat-side-panel-files-split"
-            orientation="horizontal"
           >
-            <ResizablePanel className="min-h-0" defaultSize="65%" minSize="40%">
-              <FileContent tree={tree} />
-            </ResizablePanel>
-            <ResizableHandle />
-            <ResizablePanel
-              className="min-h-0 overflow-auto bg-background"
-              defaultSize="35%"
-              maxSize="55%"
-              minSize="20%"
-            >
-              <FileExplorerTree onOpenFile={onOpenFile} tree={tree} />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            <div className="grid h-full min-h-0 @min-[36rem]/files:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)] @min-[36rem]/files:grid-rows-1 grid-rows-[minmax(9rem,40%)_minmax(0,1fr)]">
+              <div className="min-h-0 overflow-auto @min-[36rem]/files:border-r border-b @min-[36rem]/files:border-b-0 bg-background">
+                <FileExplorerTree onOpenFile={onOpenFile} tree={tree} />
+              </div>
+              <div className="min-h-0 overflow-hidden">
+                <FileContent tree={tree} />
+              </div>
+            </div>
+          </div>
         ) : (
           <div
             className="flex h-full min-h-0 flex-col"

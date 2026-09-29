@@ -1,7 +1,9 @@
+import { splitWorkedParts } from "@workspace/ui/components/shadcn/worked";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import { describe, expect, it } from "vitest";
 import {
   getToolName,
+  isCollapsedWorkedPart,
   isProductListCardPart,
   PRODUCT_LIST_TOOL_NAME,
 } from "./chat-message-parts";
@@ -60,5 +62,122 @@ describe("isProductListCardPart", () => {
         toolPart({ type: "dynamic-tool", toolName: "delegate", output: {} })
       )
     ).toBe(false);
+  });
+});
+
+function kindsOf(
+  parts: Array<{
+    type: string;
+    state?: string;
+    toolName?: string;
+    text?: string;
+    toolCallId?: string;
+    input?: unknown;
+    output?: unknown;
+    approval?: { id: string };
+  }>
+) {
+  return splitWorkedParts(parts, isCollapsedWorkedPart).map((segment) => {
+    if (segment.kind === "worked") {
+      return {
+        kind: "worked" as const,
+        types: segment.items.map((item) => item.part.type),
+      };
+    }
+    return { kind: "visible" as const, type: segment.item.part.type };
+  });
+}
+
+describe("assistant part grouping", () => {
+  it("renders a pending approval outside the collapsed group", () => {
+    expect(
+      kindsOf([
+        { type: "reasoning", text: "checking" },
+        {
+          type: "tool-delete_product",
+          state: "approval-requested",
+          toolCallId: "tc_del",
+          input: { id: "p1" },
+          approval: { id: "ap_1" },
+        },
+        { type: "text", text: "Say if I should delete it." },
+      ])
+    ).toEqual([
+      { kind: "worked", types: ["reasoning"] },
+      { kind: "visible", type: "tool-delete_product" },
+      { kind: "visible", type: "text" },
+    ]);
+  });
+
+  it("renders a display_product_list card outside the collapsed group", () => {
+    expect(
+      kindsOf([
+        {
+          type: "tool-list_products",
+          state: "output-available",
+          toolCallId: "tc_list",
+          input: {},
+          output: { ok: true },
+        },
+        {
+          type: "tool-display_product_list",
+          state: "output-available",
+          toolCallId: "tc_card",
+          input: {},
+          output: { productIds: ["p1"] },
+        },
+        { type: "text", text: "Shown above." },
+      ])
+    ).toEqual([
+      { kind: "worked", types: ["tool-list_products"] },
+      { kind: "visible", type: "tool-display_product_list" },
+      { kind: "visible", type: "text" },
+    ]);
+  });
+
+  it("keeps data tools inside the collapsed group", () => {
+    expect(
+      kindsOf([
+        {
+          type: "tool-list_products",
+          state: "output-available",
+          toolCallId: "tc_list",
+        },
+        {
+          type: "dynamic-tool",
+          toolName: "delegate",
+          state: "output-available",
+          toolCallId: "tc_del",
+        },
+        {
+          type: "tool-set_context",
+          state: "output-available",
+          toolCallId: "tc_ctx",
+        },
+        { type: "text", text: "Done." },
+      ])
+    ).toEqual([
+      {
+        kind: "worked",
+        types: ["tool-list_products", "dynamic-tool", "tool-set_context"],
+      },
+      { kind: "visible", type: "text" },
+    ]);
+  });
+
+  it("folds an approval back into the group once it is no longer requested", () => {
+    expect(
+      kindsOf([
+        {
+          type: "tool-update_product",
+          state: "output-available",
+          toolCallId: "tc_upd",
+        },
+        { type: "text", text: "Updated." },
+      ])
+    ).toEqual([
+      { kind: "worked", types: ["tool-update_product"] },
+      { kind: "visible", type: "text" },
+    ]);
   });
 });

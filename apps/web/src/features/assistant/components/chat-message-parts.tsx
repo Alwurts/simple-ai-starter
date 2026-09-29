@@ -128,6 +128,33 @@ export function isProductListCardPart(
 }
 
 /**
+ * Parts that stay inside the collapsed Worked group. A pending approval and a
+ * finished `display_product_list` card stay in the message flow so the user
+ * can act on them without opening the group. After approve/reject the tool
+ * is no longer `approval-requested`, so it folds back in.
+ */
+export function isCollapsedWorkedPart(part: {
+  type: string;
+  state?: string;
+  toolName?: string;
+}): boolean {
+  if (part.type === "text" || part.type === "step-start") {
+    return false;
+  }
+  if (part.state === "approval-requested") {
+    return false;
+  }
+  if (
+    part.state === "output-available" &&
+    (part.toolName === PRODUCT_LIST_TOOL_NAME ||
+      part.type === `tool-${PRODUCT_LIST_TOOL_NAME}`)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * A role-denied write tool throws the RBAC guard's `PERMISSION_DENIED_MESSAGE`,
  * which arrives here as `errorText` on an errored part. We treat that as an
  * expected, benign outcome — a calm "not permitted" note — rather than the red
@@ -371,26 +398,28 @@ export function ChatMessageRow({
     <Message align={align}>
       <MessageContent>
         {message.role === "assistant"
-          ? splitWorkedParts(message.parts).map((segment) => {
-              if (segment.kind === "worked") {
-                const start = segment.items[0]?.index ?? 0;
-                return (
-                  <Worked
-                    duration={duration}
-                    isStreaming={isStreaming}
-                    key={`${message.id}-worked-${start}`}
-                  >
-                    <WorkedTrigger />
-                    <WorkedContent>
-                      {segment.items.map((item) =>
-                        partRow(item.part, item.index)
-                      )}
-                    </WorkedContent>
-                  </Worked>
-                );
+          ? splitWorkedParts(message.parts, isCollapsedWorkedPart).map(
+              (segment) => {
+                if (segment.kind === "worked") {
+                  const start = segment.items[0]?.index ?? 0;
+                  return (
+                    <Worked
+                      duration={duration}
+                      isStreaming={isStreaming}
+                      key={`${message.id}-worked-${start}`}
+                    >
+                      <WorkedTrigger />
+                      <WorkedContent>
+                        {segment.items.map((item) =>
+                          partRow(item.part, item.index)
+                        )}
+                      </WorkedContent>
+                    </Worked>
+                  );
+                }
+                return partRow(segment.item.part, segment.item.index);
               }
-              return partRow(segment.item.part, segment.item.index);
-            })
+            )
           : message.parts.map((part, partIndex) => partRow(part, partIndex))}
         {message.role === "assistant" && (textForCopy || onRegenerate) ? (
           <MessageFooter>

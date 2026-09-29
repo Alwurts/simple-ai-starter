@@ -28,7 +28,8 @@ export function isWorkedPart(part: WorkedPart): boolean {
 }
 
 export function splitWorkedParts<T extends WorkedPart>(
-  parts: readonly T[]
+  parts: readonly T[],
+  isWorked: (part: T) => boolean = isWorkedPart
 ): WorkedSegment<T>[] {
   let lastTextIndex = -1;
   for (let i = parts.length - 1; i >= 0; i--) {
@@ -55,7 +56,7 @@ export function splitWorkedParts<T extends WorkedPart>(
       continue;
     }
     const beforeTerminal = lastTextIndex === -1 || index < lastTextIndex;
-    if (beforeTerminal && isWorkedPart(part)) {
+    if (beforeTerminal && isWorked(part)) {
       pending.push({ part, index });
       continue;
     }
