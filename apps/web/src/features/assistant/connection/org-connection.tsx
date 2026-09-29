@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import type { OutgoingUserMessage } from "../lib/ai-types";
+import { deriveChatsLoadState } from "../lib/chats-load-state";
 
 interface OrgAgentState {
   chats: ChatSummary[];
@@ -124,14 +125,16 @@ export function OrgConnection({
 
   // biome-ignore lint/plugin/no-use-effect: derive load state from the socket lifecycle
   useEffect(() => {
-    if (orgAgent.connectionError) {
-      setChatsLoadState("error");
-      return;
-    }
-    if (orgAgent.identified) {
-      setChatsLoadState("ready");
-    }
-  }, [orgAgent.connectionError, orgAgent.identified]);
+    setChatsLoadState(
+      deriveChatsLoadState({
+        connectionError: orgAgent.connectionError,
+        // Identity arrives before the state frame, so readiness waits for
+        // state — `ready` with an empty list would redirect `/` to the draft
+        // and flash "Chat not found" on real chats.
+        stateArrived: orgAgent.state !== undefined,
+      })
+    );
+  }, [orgAgent.connectionError, orgAgent.state]);
 
   const createChat = useCallback(
     async (opts?: { title?: string }) => {
