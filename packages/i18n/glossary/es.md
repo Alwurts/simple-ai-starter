@@ -6,7 +6,7 @@ English (`en.json`) remains the source of truth — never invent EN keys here.
 ## Product voice
 
 - Formal but direct operator tool (SME owner / operador). Prefer clear verbs over marketing fluff.
-- Use **tú** forms for UI actions when a verb is needed (`Guardar`, `Cobrar`), not usted lectures.
+- Use **tú** forms for UI actions when a verb is needed (`Guardar`, `Buscar`), not usted lectures.
 - Country-neutral LatAm Spanish — avoid Spain-only slang and Río de la Plata-only forms when a neutral option exists.
 
 ## Preferred terms
@@ -15,21 +15,13 @@ English (`en.json`) remains the source of truth — never invent EN keys here.
 |---|---|---|
 | Today (nav / home) | Hoy | Inicio (ok as secondary), Dashboard |
 | Catalog | Catálogo | Inventario (unless stock-specific) |
-| Entities / People | Entidades | Clientes (too narrow for the starter) |
-| Documents | Documentos | — |
+| Product | Producto | Artículo |
 | Settings | Configuración | Ajustes (ok synonym) |
 | Organization | Organización | Empresa (unless org is a company name) |
 | Member (role key `member`) | Operador | Miembro (role display) |
 | Admin | Administrador | Admin (spell out in UI) |
 | Owner | Propietario | Owner |
 | Invite | Invitar | — |
-| Invoice | Factura | Invoice |
-| Quote | Cotización | Quote |
-| Credit note | Nota de crédito | — |
-| Collect / pay | Cobrar | Collect |
-| Sell | Vender | Sell |
-| Balance due | Saldo pendiente | Balance due |
-| Credit / wallet credit | Crédito | — |
 | Sign in / Login | Iniciar sesión | Login |
 | Sign out | Cerrar sesión | Logout |
 | Search | Buscar | — |
@@ -41,7 +33,7 @@ English (`en.json`) remains the source of truth — never invent EN keys here.
 
 Current starter shell, matching live IA:
 
-- Hoy · Catálogo · Entidades · Documentos · Configuración
+- Hoy · Catálogo · Configuración
 
 ## Placeholders
 
