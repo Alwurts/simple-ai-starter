@@ -1,6 +1,7 @@
 import bundledSkills from "agents:skills";
 import type { WorkspaceFsLike } from "@cloudflare/shell";
 import {
+  defaultContextOverflowClassifier,
   type Session,
   type SkillSource,
   type StepContext,
@@ -37,6 +38,7 @@ import {
   gateChatAttachments,
   getCompactionLimit,
   type OrgChatModelCapabilities,
+  orgChatContextOverflow,
   resolveOrgChatModel,
 } from "../../inference/chat-models";
 import type { ChatMessageHit } from "../../types";
@@ -79,6 +81,12 @@ export class OrgChat extends Think<Cloudflare.Env> {
     this.resolvedModelId = resolved.modelId;
     this.resolvedContextWindow = resolved.contextWindow;
     this.resolvedCapabilities = resolved.capabilities;
+    // Context-window overflow recovery (Think built-in, D-016) — the reactive
+    // backstop compacts and retries a turn a provider rejected as too long,
+    // and the proactive guard compacts mid-turn once real step usage crosses
+    // 90% of the model's window. `compactAfter` (below) keeps the cheaper
+    // pre-turn estimate heuristic as the first line of defence.
+    this.contextOverflow = orgChatContextOverflow(this.resolvedContextWindow);
   }
 
   private getParent(): Promise<OrgAgentParent> {
@@ -196,6 +204,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
     return super.onChatError(error);
   }
 
+  // Pairs with `contextOverflow.reactive` above: without it Think warns and
+  // never treats any error as an overflow.
+  override classifyChatError = defaultContextOverflowClassifier;
+
   override onStepFinish(ctx: StepContext): void {
     super.onStepFinish(ctx);
     if (ctx.usage) {
@@ -214,6 +226,9 @@ export class OrgChat extends Think<Cloudflare.Env> {
       return;
     }
 
+    // Stamp model/usage metadata on the finished assistant message. The
+    // session's `update` change event patches Think's transcript cache, so no
+    // explicit re-sync is needed.
     const safe = await this.updateMessageInHistory({
       ...result.message,
       metadata: {
@@ -225,7 +240,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
       },
     });
 
-    await this.syncMessagesFromStorage();
     if (safe) {
       this.broadcast(
         JSON.stringify({
@@ -234,46 +248,18 @@ export class OrgChat extends Think<Cloudflare.Env> {
         })
       );
     }
-
-    await this.maybeCompactByUsage(usage.inputTokens);
-  }
-
-  private async maybeCompactByUsage(inputTokens: number): Promise<void> {
-    const limit = getCompactionLimit(this.resolvedContextWindow);
-    if (!limit || inputTokens <= limit) {
-      return;
-    }
-    try {
-      const result = await this.session.compact();
-      if (result) {
-        await this.syncMessagesFromStorage();
-      }
-    } catch (err) {
-      const orgId = this.parentPath.at(-1)?.name ?? "?";
-      structuredLog({
-        kind: "org_chat_usage_compaction_failed",
-        severity: "error",
-        organizationId: orgId,
-        chatName: this.name,
-        error: errorMessage(err),
-      });
-    }
   }
 
   /**
-   * Client-callable — registered after the class body (same pattern as Think's
-   * `approveExecution` / `pendingExecutions`). `@callable()` on OrgChat dynamic
-   * agent methods does not reliably land in the agents WeakMap for RPC;
-   * post-class `callable()(proto.method)` does (ALW-500 QA: "Method … is not
-   * callable").
+   * Client-callable manual compaction (the header menu). Everything else
+   * compaction-related is Think built-in: `compactAfter` (pre-turn estimate),
+   * and `contextOverflow` reactive + proactive (real-usage, mid-turn) with
+   * this session's `onCompaction` function.
    */
   async compactNow(): Promise<{ compacted: boolean }> {
     const result = await this.session.compact();
-    if (!result) {
-      return { compacted: false };
-    }
-    await this.syncMessagesFromStorage();
-    return { compacted: true };
+    // The session's `compact` change event re-syncs Think's transcript cache.
+    return { compacted: Boolean(result) };
   }
 
   /**

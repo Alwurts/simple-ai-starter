@@ -1,5 +1,9 @@
 import { runInDurableObject } from "cloudflare:test";
-import { getCompactionLimit } from "@workspace/agent/inference";
+import {
+  getCompactionLimit,
+  orgChatContextOverflow,
+  resolveOrgChatModel,
+} from "@workspace/agent/inference";
 import { OrgChat } from "@workspace/agent/org/chat";
 import { isCompactionMessage, type Session } from "agents/sessions";
 import { MockLanguageModelV3 } from "ai/test";
@@ -9,19 +13,22 @@ import { env } from "./test-env";
 /**
  * D-010 (carried from unit 3 review) — behaviour-level compaction test.
  *
- * Drives the real OrgChat compaction wiring end-to-end against a genuine
- * Sessions store, with a fake model (no network):
- *   `configureSession(session)` (createCompactFunction + compactAfter) and
- *   `maybeCompactByUsage(inputTokens)` (the post-turn real-usage trigger).
- * The session lives on `SessionHost`, a plain DO with the agents `Sessions`
- * capability — the smallest real seam that owns Sessions SQLite.
+ * OrgChat's compaction triggers are Think built-ins (D-016): `compactAfter`
+ * (pre-turn estimate heuristic, from `configureSession`) and
+ * `contextOverflow` reactive + proactive — all of which run **this session's
+ * registered compaction function via `session.compact()`**. The vitest pool
+ * cannot spawn Think agent facets (`ctx.exports` unavailable) nor run a real
+ * turn + model, so this test drives the exact seam those paths share: the
+ * real OrgChat `configureSession` chain (createCompactFunction +
+ * compactAfter) applied to a genuine Sessions store on `SessionHost`, then
+ * `session.compact()` with a mock summarizer model.
  *
- * The vitest pool cannot spawn Think agent facets (`ctx.exports` unavailable)
- * and has no model, so what is NOT covered here: Think's own turn loop calling
- * `onChatResponse` → `maybeCompactByUsage`, `syncMessagesFromStorage`
- * broadcasting, and the `compactAfter` pre-turn heuristic (the threshold is
- * read via the same `getCompactionLimit` the test exercises). Those run in
- * `pnpm dev`; the summary-overlay mechanics are the agents SDK's own.
+ * Covered: the contextOverflow/classifier wiring, the compactAfter budget
+ * derivation, and the compaction function + overlay read semantics (summary
+ * replaces the middle, protected head and recent tail stay verbatim; a
+ * within-budget history is left alone). NOT covered: Think's turn loop
+ * invoking compact() reactively/proactively (needs a live turn + provider) —
+ * verified in `pnpm dev`.
  */
 
 const SUMMARY_TEXT = "COMPACT SUMMARY of the earlier discussion";
@@ -57,23 +64,23 @@ const MOCK_MODEL = new MockLanguageModelV3({
  * same technique as org-chat-context.workerd.test.ts. `session` points at the
  * REAL SessionHost-backed handle; `resolveModel` returns the mock.
  */
-function orgChatOverSession(session: Session): OrgChat {
+function orgChatOverSession(
+  session: Session,
+  organizationId = "org_test"
+): OrgChat {
   const chat = Object.create(OrgChat.prototype) as OrgChat;
   const mutable = chat as unknown as Record<string, unknown>;
   mutable.session = session;
+  mutable.env = { AI_GATEWAY_API_KEY: "test-key" };
   mutable.resolvedContextWindow = 200_000;
-  mutable.syncMessagesFromStorage = async () => undefined;
   mutable.resolveModel = () => MOCK_MODEL;
+  // onStart derives the org id from the parent path (a prototype getter on
+  // Agent, so it is shadowed with an own property).
+  Object.defineProperty(chat, "parentPath", {
+    value: [{ className: "OrgAgent", name: organizationId }],
+    configurable: true,
+  });
   return chat;
-}
-
-/** `maybeCompactByUsage` is private; the test drives it directly. */
-function compactByUsage(chat: OrgChat, inputTokens: number): Promise<void> {
-  return (
-    chat as unknown as {
-      maybeCompactByUsage: (tokens: number) => Promise<void>;
-    }
-  ).maybeCompactByUsage(inputTokens);
 }
 
 /**
@@ -98,17 +105,21 @@ function thinkSessionAdapter(raw: Session) {
   return adapter;
 }
 
-async function seedHistory(session: Session): Promise<void> {
-  const messages = [
-    { marker: "HEAD-0", chars: 400, role: "user" as const },
-    { marker: "HEAD-1", chars: 400, role: "assistant" as const },
-    { marker: "HEAD-2", chars: 400, role: "user" as const },
-    // The middle message that compaction should summarize away (~15k tokens
-    // pushes the tail budget back to exactly this message).
-    { marker: "MIDDLE-3", chars: 60_000, role: "assistant" as const },
-    { marker: "TAIL-4", chars: 20_000, role: "user" as const },
-    { marker: "TAIL-5", chars: 20_000, role: "assistant" as const },
-  ];
+const SEED_MESSAGES = [
+  { marker: "HEAD-0", chars: 400, role: "user" as const },
+  { marker: "HEAD-1", chars: 400, role: "assistant" as const },
+  { marker: "HEAD-2", chars: 400, role: "user" as const },
+  // The middle message that compaction should summarize away (~15k tokens
+  // pushes the tail budget back to exactly this message).
+  { marker: "MIDDLE-3", chars: 60_000, role: "assistant" as const },
+  { marker: "TAIL-4", chars: 20_000, role: "user" as const },
+  { marker: "TAIL-5", chars: 20_000, role: "assistant" as const },
+];
+
+async function seedHistory(
+  session: Session,
+  messages = SEED_MESSAGES
+): Promise<void> {
   for (const [index, message] of messages.entries()) {
     await session.appendMessage({
       id: `msg_${index}`,
@@ -118,8 +129,53 @@ async function seedHistory(session: Session): Promise<void> {
   }
 }
 
+describe("OrgChat compaction wiring", () => {
+  it("configures Think's built-in overflow triggers on the model's window", () => {
+    // Reactive backstop + proactive guard at the resolved model's window
+    // (Think compacts proactively at maxInputTokens * 90% headroom). The
+    // config itself is a pure function — onStart assigns it verbatim.
+    const { contextWindow } = resolveOrgChatModel({
+      AI_GATEWAY_API_KEY: "test-key",
+    } as unknown as Cloudflare.Env);
+    expect(orgChatContextOverflow(contextWindow)).toEqual({
+      reactive: true,
+      proactive: { maxInputTokens: contextWindow },
+    });
+    expect(getCompactionLimit(contextWindow)).toBe(
+      Math.floor(contextWindow * 0.75)
+    );
+  });
+
+  it("pairs the reactive backstop with the documented default classifier", async () => {
+    const envStub = {
+      AI_GATEWAY_API_KEY: "test-key",
+    } as unknown as Cloudflare.Env;
+    // Class-field initializers (the classifier override) run at
+    // construction — no deferral, unlike the auto-wrapped onStart.
+    const wiring = await runInDurableObject(
+      env.SESSION_HOST.get(env.SESSION_HOST.idFromName("compact-wiring")),
+      (_host, state) => {
+        const instance = new OrgChat(
+          state as unknown as DurableObjectState,
+          envStub
+        );
+        return {
+          overflowClassified: instance.classifyChatError(
+            new Error("prompt is too long: 250000 tokens > 200000 maximum")
+          ),
+          otherClassified: instance.classifyChatError(
+            new Error("rate limited")
+          ),
+        };
+      }
+    );
+    expect(wiring.overflowClassified).toBe("context_overflow");
+    expect(wiring.otherClassified).toBeUndefined();
+  });
+});
+
 describe("OrgChat compaction behaviour (in workerd)", () => {
-  it("compacts on high usage: summary replaces the middle, head and recent tail stay", async () => {
+  it("compact() summarizes the middle, keeping the protected head and recent tail", async () => {
     const stub = env.SESSION_HOST.get(
       env.SESSION_HOST.idFromName("compact-usage")
     );
@@ -133,7 +189,8 @@ describe("OrgChat compaction behaviour (in workerd)", () => {
       // summarize)) + compactAfter(getCompactionLimit(window)).
       chat.configureSession(thinkSessionAdapter(rawSession) as never);
 
-      await compactByUsage(chat, getCompactionLimit(200_000) + 1);
+      // The exact call Think's contextOverflow reactive/proactive paths make.
+      await rawSession.compact();
       return rawSession.getHistory();
     });
 
@@ -161,29 +218,27 @@ describe("OrgChat compaction behaviour (in workerd)", () => {
       )
     ).toBe(true);
   });
-  it("does not compact when usage stays under the limit", async () => {
+
+  it("leaves a within-budget history alone (compaction function no-ops)", async () => {
     const stub = env.SESSION_HOST.get(
       env.SESSION_HOST.idFromName("compact-skip")
     );
 
     const history = await runInDurableObject(stub, async (host) => {
       const rawSession = host.session;
-      await seedHistory(rawSession);
+      await seedHistory(rawSession, SEED_MESSAGES.slice(0, 2));
 
       const chat = orgChatOverSession(rawSession);
       chat.configureSession(thinkSessionAdapter(rawSession) as never);
 
-      await compactByUsage(chat, getCompactionLimit(200_000) - 1);
+      // Two short messages are inside createCompactFunction's protect-head +
+      // keep-recent budget, so compact() declines — exactly what Think's
+      // reactive/proactive callers see (a null result means "nothing to do").
+      await rawSession.compact();
       return rawSession.getHistory();
     });
 
     expect(history.find(isCompactionMessage)).toBeUndefined();
-    expect(
-      history.some((message) =>
-        message.parts.some(
-          (part) => part.type === "text" && part.text?.includes("MIDDLE-3")
-        )
-      )
-    ).toBe(true);
+    expect(history).toHaveLength(2);
   });
 });
