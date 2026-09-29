@@ -279,15 +279,20 @@ function CodeBlock({ code }: { code: string }) {
  * A codemode execution awaiting the user: the run paused on a gated sandbox
  * call and the chat continues only via `approveExecution` /
  * `rejectExecution` (Think resumes the run by replay; the outcome replaces
- * this paused output). The transcript's `pending` array is a truncated
- * preview, so the authoritative args are re-fetched via `pendingExecutions`
- * and the Approve button stays disabled until they are loaded.
+ * this paused output). Behaviour mirrors the Think reference client's
+ * `PausedExecutionCard`: the transcript's `pending` array is a truncated
+ * preview, so the authoritative args are re-fetched via `pendingExecutions`;
+ * an empty result means the run is no longer pending (stale card), and a load
+ * failure keeps Reject usable. The card remounts per pause (keyed by
+ * `executionId` + first pending `seq`) so a second pause of the same
+ * execution never shows the first pause's args.
  */
 function PausedExecutionCard({
   code,
   output,
   onLoadPendingExecution,
   onExecutionApproval,
+  resolving = false,
 }: {
   code: string;
   output: Extract<ExecuteToolOutput, { status: "paused" }>;
@@ -297,41 +302,47 @@ function PausedExecutionCard({
   onExecutionApproval?:
     | ((executionId: string, approved: boolean) => void)
     | undefined;
+  resolving?: boolean;
 }) {
-  const [pending, setPending] = useState<PendingAction[]>(output.pending);
-  const [pendingLoaded, setPendingLoaded] = useState(
-    () => !onLoadPendingExecution
-  );
-  const [loadError, setLoadError] = useState(false);
-  const loaded = pendingLoaded && !loadError;
+  const [full, setFull] = useState<
+    | { state: "loading" }
+    | { state: "loaded"; actions: PendingAction[] }
+    | { state: "unavailable" }
+  >({ state: "loading" });
 
   // biome-ignore lint/plugin/no-use-effect: fetch the authoritative pending args once per paused execution
   useEffect(() => {
     if (!onLoadPendingExecution) {
+      setFull({ state: "unavailable" });
       return;
     }
     let cancelled = false;
-    setLoadError(false);
+    setFull({ state: "loading" });
     onLoadPendingExecution(output.executionId)
       .then((actions) => {
         if (cancelled) {
           return;
         }
-        if (actions.length > 0) {
-          setPending(actions);
-        }
-        setPendingLoaded(true);
+        // An empty list means the execution is no longer pending — resolved
+        // elsewhere, expired, or swept. Treat the card as stale.
+        setFull(
+          actions.length > 0
+            ? { state: "loaded", actions }
+            : { state: "unavailable" }
+        );
       })
       .catch((error: unknown) => {
         console.error("[chat] pendingExecutions failed", error);
         if (!cancelled) {
-          setLoadError(true);
+          setFull({ state: "unavailable" });
         }
       });
     return () => {
       cancelled = true;
     };
   }, [onLoadPendingExecution, output.executionId]);
+
+  const actions = full.state === "loaded" ? full.actions : output.pending;
 
   return (
     <Tool defaultOpen>
@@ -343,10 +354,10 @@ function PausedExecutionCard({
       />
       <ToolContent>
         <CodeBlock code={code} />
-        {pending.map((call) => (
+        {actions.map((call) => (
           <div
             className="flex flex-col gap-0.5 rounded-md border px-3 py-2 text-xs"
-            key={`${call.connector}-${call.method}-${call.seq ?? 0}`}
+            key={`${call.connector}-${call.method}-${call.seq}`}
           >
             <span className="flex items-center gap-1.5 font-medium">
               <ShieldAlertIcon className="size-3.5" />
@@ -359,14 +370,20 @@ function PausedExecutionCard({
             )}
           </div>
         ))}
-        {loadError ? (
+        {full.state === "loading" ? (
+          <p className="text-muted-foreground text-xs">
+            Verifying full arguments…
+          </p>
+        ) : null}
+        {full.state === "unavailable" ? (
           <p className="text-destructive text-xs">
-            Couldn't load the full pending action args. Retry by reopening.
+            Couldn't load the full arguments — this card may be stale, and the
+            preview above may be truncated.
           </p>
         ) : null}
         <div className="flex gap-2 py-1">
           <Button
-            disabled={!loaded}
+            disabled={resolving || full.state === "loading"}
             onClick={() => onExecutionApproval?.(output.executionId, true)}
             size="xs"
             type="button"
@@ -375,7 +392,7 @@ function PausedExecutionCard({
             Approve
           </Button>
           <Button
-            disabled={!loaded}
+            disabled={resolving}
             onClick={() => onExecutionApproval?.(output.executionId, false)}
             size="xs"
             type="button"
@@ -393,17 +410,6 @@ function PausedExecutionCard({
 function ExecuteToolBody({ part }: { part: DynamicToolUIPart | ToolUIPart }) {
   const output = executeOutputOf(part);
   const code = inputCodeOf(part);
-
-  if (part.state === "approval-requested") {
-    return (
-      <div className="flex flex-col gap-2">
-        {code ? <CodeBlock code={code} /> : null}
-        <p className="text-muted-foreground text-xs">
-          This will run the code in a sandbox. Approve to continue.
-        </p>
-      </div>
-    );
-  }
 
   if (!output) {
     return <ToolOutput errorText={part.errorText} output={part.output} />;
@@ -478,6 +484,7 @@ function ToolPartSwitch({
   onToolApproval,
   onExecutionApproval,
   onLoadPendingExecution,
+  resolvingExecutions,
 }: {
   part: DynamicToolUIPart | ToolUIPart;
   messageId: string;
@@ -485,6 +492,7 @@ function ToolPartSwitch({
   onToolApproval?: (id: string, approved: boolean) => void;
   onExecutionApproval?: (executionId: string, approved: boolean) => void;
   onLoadPendingExecution?: (executionId: string) => Promise<PendingAction[]>;
+  resolvingExecutions?: ReadonlySet<string>;
 }) {
   if (isProductListCardPart(part)) {
     return <ProductListCard output={part.output} />;
@@ -492,12 +500,18 @@ function ToolPartSwitch({
   if (getToolName(part) === EXECUTE_TOOL_NAME) {
     const paused = executeOutputOf(part);
     if (paused?.status === "paused") {
+      // Key per pause: one execution can pause repeatedly (approve → replay →
+      // paused on the NEXT gated call replaces this part under the SAME
+      // executionId). Remounting re-runs the authoritative-args fetch instead
+      // of showing the previous pause's args.
       return (
         <PausedExecutionCard
           code={inputCodeOf(part)}
+          key={`${paused.executionId}-${paused.pending[0]?.seq ?? 0}`}
           onLoadPendingExecution={onLoadPendingExecution}
           onExecutionApproval={onExecutionApproval}
           output={paused}
+          resolving={resolvingExecutions?.has(paused.executionId) ?? false}
         />
       );
     }
@@ -514,27 +528,6 @@ function ToolPartSwitch({
         />
         <ToolContent>
           <ExecuteToolBody part={part} />
-          {part.state === "approval-requested" &&
-          part.approval?.id &&
-          onToolApproval ? (
-            <div className="flex gap-2 py-1">
-              <Button
-                onClick={() => onToolApproval(part.approval?.id ?? "", true)}
-                size="xs"
-                type="button"
-              >
-                Approve
-              </Button>
-              <Button
-                onClick={() => onToolApproval(part.approval?.id ?? "", false)}
-                size="xs"
-                type="button"
-                variant="outline"
-              >
-                Reject
-              </Button>
-            </div>
-          ) : null}
         </ToolContent>
       </Tool>
     );
@@ -565,6 +558,7 @@ function OrgMessagePart({
   onToolApproval,
   onExecutionApproval,
   onLoadPendingExecution,
+  resolvingExecutions,
 }: {
   part: UIMessagePart<AIDataPart, UITools>;
   messageId: string;
@@ -575,6 +569,7 @@ function OrgMessagePart({
   onToolApproval?: (id: string, approved: boolean) => void;
   onExecutionApproval?: (executionId: string, approved: boolean) => void;
   onLoadPendingExecution?: (executionId: string) => Promise<PendingAction[]>;
+  resolvingExecutions?: ReadonlySet<string>;
 }) {
   if (part.type === "text") {
     if (role === "user") {
@@ -619,6 +614,7 @@ function OrgMessagePart({
         onToolApproval={onToolApproval}
         part={part}
         partIndex={partIndex}
+        resolvingExecutions={resolvingExecutions}
       />
     );
   }
@@ -652,6 +648,7 @@ export function ChatMessageRow({
   onExecutionApproval,
   onLoadPendingExecution,
   onRegenerate,
+  resolvingExecutions,
 }: {
   message: OrgChatMessage;
   isStreaming?: boolean;
@@ -659,6 +656,7 @@ export function ChatMessageRow({
   onExecutionApproval?: (executionId: string, approved: boolean) => void;
   onLoadPendingExecution?: (executionId: string) => Promise<PendingAction[]>;
   onRegenerate?: (messageId: string) => void;
+  resolvingExecutions?: ReadonlySet<string>;
 }) {
   const textForCopy = message.parts
     .filter(isTextUIPart)
@@ -682,6 +680,7 @@ export function ChatMessageRow({
       onToolApproval={onToolApproval}
       part={part}
       partIndex={partIndex}
+      resolvingExecutions={resolvingExecutions}
       role={message.role}
     />
   );

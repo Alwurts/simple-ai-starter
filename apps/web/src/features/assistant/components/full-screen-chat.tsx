@@ -98,6 +98,9 @@ function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
   return chats.find((chat) => chat.id === chatId)?.title ?? "Chat";
 }
 
+/** Short, model-facing reason sent with `rejectExecution`. */
+const REJECT_REASON = "Denied by the user";
+
 function errorMessageFrom(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -284,28 +287,73 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   // Codemode executions (the `execute` tool) pause durably instead of using
   // the AI SDK approval flow: Think resolves them via these callables, replays
-  // the run and auto-continues the chat. `pendingExecutions(executionId)`
-  // returns the FULL pending args (the transcript copy is truncated) so the
-  // approval card can show what would actually run before Approve enables.
+  // the run and auto-continues the chat. Both callables return
+  // `{ status: "error", error }` instead of throwing when the run is stale or
+  // already resolved — surface that as a toast, never an unhandled rejection.
+  const [resolvingExecutions, setResolvingExecutions] = useState(
+    () => new Set<string>()
+  );
+
   const handleExecutionApproval = useCallback(
     (executionId: string, approved: boolean) => {
+      setResolvingExecutions((prev) => new Set(prev).add(executionId));
       const call = approved ? "approveExecution" : "rejectExecution";
-      return chatAgent.call(call, [executionId]).catch((error: unknown) => {
-        console.error(`[FullScreenChat] ${call} failed`, error);
-        toast.error("Couldn't resolve the execution. Please try again.", {
-          position: "top-center",
+      chatAgent
+        .call(call, approved ? [executionId] : [executionId, REJECT_REASON])
+        .then((result) => {
+          if (
+            result &&
+            typeof result === "object" &&
+            "status" in result &&
+            (result as { status: unknown }).status === "error"
+          ) {
+            const errorText =
+              (result as { error?: unknown }).error ?? "Unknown error";
+            console.error(`[FullScreenChat] ${call} failed:`, errorText);
+            toast.error(
+              `Couldn't ${approved ? "approve" : "reject"}: this run already moved on.`,
+              {
+                position: "top-center",
+              }
+            );
+          }
+        })
+        .catch((error: unknown) => {
+          console.error(`[FullScreenChat] ${call} failed`, error);
+          toast.error("Couldn't resolve the execution. Please try again.", {
+            position: "top-center",
+          });
+        })
+        .finally(() => {
+          setResolvingExecutions((prev) => {
+            const next = new Set(prev);
+            next.delete(executionId);
+            return next;
+          });
         });
-        throw error;
-      });
     },
     [chatAgent]
   );
 
+  // Upstream PausedExecutionCard contract: wait for the socket to be
+  // identified before calling (an RPC issued during connect/reconnect churn
+  // can be dropped with its promise pending forever) and retry once with a
+  // timeout for the same reason.
   const handleLoadPendingExecution = useCallback(
-    (executionId: string) =>
-      chatAgent.call("pendingExecutions", [executionId]) as Promise<
-        PendingAction[]
-      >,
+    async (executionId: string): Promise<PendingAction[]> => {
+      await chatAgent.ready;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          return (await chatAgent.call("pendingExecutions", [executionId], {
+            timeout: 10_000,
+          })) as PendingAction[];
+        } catch (error) {
+          console.error("[FullScreenChat] pendingExecutions failed", error);
+          await chatAgent.ready;
+        }
+      }
+      return [];
+    },
     [chatAgent]
   );
 
@@ -426,6 +474,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
                   ) : (
                     <MessageListOrEmpty
                       messages={helpers.messages}
+                      resolvingExecutions={resolvingExecutions}
                       streamingMessageId={streamingMessageId}
                       onExecutionApproval={handleExecutionApproval}
                       onLoadPendingExecution={handleLoadPendingExecution}
@@ -520,6 +569,7 @@ function MessageListOrEmpty({
   onToolApproval,
   onExecutionApproval,
   onLoadPendingExecution,
+  resolvingExecutions,
 }: {
   messages: OrgChatMessage[];
   streamingMessageId: string | null;
@@ -527,6 +577,7 @@ function MessageListOrEmpty({
   onToolApproval: (id: string, approved: boolean) => void;
   onExecutionApproval: (executionId: string, approved: boolean) => void;
   onLoadPendingExecution: (executionId: string) => Promise<PendingAction[]>;
+  resolvingExecutions: ReadonlySet<string>;
 }) {
   if (messages.length === 0) {
     return <EmptyConversation />;
@@ -546,6 +597,7 @@ function MessageListOrEmpty({
             onLoadPendingExecution={onLoadPendingExecution}
             onRegenerate={onRegenerate}
             onToolApproval={onToolApproval}
+            resolvingExecutions={resolvingExecutions}
           />
         </MessageScrollerItem>
       ))}
