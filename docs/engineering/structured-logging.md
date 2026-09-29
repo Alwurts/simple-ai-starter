@@ -12,17 +12,18 @@ pulling the domain layer (`@workspace/core`).
 Client / browser `console.*` usage is out of scope (chat UI and `packages/ui`
 keep raw consoles under Biome carve-outs).
 
-ERP / activity UI persistence is a **separate** concern (ALW-699) — this
-package does not write to D1.
+`@workspace/log` is ops-only — this package does not write to D1. The starter
+has no domain-activity table; if a downstream app adds one, it is a separate
+concern from this log.
 
-| | Ops (`@workspace/log`) | Domain activity (`activity_log`) |
-| --- | --- | --- |
-| Audience | Builders / Cloudflare Workers Logs | End users on a record page |
-| API | `structuredLog({ kind, … })` | `listActivity` / finalize & payment writers |
-| UI | None | Document `ActivityTimeline` on `/documents/$id` |
-| Example | `email_send_failed` | `document_finalized`, `payment_recorded` |
+| | Ops (`@workspace/log`) |
+| --- | --- |
+| Audience | Builders / Cloudflare Workers Logs |
+| API | `structuredLog({ kind, … })` |
+| UI | None |
+| Example | `email_send_failed`, `catalog_search_failed` |
 
-See `packages/db/src/schema/activity.ts` and `docs/architecture/transaction-core.md` §7–§8.
+See `packages/log/src/kinds.ts` for the `kind` vocabulary.
 
 ---
 

@@ -5,9 +5,11 @@ moves through them, and the rules that keep the boundaries honest. Read this
 first — every ADR in `docs/decisions/` records *why* one of these choices was
 made, and every guide in `docs/guides/` shows *how* to work within them.
 
-The starter is a **generic worldwide ERP base**. The live information
-architecture is Catalog / Entities / Documents
-(`apps/web/src/components/layout/platform-navigation.ts`).
+The starter is an org-scoped chat app with one worked example table:
+**Catalog / Settings** is the live information architecture
+(`apps/web/src/components/layout/platform-navigation.ts`), and `products` is
+the example capability that walks every layer — table → `contract` schema →
+`core` functions → Hono route → one list/detail page → five agent tools.
 
 ## Guiding principles
 
@@ -48,45 +50,44 @@ shared TS config = `packages/tsconfig`. Everything uses the generic
 ### Cross-layer feature-key consistency
 
 The single most important rule: **a capability uses the same key in every
-layer.** `db` keeps it to one file; the other layers give it a folder. So a
-`customer` capability is *exactly*:
+layer.** `db` keeps it to one file; the other layers give it a folder. So the
+`catalog` (products) capability is *exactly*:
 
 ```
-packages/db/src/schema/customer.ts          # one schema file
-packages/contract/customer/                  # boundary zod for inputs
-packages/core/customer/                      # queries + domain logic
-apps/web/src/hono/org-protected/customer/    # HTTP surface (auth-scoped)
-packages/agent/src/tool-parts/customer.ts    # AI tool-parts (in-app binder in `in-app/`)
-apps/web/src/components/customer/             # feature components
+packages/db/src/schema/catalog.ts            # one schema file
+packages/contract/catalog/                   # boundary zod for inputs
+packages/core/catalog/                       # queries + domain logic
+apps/web/src/hono/org-protected/catalog/     # HTTP surface (auth-scoped)
+packages/agent/src/tool-parts/catalog/products.ts  # AI tool-parts (in-app binder in `in-app/`)
+apps/web/src/components/catalog/             # feature components
 ```
 
 Find one slice and you know where the other five live. Adding a feature is
-dropping one `<cap>` slice into each layer; a registry **pack** is authored as a
-vertical and installs as exactly these slices (see ADR-001 / the registry docs).
+dropping one `<cap>` slice into each layer.
 
-## Worked example: a read and a write through `customer`
+## Worked example: a read and a write through `products`
 
-**Write — "create a customer" (inbound):**
+**Write — "create a product" (inbound):**
 
-1. `contract/customer/` defines `createCustomerSchema` (Zod) — the *single*
+1. `contract/catalog/` defines `createProductSchema` (Zod) — the *single*
    definition of valid input. It is shared as a runtime **value** by the HTTP
    route, the AI tool, and the client-side form.
-2. `core/customer/createCustomer(input)` takes `input: z.infer<typeof
-   createCustomerSchema>` — no hand-synced param type — and writes via the `db`
+2. `core/catalog/createProduct(input)` takes `input: z.infer<typeof
+   createProductSchema>` — no hand-synced param type — and writes via the `db`
    singleton.
-3. `apps/web/src/hono/org-protected/customer/` validates the request body with
-   `createCustomerSchema` and calls `core`. The same schema powers the React
-   form and the `customer` AI tool.
+3. `apps/web/src/hono/org-protected/catalog/` validates the request body with
+   `createProductSchema` and calls `core`. The same schema powers the React
+   form and the `create_product` AI tool.
 
-**Read — "list customers" (outbound):**
+**Read — "list products" (outbound):**
 
-1. `core/customer/listCustomers()` queries `db`; its return type is just
-   `Awaited<ReturnType<typeof listCustomers>>` — inferred from the
+1. `core/catalog/getProducts(orgId)` queries `db`; its return type is just
+   `Awaited<ReturnType<typeof getProducts>>` — inferred from the
    implementation, never restated.
 2. The Hono route returns it; the typed Hono RPC client gives the UI the shape
    via `InferResponseType`. React Query hooks consume that.
 
-Nothing in this path re-declares the customer shape. Inputs are *defined* once
+Nothing in this path re-declares the product shape. Inputs are *defined* once
 in `contract`; outputs are *inferred* once from `core`.
 
 ## Two schema sources, by direction
@@ -108,8 +109,8 @@ not by a compile-time derivation chain. Direction split (**ADR-004**, D3):
 - **Outbound** (reads): **inferred** from the implementation — the typed Hono
   client (`InferResponseType`) for clients, `Awaited<ReturnType>` for the server.
 - **Timestamps are ISO `text` end-to-end** for domain tables (Better-Auth's
-  `Date` columns are an accepted internal-only exception). Money is a
-  numeric → `number` customType.
+  `Date` columns are an accepted internal-only exception). Money is an integer
+  minor-unit column (integer cents; never floats).
 - Types are identified by **import location + suffix** — no `Db*` prefix.
 
 ## Surfaces: one Worker app
@@ -158,18 +159,14 @@ singleton).
 
 Tests split by where they must run (ALW-305): a plain `*.test.ts` is a pure unit
 test run in the fast `node` Vitest project, while anything that needs a binding —
-`env.DB`/`SELF`, R2, or a Durable Object — is named `*.workerd.test.ts` and runs
+`env.DB`/`SELF`, or a Durable Object — is named `*.workerd.test.ts` and runs
 in-workerd via `@cloudflare/vitest-pool-workers` against `wrangler.test.jsonc`.
 The DO fixture + reference test live in `apps/web/src/workerd-test/`.
 
 ## Where to go next
 
-- **The transaction hub** every commercial flow grafts onto →
-  [`docs/architecture/transaction-core.md`](architecture/transaction-core.md)
-  (why: [ADR-006](decisions/006-transaction-core.md)).
-- **A candidate Mexican-SME operator pack** (not the live IA; that pack is
-  unbuilt; pack *install* already exists) →
-  [`docs/architecture/operator-ux.md`](architecture/operator-ux.md).
+- **The agent** — the org agent's tools, memory, workspace, sub-agent and
+  approvals → [`docs/guides/writing-agent-tools.md`](guides/writing-agent-tools.md).
 - **Why** a choice was made → `docs/decisions/` (ADRs, under a strict
   significance bar — see ADR-005).
 - **How** to do or extend something here → `docs/guides/`.
