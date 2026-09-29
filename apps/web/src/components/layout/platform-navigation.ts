@@ -1,4 +1,9 @@
-import { Home, type LucideIcon, Package, Settings } from "lucide-react";
+import {
+  type LucideIcon,
+  MessageSquare,
+  Package,
+  Settings,
+} from "lucide-react";
 import { m } from "@/paraglide/messages.js";
 
 export interface PlatformNavigationItem {
@@ -10,16 +15,16 @@ export interface PlatformNavigationItem {
 /** Single source for sidebar + ⌘K Pages group — titles follow active locale. */
 export function getPlatformNavigationItems(): PlatformNavigationItem[] {
   return [
-    { title: m.nav_home(), url: "/", icon: Home },
+    { title: "Chat", url: "/", icon: MessageSquare },
     { title: m.nav_catalog(), url: "/catalog", icon: Package },
     { title: m.nav_settings(), url: "/settings", icon: Settings },
   ];
 }
 
-/** Home is exact; other items stay active on nested paths (e.g. /settings/*). */
+/** Chat covers `/` and every `/chat/*` thread; other items stay active on nested paths (e.g. /settings/*). */
 export function isPlatformNavActive(pathname: string, url: string): boolean {
   if (url === "/") {
-    return pathname === "/";
+    return pathname === "/" || pathname.startsWith("/chat/");
   }
   return pathname === url || pathname.startsWith(`${url}/`);
 }

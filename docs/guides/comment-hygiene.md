@@ -69,5 +69,5 @@ Linter directives stay, but **always with a reason** on the same line:
 - `packages/agent/src/tools/guard.ts` — RBAC / mutation boundary (always keep)
 - `packages/agent/src/org/chat/org-chat.ts` — hibernation / WebSocket-ALS platform quirks (keep)
 - `apps/web/test/migration-safety.workerd.test.ts` — D1 FK-pragma invariant (ADR-007; always keep)
-- `apps/web/src/components/chat/window/chat-window.tsx` — ticket-linked framework rationale (keep)
+- `apps/web/src/features/assistant/components/full-screen-chat.tsx` — ticket-linked framework rationale (keep)
 - Prior art: sfab ALW-338 / PR #362; starter ALW-334 / PRs #10–#11

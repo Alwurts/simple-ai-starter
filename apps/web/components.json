@@ -16,5 +16,8 @@
     "lib": "@/lib",
     "utils": "@workspace/ui/lib/utils",
     "ui": "@workspace/ui/components/shadcn"
+  },
+  "registries": {
+    "@simple-ai": "https://www.simple-ai.dev/r/{name}.json"
   }
 }

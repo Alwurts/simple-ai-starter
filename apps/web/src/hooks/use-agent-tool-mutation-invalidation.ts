@@ -3,8 +3,8 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { type DynamicToolUIPart, isToolUIPart, type ToolUIPart } from "ai";
 import { useEffect, useRef } from "react";
-import type { OrgChatMessage } from "@/components/chat/dock/chat-tabs-store";
-import { getToolName } from "@/components/chat/tools/tool-registry";
+import type { OrgChatMessage } from "@/features/assistant/lib/ai-types";
+import { getToolName } from "@/features/assistant/lib/tool-name";
 import {
   AGENT_TOOL_INVALIDATION_REGISTRY,
   type AgentAppliedWrite,

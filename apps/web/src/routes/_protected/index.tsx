@@ -1,82 +1,42 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppBreadcrumbs } from "@workspace/ui/components/brand/app-breadcrumbs";
-import {
-  ShellContent,
-  ShellHeader,
-  ShellHeaderActions,
-  ShellPage,
-} from "@workspace/ui/components/brand/shell";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/shadcn/card";
-import { Package, Settings } from "lucide-react";
-import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
-import { m } from "@/paraglide/messages.js";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Loader2Icon } from "lucide-react";
+import { useEffect } from "react";
+import { useOrgConnection } from "@/features/assistant/connection/org-connection";
+import { homeRedirectChatId } from "@/features/assistant/lib/home-redirect";
 
 export const Route = createFileRoute("/_protected/")({
-  component: HomePage,
+  component: ChatHomeRedirect,
 });
 
 /**
- * Neutral landing for the starter. Deliberately ships no fabricated metrics —
- * it points the member at the real sections instead. Replace this with a
- * data-backed summary once a downstream app has flows to summarize.
+ * The chat is the signed-in home. `/` opens the most recent chat — or the
+ * new-chat draft when the org has none — so a thread always lives at its
+ * linkable `/chat/$chatId` URL. A failed chat-list load also lands on the
+ * draft (a draft needs no list); the sidebar offers Retry for the list.
  */
-function HomePage() {
-  const quickLinks = [
-    {
-      to: "/catalog" as const,
-      title: m.catalog_title(),
-      description: m.home_link_catalog_desc(),
-      icon: Package,
-    },
-    {
-      to: "/settings" as const,
-      title: m.settings_title(),
-      description: m.home_link_settings_desc(),
-      icon: Settings,
-    },
-  ];
+function ChatHomeRedirect() {
+  const { chats, chatsLoadState } = useOrgConnection();
+  const navigate = useNavigate();
+
+  // biome-ignore lint/plugin/no-use-effect: redirect once the chat list resolves (or fails)
+  useEffect(() => {
+    const chatId = homeRedirectChatId(chatsLoadState, chats);
+    if (chatId === null) {
+      return;
+    }
+    navigate({
+      params: { chatId },
+      replace: true,
+      to: "/chat/$chatId",
+    });
+  }, [chats, chatsLoadState, navigate]);
 
   return (
-    <ShellPage>
-      <ShellHeader>
-        <ShellHeaderSidebarTrigger className="-ml-1" />
-        <AppBreadcrumbs
-          ellipsisAriaLabel={m.breadcrumb_ellipsis_aria()}
-          items={[{ title: m.home_title() }]}
-          showHome={false}
-        />
-        <ShellHeaderActions />
-      </ShellHeader>
-
-      <ShellContent>
-        <div className="@container flex-1 space-y-6 overflow-y-auto p-6">
-          <div className="space-y-1">
-            <h2 className="font-semibold text-2xl tracking-tight">
-              {m.home_welcome()}
-            </h2>
-            <p className="text-muted-foreground">{m.home_subtitle()}</p>
-          </div>
-
-          <div className="grid @md:grid-cols-2 gap-4">
-            {quickLinks.map(({ to, title, description, icon: Icon }) => (
-              <Link className="group" key={to} to={to}>
-                <Card className="h-full transition-colors group-hover:border-primary/50">
-                  <CardHeader>
-                    <Icon className="mb-2 h-5 w-5 text-muted-foreground" />
-                    <CardTitle className="text-base">{title}</CardTitle>
-                    <CardDescription>{description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </ShellContent>
-    </ShellPage>
+    <div
+      className="flex h-full items-center justify-center"
+      data-slot="chat-home-loading"
+    >
+      <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
+    </div>
   );
 }

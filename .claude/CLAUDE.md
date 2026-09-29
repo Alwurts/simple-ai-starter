@@ -30,7 +30,7 @@ Run from the **monorepo root** (not inside a package):
 
 ## Conventions (the short version)
 
-- **Live IA is the truth:** Catalog / Settings (`apps/web/src/components/layout/platform-navigation.ts`).
+- **Live IA is the truth:** Chat / Catalog / Settings (`apps/web/src/components/layout/platform-navigation.ts`).
 - **Layer-sliced, feature-keyed.** A capability is the same key `<cap>` repeated
   across layers (`db` → `contract` → `core` → surfaces → `ui`/`components`). Find
   one slice, you know where the other five live. → [`docs/architecture.md`](docs/architecture.md)

@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import type { OrgChatMessage } from "@/components/chat/dock/chat-tabs-store";
+import type { OrgChatMessage } from "@/features/assistant/lib/ai-types";
 import {
   applyWriteToolCompletionInvalidations,
   collectWriteToolCompletionEvents,

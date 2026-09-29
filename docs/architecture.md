@@ -5,11 +5,13 @@ moves through them, and the rules that keep the boundaries honest. Read this
 first — every ADR in `docs/decisions/` records *why* one of these choices was
 made, and every guide in `docs/guides/` shows *how* to work within them.
 
-The starter is an org-scoped chat app with one worked example table:
-**Catalog / Settings** is the live information architecture
-(`apps/web/src/components/layout/platform-navigation.ts`), and `products` is
-the example capability that walks every layer — table → `contract` schema →
-`core` functions → Hono route → one list/detail page → five agent tools.
+The starter is an org-scoped chat app with one worked example table.
+**Chat / Catalog / Settings** is the live information architecture
+(`apps/web/src/components/layout/platform-navigation.ts`). The chat is the
+signed-in home (`apps/web/src/features/assistant/`, the simple-ai `chat-page`
+block wired to the org's `OrgChat` Think agent). `products` is the example
+capability that walks every layer — table → `contract` schema → `core`
+functions → Hono route → one list/detail page → five agent tools.
 
 ## Guiding principles
 
