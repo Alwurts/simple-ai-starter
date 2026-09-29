@@ -4,7 +4,6 @@ const CATALOG_DETAIL_URL_PATTERN = /\/catalog\/.+/;
 
 test.describe("catalog products", () => {
   const productName = `E2E Product ${Date.now()}`;
-  const productSku = `E2E-${Date.now()}`;
 
   test("can create a product", async ({ page }) => {
     await page.goto("/catalog");
@@ -18,9 +17,8 @@ test.describe("catalog products", () => {
 
     // Fill the product form
     await page.locator("input#name").fill(productName);
-    await page.locator("input#sku").fill(productSku);
     await page.locator("input#price").fill("29.99");
-    await page.locator("input#minStockLevel").fill("10");
+    await page.locator("textarea#description").fill("An e2e product");
 
     // Submit
     await page.getByRole("button", { name: "Save Product" }).click();
@@ -34,7 +32,6 @@ test.describe("catalog products", () => {
   test("can view product details", async ({ page }) => {
     // First create a product to ensure one exists
     const detailProductName = `Detail Product ${Date.now()}`;
-    const detailProductSku = `DET-${Date.now()}`;
 
     await page.goto("/catalog");
     await page.waitForLoadState("networkidle");
@@ -45,9 +42,7 @@ test.describe("catalog products", () => {
     ).toBeVisible({ timeout: 10_000 });
 
     await page.locator("input#name").fill(detailProductName);
-    await page.locator("input#sku").fill(detailProductSku);
     await page.locator("input#price").fill("15.00");
-    await page.locator("input#minStockLevel").fill("5");
     await page.getByRole("button", { name: "Save Product" }).click();
 
     // Wait for the product to appear, then click its name

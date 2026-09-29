@@ -7,13 +7,7 @@ import {
 } from "@workspace/auth/access-control";
 import { describe, expect, it } from "vitest";
 
-const ADMIN_ONLY: Action[] = [
-  "credit:bypass",
-  "payment:reverse",
-  "document:void",
-  "member:manage",
-  "org:settings",
-];
+const ADMIN_ONLY: Action[] = ["member:manage", "org:settings"];
 const ALL_ACTIONS: Action[] = ["catalog:write", ...ADMIN_ONLY];
 
 describe("can() — role-rank authorization", () => {
@@ -24,13 +18,13 @@ describe("can() — role-rank authorization", () => {
     }
   });
 
-  it("admin may perform every v1 action", () => {
+  it("admin may perform every action", () => {
     for (const action of ALL_ACTIONS) {
       expect(can(action, { role: "admin" })).toBe(true);
     }
   });
 
-  it("owner may perform every v1 action", () => {
+  it("owner may perform every action", () => {
     for (const action of ALL_ACTIONS) {
       expect(can(action, { role: "owner" })).toBe(true);
     }

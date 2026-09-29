@@ -1,21 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("navigation", () => {
-  test("dashboard loads after login", async ({ page }) => {
+  test("home loads after login", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveURL("/");
   });
 
-  test("sidebar navigates to Inventory", async ({ page }) => {
+  test("sidebar navigates to Catalog", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Inventory" }).click();
-    await expect(page).toHaveURL("/inventory");
-  });
-
-  test("sidebar navigates to Warehouses", async ({ page }) => {
-    await page.goto("/");
-    await page.getByRole("link", { name: "Warehouses" }).click();
-    await expect(page).toHaveURL("/inventory/warehouses");
+    await page.getByRole("link", { name: "Catalog" }).click();
+    await expect(page).toHaveURL("/catalog");
   });
 
   test("sidebar navigates to Settings", async ({ page }) => {

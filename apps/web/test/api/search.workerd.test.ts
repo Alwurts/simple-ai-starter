@@ -26,7 +26,7 @@ describe("GET /api/protected/catalog/search", () => {
     await SELF.fetch(PRODUCTS_API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Searchable Widget", sku: "SW-001" }),
+      body: JSON.stringify({ name: "Searchable Widget" }),
     });
 
     const res = await SELF.fetch(`${SEARCH_API}?q=Searchable`, {
@@ -41,28 +41,31 @@ describe("GET /api/protected/catalog/search", () => {
     expect(data.results[0].metadata.title).toBe("Searchable Widget");
   });
 
-  it("finds products by SKU", async () => {
+  it("finds products by description", async () => {
     await SELF.fetch(PRODUCTS_API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Any Product", sku: "UNIQUE-SKU-123" }),
+      body: JSON.stringify({
+        name: "Any Product",
+        description: "UNIQUE-DESC phrase",
+      }),
     });
 
-    const res = await SELF.fetch(`${SEARCH_API}?q=UNIQUE-SKU`, {
+    const res = await SELF.fetch(`${SEARCH_API}?q=UNIQUE-DESC`, {
       headers: { Cookie: cookie },
     });
     const data = (await res.json()) as {
-      results: { metadata: { sku: string } }[];
+      results: { metadata: { description: string | null } }[];
     };
     expect(data.results).toHaveLength(1);
-    expect(data.results[0].metadata.sku).toBe("UNIQUE-SKU-123");
+    expect(data.results[0].metadata.description).toBe("UNIQUE-DESC phrase");
   });
 
   it("returns no results for unmatched query", async () => {
     await SELF.fetch(PRODUCTS_API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Real Product", sku: "RP-001" }),
+      body: JSON.stringify({ name: "Real Product" }),
     });
 
     const res = await SELF.fetch(`${SEARCH_API}?q=nonexistent`, {

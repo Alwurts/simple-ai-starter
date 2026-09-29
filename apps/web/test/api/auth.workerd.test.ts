@@ -12,7 +12,7 @@ describe("auth enforcement", () => {
     // Create session without org
     const { cookie } = await createTestSession();
     const res = await SELF.fetch(
-      "http://localhost/api/protected/inventory/products",
+      "http://localhost/api/protected/catalog/products",
       { headers: { Cookie: cookie } }
     );
     expect(res.status).toBe(403);

@@ -33,7 +33,7 @@ describe("GET /api/protected/catalog/products", () => {
     await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Test Product", sku: "TP-001" }),
+      body: JSON.stringify({ name: "Test Product" }),
     });
 
     const res = await SELF.fetch(API, {
@@ -55,7 +55,7 @@ describe("GET /api/protected/catalog/products", () => {
       await SELF.fetch(API, {
         method: "POST",
         headers: { Cookie: cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ name: `Product ${i}`, sku: `P-${i}` }),
+        body: JSON.stringify({ name: `Product ${i}` }),
       });
     }
 
@@ -79,12 +79,12 @@ describe("GET /api/protected/catalog/products", () => {
     await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Alpha Widget", sku: "AW-001" }),
+      body: JSON.stringify({ name: "Alpha Widget" }),
     });
     await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Beta Gadget", sku: "BG-001" }),
+      body: JSON.stringify({ name: "Beta Gadget" }),
     });
 
     const res = await SELF.fetch(`${API}?search=Alpha`, {
@@ -108,25 +108,23 @@ describe("POST /api/protected/catalog/products", () => {
       headers: { Cookie: cookie, "Content-Type": "application/json" },
       body: JSON.stringify({
         name: "New Product",
-        sku: "NP-001",
         price: 2999,
       }),
     });
     expect(res.status).toBe(200);
     const data = (await res.json()) as {
       name: string;
-      sku: string;
       price: number;
     };
     expect(data.name).toBe("New Product");
-    expect(data.sku).toBe("NP-001");
+    expect(data.price).toBe(2999);
   });
 
   it("rejects invalid payload", async () => {
     const res = await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "X" }), // Missing sku, name too short
+      body: JSON.stringify({ name: "X" }), // Name too short
     });
     expect(res.status).toBe(400);
   });
@@ -137,7 +135,7 @@ describe("GET /api/protected/catalog/products/:id", () => {
     const createRes = await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Find Me", sku: "FM-001" }),
+      body: JSON.stringify({ name: "Find Me" }),
     });
     const created = (await createRes.json()) as { id: string };
 
@@ -162,7 +160,7 @@ describe("PUT /api/protected/catalog/products/:id", () => {
     const createRes = await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Original", sku: "OR-001" }),
+      body: JSON.stringify({ name: "Original" }),
     });
     const created = (await createRes.json()) as { id: string };
 
@@ -191,7 +189,7 @@ describe("DELETE /api/protected/catalog/products/:id", () => {
     const createRes = await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Delete Me", sku: "DM-001" }),
+      body: JSON.stringify({ name: "Delete Me" }),
     });
     const created = (await createRes.json()) as { id: string };
 

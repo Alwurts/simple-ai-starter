@@ -77,7 +77,7 @@ describe("catalog:write gate on the real REST routes", () => {
           Cookie: operator.cookie,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: "Operator Product", sku: "OP-RBAC-001" }),
+        body: JSON.stringify({ name: "Operator Product" }),
       }
     );
 

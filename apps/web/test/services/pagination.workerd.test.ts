@@ -11,8 +11,8 @@ beforeEach(async () => {
 
 describe("getPaginatedProducts", () => {
   it("returns paginated response with correct shape", async () => {
-    await seedProduct(orgId, { name: "Product 1", sku: "P-1" });
-    await seedProduct(orgId, { name: "Product 2", sku: "P-2" });
+    await seedProduct(orgId, { name: "Product 1" });
+    await seedProduct(orgId, { name: "Product 2" });
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
     const result = await getPaginatedProducts(orgId, {
@@ -28,7 +28,7 @@ describe("getPaginatedProducts", () => {
 
   it("respects page size limit", async () => {
     for (let i = 0; i < 5; i++) {
-      await seedProduct(orgId, { name: `Product ${i}`, sku: `P-${i}` });
+      await seedProduct(orgId, { name: `Product ${i}` });
     }
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
@@ -43,7 +43,7 @@ describe("getPaginatedProducts", () => {
 
   it("returns correct page offset", async () => {
     for (let i = 0; i < 5; i++) {
-      await seedProduct(orgId, { name: `Product ${i}`, sku: `P-${i}` });
+      await seedProduct(orgId, { name: `Product ${i}` });
     }
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
@@ -64,8 +64,8 @@ describe("getPaginatedProducts", () => {
   });
 
   it("filters by search term", async () => {
-    await seedProduct(orgId, { name: "Alpha Widget", sku: "AW-001" });
-    await seedProduct(orgId, { name: "Beta Gadget", sku: "BG-001" });
+    await seedProduct(orgId, { name: "Alpha Widget" });
+    await seedProduct(orgId, { name: "Beta Gadget" });
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
     const result = await getPaginatedProducts(orgId, {
@@ -79,24 +79,9 @@ describe("getPaginatedProducts", () => {
     expect(result.total).toBe(1);
   });
 
-  it("filters by SKU search", async () => {
-    await seedProduct(orgId, { name: "Product A", sku: "SPECIAL-001" });
-    await seedProduct(orgId, { name: "Product B", sku: "NORMAL-001" });
-
-    const { getPaginatedProducts } = await import("@workspace/core/catalog");
-    const result = await getPaginatedProducts(orgId, {
-      page: 1,
-      pageSize: 10,
-      search: "SPECIAL",
-    });
-
-    expect(result.data).toHaveLength(1);
-    expect(result.data[0].sku).toBe("SPECIAL-001");
-  });
-
   it("sorts by name ascending", async () => {
-    await seedProduct(orgId, { name: "Zebra", sku: "Z-001" });
-    await seedProduct(orgId, { name: "Apple", sku: "A-001" });
+    await seedProduct(orgId, { name: "Zebra" });
+    await seedProduct(orgId, { name: "Apple" });
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
     const result = await getPaginatedProducts(orgId, {
@@ -111,8 +96,8 @@ describe("getPaginatedProducts", () => {
   });
 
   it("sorts by name descending", async () => {
-    await seedProduct(orgId, { name: "Zebra", sku: "Z-001" });
-    await seedProduct(orgId, { name: "Apple", sku: "A-001" });
+    await seedProduct(orgId, { name: "Zebra" });
+    await seedProduct(orgId, { name: "Apple" });
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
     const result = await getPaginatedProducts(orgId, {
@@ -129,8 +114,8 @@ describe("getPaginatedProducts", () => {
   it("does not return products from other orgs", async () => {
     const otherUser = await seedUser();
     const otherOrg = await seedOrganization(otherUser.id);
-    await seedProduct(orgId, { name: "My Product", sku: "MP-001" });
-    await seedProduct(otherOrg.id, { name: "Other Product", sku: "OP-001" });
+    await seedProduct(orgId, { name: "My Product" });
+    await seedProduct(otherOrg.id, { name: "Other Product" });
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
     const result = await getPaginatedProducts(orgId, {
@@ -143,7 +128,7 @@ describe("getPaginatedProducts", () => {
   });
 
   it("returns empty result for page beyond data", async () => {
-    await seedProduct(orgId, { name: "Only Product", sku: "OP-001" });
+    await seedProduct(orgId, { name: "Only Product" });
 
     const { getPaginatedProducts } = await import("@workspace/core/catalog");
     const result = await getPaginatedProducts(orgId, {
