@@ -1,3 +1,6 @@
+import { createFetchTools } from "@cloudflare/think/tools/fetch";
+import type { ToolSet } from "ai";
+
 /**
  * The `FETCH_ALLOWED_HOSTS` allowlist for Think's read-only fetch tool
  * (D-010). The env var is a comma-separated list of hostnames; with it empty
@@ -25,4 +28,17 @@ export function parseFetchAllowedHosts(raw: string | undefined): string[] {
  */
 export function fetchAllowlistForHosts(hosts: string[]): string[] {
   return hosts.map((host) => `https://${host}`);
+}
+
+/**
+ * The fetch tools for a raw `FETCH_ALLOWED_HOSTS` value: `{}` (tool absent —
+ * not an empty allowlist) when the value is empty/unset, otherwise Think's
+ * read-only `fetch_url` limited to the listed hosts. Pure — unit-tested.
+ */
+export function fetchToolsForEnv(raw: string | undefined): ToolSet {
+  const hosts = parseFetchAllowedHosts(raw);
+  if (hosts.length === 0) {
+    return {};
+  }
+  return createFetchTools({ allowlist: fetchAllowlistForHosts(hosts) });
 }
