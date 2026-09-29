@@ -38,12 +38,16 @@
   "durable_objects": {
     "bindings": [
       { "class_name": "TestCounter", "name": "TEST_COUNTER" },
+      // SessionHost backs the compaction behaviour test (agents Sessions on a
+      // plain DO — the smallest real seam; the pool cannot spawn Think facets).
+      { "class_name": "SessionHost", "name": "SESSION_HOST" },
       // OrgChat is a facet of OrgAgent (resolved via ctx.exports.OrgChat), so —
       // as in production — only OrgAgent gets a top-level binding + migration.
       { "class_name": "OrgAgent", "name": "OrgAgent" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["TestCounter", "OrgAgent"] }
+    { "tag": "v1", "new_sqlite_classes": ["TestCounter", "OrgAgent"] },
+    { "tag": "v2", "new_sqlite_classes": ["SessionHost"] }
   ]
 }

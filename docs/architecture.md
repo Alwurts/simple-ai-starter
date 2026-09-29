@@ -169,6 +169,13 @@ The DO fixture + reference test live in `apps/web/src/workerd-test/`.
 
 - **The agent** — the org agent's tools, memory, workspace, sub-agent and
   approvals → [`docs/guides/writing-agent-tools.md`](guides/writing-agent-tools.md).
+  Agent features beyond the product tools: cross-chat conversation search
+  (`OrgAgent.searchChats` over each chat's Sessions FTS index), Agent Skills
+  (bundled `agents:skills` on `OrgChat` only), the opt-in read-only fetch tool
+  (`FETCH_ALLOWED_HOSTS`, absent when empty), and sandboxed code execution via
+  `@cloudflare/codemode` (`execute` tool, `LOADER` binding; gated writes pause
+  inside the sandbox — see
+  [`docs/guides/agent-tool-approvals.md`](guides/agent-tool-approvals.md)).
 - **Why** a choice was made → `docs/decisions/` (ADRs, under a strict
   significance bar — see ADR-005).
 - **How** to do or extend something here → `docs/guides/`.

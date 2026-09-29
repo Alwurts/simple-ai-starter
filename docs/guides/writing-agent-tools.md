@@ -33,16 +33,78 @@ packages/agent/src/
 
 | Compose entry | What it returns | Where it runs |
 |---------------|-----------------|---------------|
-| `getOrgAgentTools(ctx)` | The five product tools (`list/get/create/update/delete_product`) | Top-level Think tools on `OrgChat` |
+| `getOrgAgentTools(ctx)` | The five product tools (`list/get/create/update/delete_product`) | Top-level Think tools on `OrgChat` — **also** the `tools.*` surface inside the codemode sandbox |
 | `getOrgAgentReadOnlyTools(ctx)` | `list_products`, `get_product` only | Delegated sub-agent (`OrgSubAgent`) |
 | `getOrgAgentDisplayTools(ctx)` | `display_product_list`, `display_memory` | Top-level peers of the product tools + `delegate` |
 
-`org-chat.getTools()` spreads the product tools, `delegate`, and display tools
-as siblings. Display tools are UI echoes and may keep their own return shapes —
-do not block product work on wrapping them.
+`org-chat.getTools()` spreads the fetch tool (when allowlisted), the product
+tools, `delegate`, and display tools as siblings. Display tools are UI echoes
+and may keep their own return shapes — do not block product work on wrapping
+them.
 
-This starter does **not** use `@cloudflare/codemode` / Dynamic Workers
-(`worker_loaders` / `LOADER`). Tools run in-process under Think.
+The codemode sandbox (`execute` tool, below) is built from
+`getOrgAgentTools(ctx)` — nothing else. That is what keeps `update_product` /
+`delete_product` approval-gated inside sandbox code, and what keeps `delegate`,
+display tools and the browser out of it.
+
+## Agent Skills (`getSkills()`)
+
+`OrgChat.getSkills()` returns the bundled `agents:skills` source, resolved by
+the Agents Vite plugin (already in `apps/web/vite.config.ts`) to
+`packages/agent/src/org/chat/skills/`. One directory per skill with a
+`SKILL.md` (frontmatter `name` + `description`, markdown body); the starter
+ships `product-copy` ("write product copy; check the org's shared memory for
+tone first"). Think merges the catalog into the system prompt and exposes
+`activate_skill` / `read_skill_resource` on **OrgChat only** — `OrgSubAgent`
+does not override `getSkills`, so `delegate` never sees them.
+
+Script running stays off: no `getSkillScriptRunner` override, so
+`run_skill_script` is never registered — do not add skill `scripts/`
+directories. `skillWorkspace` stays off too. Add a skill by dropping a
+`skills/<name>/SKILL.md` directory next to `org-chat.ts`; no code changes.
+
+Under vitest, `agents:skills` is a Vite-plugin virtual module the test configs
+do not load, so `apps/web/vitest.config.ts` aliases it to an empty-catalog
+stub (`apps/web/test/agents-skills-shim.ts`); the SKILL.md itself is pinned by
+`skills.test.ts` in packages/agent.
+
+## Fetch tool (`FETCH_ALLOWED_HOSTS`, off by default)
+
+Think's read-only `fetch_url` tool is opt-in per environment: `OrgChat` calls
+`createFetchTools({ allowlist })` only when `FETCH_ALLOWED_HOSTS` (a
+comma-separated hostname list declared in `wrangler.jsonc` `vars`) parses to
+at least one host — empty/unset means the fetch tool does not exist at all
+(`packages/agent/src/org/chat/fetch-allowlist.ts`). Each hostname becomes a
+bare-origin allowlist entry (origin + every subpath); Think enforces GET-only,
+size caps, redirect-into-allowlist, and blocks private/loopback targets.
+
+## Code execution (codemode `execute` tool)
+
+`OrgChat.getTools()` adds `execute` via `createExecuteTool(this, { tools:
+productTools })` from `@cloudflare/think/tools/execute`: the model writes
+TypeScript that runs in an isolated Worker sandbox. Setup that this template
+already has: the `worker_loaders` binding `LOADER` (`wrangler.jsonc`) and
+`export { CodemodeRuntime } from "@cloudflare/codemode"` in
+`apps/web/src/server.ts` (the manual export the codemode docs prescribe —
+equivalent to their Vite plugin's output).
+
+Inside the sandbox the model sees `tools.*` (the five product tools),
+`state.*` (the shared org workspace), and the `codemode` SDK — no `cdp.*`
+(there is no `BROWSER` binding) and no `delegate`. Sandbox code runs with
+network access blocked.
+
+Running code is **not** gated itself (D-015) — approvals come from the gated
+tools the code calls: sandbox calls to `update_product` / `delete_product`
+keep their `needsApproval`, which the codemode runtime maps to its durable
+pause/approve/resume — see
+[`agent-tool-approvals.md`](./agent-tool-approvals.md).
+
+A paused run renders an approval card outside the collapsed Worked group
+(`PausedExecutionCard` in
+`apps/web/src/features/assistant/components/chat-message-parts.tsx`), which
+loads the full pending args via `pendingExecutions(executionId)` and resolves
+via `approveExecution` / `rejectExecution`; Think replays the run and
+auto-continues the chat.
 
 ## Context globals vs `inputSchema`
 
@@ -271,8 +333,11 @@ For day-to-day "add `get_foo`," skip the grill and follow **Adding a new tool**.
 
 ## Files of interest
 
-- `packages/agent/src/org/chat/org-chat.ts` — `getTools()` wiring
+- `packages/agent/src/org/chat/org-chat.ts` — `getTools()` / `getSkills()` wiring
+- `packages/agent/src/org/chat/search.ts` — cross-chat search bounds + merge
+- `packages/agent/src/org/chat/fetch-allowlist.ts` — `FETCH_ALLOWED_HOSTS` parsing
+- `packages/agent/src/org/chat/skills/` — bundled example skills
 - `packages/agent/src/tool-parts/catalog/products.ts` — named pieces
 - `packages/agent/src/in-app/compose-org-tools.ts` — compose entry points
 - `packages/agent/src/tools/guard.ts` — RBAC
-- `apps/web/src/features/assistant/components/chat-message-parts.tsx` — Approve/Reject UI
+- `apps/web/src/features/assistant/components/chat-message-parts.tsx` — Approve/Reject UI + paused-execution card

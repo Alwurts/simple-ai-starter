@@ -50,11 +50,14 @@ function orgChatWithParent(getParent: () => Promise<MemoryParent>): OrgChat {
   return instance;
 }
 
-/** The single `org_memory` block `configureContext()` must declare. */
+/**
+ * The `org_memory` block `configureContext()` must declare (after the
+ * read-only `org` header block, D-016 fix round).
+ */
 function orgMemoryBlock(chat: OrgChat) {
   const blocks = chat.configureContext();
-  expect(blocks).toHaveLength(1);
-  const block = blocks[0];
+  expect(blocks.map((block) => block.label)).toEqual(["org", "org_memory"]);
+  const block = blocks[1];
   if (!block) {
     throw new Error("configureContext returned no org_memory block");
   }
@@ -67,12 +70,21 @@ describe("OrgChat org memory via configureContext (think 0.18)", () => {
     const chat = orgChatWithParent(() => Promise.resolve(parent));
 
     const block = orgMemoryBlock(chat);
-    expect(block.label).toBe("org_memory");
     expect(block.description).toContain("set_context");
     expect(block.maxTokens).toBe(2000);
     expect(typeof (block.provider as WritableContextProvider)?.set).toBe(
       "function"
     );
+  });
+
+  it("prepends a read-only org header block (no set_context on it)", () => {
+    const { parent } = fakeOrgAgentParent();
+    const chat = orgChatWithParent(() => Promise.resolve(parent));
+
+    const org = chat.configureContext()[0];
+    expect(org?.label).toBe("org");
+    expect((org?.provider as WritableContextProvider)?.set).toBeUndefined();
+    expect(typeof org?.provider?.get).toBe("function");
   });
 
   it("writes through the provider land in the parent's org_memory", async () => {

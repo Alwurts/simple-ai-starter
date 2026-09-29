@@ -22,6 +22,7 @@ import { app as honoApp } from "../hono";
 // via `ctx.exports.OrgChat`, so it needs the export but no binding/migration.
 export { OrgAgent } from "@workspace/agent/org";
 export { OrgChat } from "@workspace/agent/org/chat";
+export { SessionHost } from "./session-host-do";
 export { TestCounter } from "./test-counter-do";
 
 const app = new Hono()

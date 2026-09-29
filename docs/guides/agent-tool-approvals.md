@@ -1,15 +1,43 @@
-# Agent tool approvals (moved)
+# Agent tool approvals
 
-Approval-gated writes and the full tool authoring guide now live in
+Approvals come in two shapes in this starter. The authoring detail (the
+`needsApproval` ↔ AI SDK approval rule, per-tool-class guidance, and how to add
+gated writes such as `update_product` / `delete_product`) lives in
 **[writing-agent-tools.md](./writing-agent-tools.md)**.
 
-That doc covers `needsApproval` ↔ AI SDK tool approval, the per-tool-class
-rule (autonomous / approval / no tool), and how to add gated writes such as
-`update_product` / `delete_product`.
+## 1. Plain top-level tools — AI SDK approval pause
 
-The Approve/Reject UI lives in the chat page
-(`apps/web/src/features/assistant/components/chat-message-parts.tsx`).
-Approve and Reject call `addToolApprovalResponse` from `useAgentChat`
+`needsApproval: true` on a top-level tool pauses before `execute` with part
+state `approval-requested`. The chat renders Approve/Reject
+(`apps/web/src/features/assistant/components/chat-message-parts.tsx` →
+`addToolApprovalResponse`); Approve and Reject call `addToolApprovalResponse`
+from `useAgentChat`
 (`apps/web/src/features/assistant/components/full-screen-chat.tsx`). The
-agents client sends that as a tool-approval frame and continues the turn;
-the previous chat did not set `sendAutomaticallyWhen`.
+agents client sends that as a tool-approval frame and continues the turn.
+
+## 2. Codemode (`execute` tool) — approval at the gated tool call
+
+The `execute` tool itself is **not** approval-gated (D-015): read-only sandbox
+code (list/get, workspace reads, data munging) runs freely — the sandbox has
+no network and only the org's own tools. The approval lives where the side
+effect is: a sandbox call to `update_product` / `delete_product` does not run
+immediately — the codemode runtime pauses the run durably and the tool returns
+`{ status: "paused", executionId, pending }` (a *truncated* preview). Think
+exposes three client callables on `OrgChat` to resolve it:
+
+- `pendingExecutions(executionId)` — the **full** args (the transcript copy
+  is ~2 KB-bounded); the approval card fetches these before enabling
+  Approve.
+- `approveExecution(executionId)` — replays the run up to the paused call,
+  executes it, and auto-continues the chat; the outcome replaces the paused
+  tool output in the transcript.
+- `rejectExecution(executionId, reason?)` — ends the run with
+  `{ status: "rejected", reason }` so the model can adapt.
+
+The paused card lives outside the collapsed Worked group
+(`isPausedExecutionPart` / `PausedExecutionCard` in
+`chat-message-parts.tsx`); a completed/errored run folds back in and renders
+the code (as a code block) plus its result, logs, or error. One execution can
+pause more than once (a loop that hits both gated tools): the card remounts
+per pause (keyed by `executionId` + pending `seq`) so a second pause never
+shows the first pause's args.

@@ -6,6 +6,11 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { app as honoApp } from "./hono";
 
+// The codemode runtime behind OrgChat's `execute` tool is a DO facet of
+// OrgChat, so its class must be reachable via ctx.exports — the manual export
+// the @cloudflare/codemode docs prescribe (the @cloudflare/codemode/vite
+// plugin exists to add exactly this line).
+export { CodemodeRuntime } from "@cloudflare/codemode";
 export { OrgAgent } from "@workspace/agent/org";
 // OrgChat and OrgSubAgent are facets (sub-agents) of OrgAgent, resolved by the
 // framework via these named worker exports — they need no wrangler binding or

@@ -516,3 +516,16 @@ export function resolveOrgChatModel(env: Cloudflare.Env): ResolvedOrgChatModel {
 export function getCompactionLimit(contextWindow: number): number {
   return Math.floor(contextWindow * COMPACTION_FRACTION);
 }
+
+/**
+ * Think's context-window overflow recovery config (D-016): the reactive
+ * backstop compacts and retries a turn the provider rejected as too long;
+ * the proactive guard compacts mid-turn once real step usage crosses ~90% of
+ * the model's window. Both run the session's `onCompaction` function.
+ */
+export function orgChatContextOverflow(contextWindow: number) {
+  return {
+    reactive: true,
+    proactive: { maxInputTokens: contextWindow },
+  };
+}

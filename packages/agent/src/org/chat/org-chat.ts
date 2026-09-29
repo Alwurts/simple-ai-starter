@@ -1,10 +1,14 @@
+import bundledSkills from "agents:skills";
 import type { WorkspaceFsLike } from "@cloudflare/shell";
 import {
+  defaultContextOverflowClassifier,
   type Session,
+  type SkillSource,
   type StepContext,
   Think,
   type TurnContext,
 } from "@cloudflare/think";
+import { createExecuteTool } from "@cloudflare/think/tools/execute";
 import { auth } from "@workspace/auth";
 import { errorMessage, structuredLog } from "@workspace/log";
 import {
@@ -33,12 +37,16 @@ import {
   gateChatAttachments,
   getCompactionLimit,
   type OrgChatModelCapabilities,
+  orgChatContextOverflow,
   resolveOrgChatModel,
 } from "../../inference/chat-models";
+import type { ChatMessageHit } from "../../types";
 import { resolveTurnUserId } from "../bootstrap";
 import { OrgAgent } from "../org-agent";
+import { fetchToolsForEnv } from "./fetch-allowlist";
 import { OrgMemoryProvider } from "./org-memory-provider";
 import { OrgSubAgent } from "./org-sub-agent";
+import { SEARCH_MAX_HITS_PER_CHAT, snippetAround } from "./search";
 import { SharedWorkspace } from "./shared-workspace";
 
 type OrgAgentParent = Pick<
@@ -69,6 +77,12 @@ export class OrgChat extends Think<Cloudflare.Env> {
     this.resolvedModelId = resolved.modelId;
     this.resolvedContextWindow = resolved.contextWindow;
     this.resolvedCapabilities = resolved.capabilities;
+    // Context-window overflow recovery (Think built-in, D-016) — the reactive
+    // backstop compacts and retries a turn a provider rejected as too long,
+    // and the proactive guard compacts mid-turn once real step usage crosses
+    // 90% of the model's window. `compactAfter` (below) keeps the cheaper
+    // pre-turn estimate heuristic as the first line of defence.
+    this.contextOverflow = orgChatContextOverflow(this.resolvedContextWindow);
   }
 
   private getParent(): Promise<OrgAgentParent> {
@@ -83,6 +97,12 @@ export class OrgChat extends Think<Cloudflare.Env> {
     return organizationId;
   }
 
+  /**
+   * Capture the acting user id for tool execute / approve-resume. The
+   * security boundary is the Worker gate in `apps/web/src/server.ts` (session
+   * + active-org check before any `/agents/` route) — Think may stream the
+   * transcript before this runs, so onConnect is identification, not a gate.
+   */
   override async onConnect(
     connection: Connection,
     ctx: ConnectionContext
@@ -106,13 +126,41 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   /**
-   * The org's shared memory block (think 0.18 `configureContext`). Writable, so
-   * the model gets `set_context` to update it; the provider round-trips through
-   * the parent `OrgAgent`'s `org_memory` table so every chat in the org shares
-   * one memory. `configureSession` keeps only the compaction policy.
+   * The bundled example skills (D-010). `agents:skills` is resolved by the
+   * Agents Vite plugin the app already runs (apps/web/vite.config.ts) to the
+   * `skills/` directory next to this file — currently one skill,
+   * `product-copy`. Think merges the catalog into the system prompt and
+   * exposes `activate_skill` / `read_skill_resource` on OrgChat turns only;
+   * `OrgSubAgent` does not override `getSkills`, so `delegate` gets none.
+   * Script running stays off: no `getSkillScriptRunner`, so `run_skill_script`
+   * is never registered.
+   */
+  override getSkills(): SkillSource[] {
+    return [bundledSkills];
+  }
+
+  /**
+   * Prompt blocks (think 0.18 `configureContext`). The read-only `org` block
+   * carries the per-org header (org name, member, product stats) — always-on
+   * instructions belong in a context block, not a per-turn `beforeTurn`
+   * override, so Think can freeze, persist and cache the assembled prompt.
+   * The writable `org_memory` block follows it: the model gets `set_context`
+   * to update it, and the provider round-trips through the parent `OrgAgent`'s
+   * `org_memory` table so every chat in the org shares one memory.
    */
   override configureContext(): ContextConfig[] {
     return [
+      {
+        label: "org",
+        provider: {
+          get: async () => {
+            const { header } = await buildOrgContext(
+              this.requireOrganizationId()
+            );
+            return header;
+          },
+        },
+      },
       {
         label: "org_memory",
         description:
@@ -149,13 +197,14 @@ export class OrgChat extends Think<Cloudflare.Env> {
             error: errorMessage(error),
           });
         })
-        // Primary trigger: Think's heuristic auto-compacts *before* a turn is
-        // assembled once its token estimate crosses this budget, giving real
-        // headroom below the model ceiling (unlike pinning it to the full window).
-        // The budget is per-model — the chat model is fixed per instance, so this
-        // one-time set is correct. `maybeCompactByUsage` layers a stricter
-        // real-usage trigger on top for tool-heavy histories the estimate
-        // under-counts.
+        // Between-turns trigger: agents runs `compactAfter` after every
+        // `appendMessage()` — once the stamped token estimate crosses this
+        // budget, history compacts before the next turn assembles, giving
+        // headroom below the model ceiling. The budget is per-model — the
+        // chat model is fixed per instance, so this one-time set is correct.
+        // Mid-turn growth is `contextOverflow`'s job (see onStart): the
+        // proactive guard compacts on real step usage and the reactive
+        // backstop compacts + retries an overflow-rejected turn.
         .compactAfter(getCompactionLimit(this.resolvedContextWindow))
     );
   }
@@ -171,6 +220,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
     });
     return super.onChatError(error);
   }
+
+  // Pairs with `contextOverflow.reactive` above: without it Think warns and
+  // never treats any error as an overflow.
+  override classifyChatError = defaultContextOverflowClassifier;
 
   override onStepFinish(ctx: StepContext): void {
     super.onStepFinish(ctx);
@@ -190,6 +243,9 @@ export class OrgChat extends Think<Cloudflare.Env> {
       return;
     }
 
+    // Stamp model/usage metadata on the finished assistant message. The
+    // session's `update` change event patches Think's transcript cache, so no
+    // explicit re-sync is needed.
     const safe = await this.updateMessageInHistory({
       ...result.message,
       metadata: {
@@ -201,7 +257,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
       },
     });
 
-    await this.syncMessagesFromStorage();
     if (safe) {
       this.broadcast(
         JSON.stringify({
@@ -210,49 +265,47 @@ export class OrgChat extends Think<Cloudflare.Env> {
         })
       );
     }
-
-    await this.maybeCompactByUsage(usage.inputTokens);
-  }
-
-  private async maybeCompactByUsage(inputTokens: number): Promise<void> {
-    const limit = getCompactionLimit(this.resolvedContextWindow);
-    if (!limit || inputTokens <= limit) {
-      return;
-    }
-    try {
-      const result = await this.session.compact();
-      if (result) {
-        await this.syncMessagesFromStorage();
-      }
-    } catch (err) {
-      const orgId = this.parentPath.at(-1)?.name ?? "?";
-      structuredLog({
-        kind: "org_chat_usage_compaction_failed",
-        severity: "error",
-        organizationId: orgId,
-        chatName: this.name,
-        error: errorMessage(err),
-      });
-    }
   }
 
   /**
-   * Client-callable — registered after the class body (same pattern as Think's
-   * `approveExecution` / `pendingExecutions`). `@callable()` on OrgChat dynamic
-   * agent methods does not reliably land in the agents WeakMap for RPC;
-   * post-class `callable()(proto.method)` does (ALW-500 QA: "Method … is not
-   * callable").
+   * Client-callable manual compaction (the header menu). Everything else
+   * compaction-related is Think built-in: `compactAfter` (pre-turn estimate),
+   * and `contextOverflow` reactive + proactive (real-usage, mid-turn) with
+   * this session's `onCompaction` function.
    */
+  @callable()
   async compactNow(): Promise<{ compacted: boolean }> {
     const result = await this.session.compact();
-    if (!result) {
-      return { compacted: false };
-    }
-    await this.syncMessagesFromStorage();
-    return { compacted: true };
+    // The session's `compact` change event re-syncs Think's transcript cache.
+    return { compacted: Boolean(result) };
   }
 
-  override async beforeTurn(ctx: TurnContext) {
+  /**
+   * Parent-callable — `OrgAgent.searchChats` fans a query out to each
+   * registered chat through this method. Deliberately NOT `@callable()`: it
+   * is a parent-side side effect, not something a browser should trigger
+   * directly (upstream directory pattern).
+   *
+   * Uses this chat's own Sessions FTS5 index (built lazily on first search,
+   * text parts only) and trims each hit to a windowed snippet.
+   */
+  async searchMessages(
+    query: string,
+    limit = SEARCH_MAX_HITS_PER_CHAT
+  ): Promise<ChatMessageHit[]> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+    const results = await this.session.search(trimmed, { limit });
+    return results.map((result) => ({
+      messageId: result.id,
+      role: result.role,
+      snippet: snippetAround(result.content, trimmed),
+    }));
+  }
+
+  override beforeTurn(_ctx: TurnContext) {
     // Reject unsupported attachment parts on the inbound user turn before the
     // provider call so text-only models (e.g. zai-coding-plan) never surface an
     // opaque content-type error. Only the latest user message is gated — older
@@ -277,34 +330,30 @@ export class OrgChat extends Think<Cloudflare.Env> {
       }
     }
 
-    const parent = await this.getParent();
-    const organizationId = this.requireOrganizationId();
     // Refresh after hibernation (onConnect does not re-run).
     try {
       this.turnUserId = this.requireConnectedUserId();
     } catch {
       // Keep onConnect value when ALS is unset (approve/resume paths).
     }
-    const { header } = await buildOrgContext(organizationId);
 
-    const orgBlock = `${header}\n\n${ctx.system}`;
-
+    const organizationId = this.requireOrganizationId();
     this.ctx.waitUntil(
-      parent.touchChat(this.name).catch((err: unknown) => {
-        structuredLog({
-          kind: "org_chat_touch_failed",
-          severity: "error",
-          organizationId,
-          chatName: this.name,
-          error: errorMessage(err),
-        });
-      })
+      this.getParent()
+        .then((parent) => parent.touchChat(this.name))
+        .catch((err: unknown) => {
+          structuredLog({
+            kind: "org_chat_touch_failed",
+            severity: "error",
+            organizationId,
+            chatName: this.name,
+            error: errorMessage(err),
+          });
+        })
     );
 
-    return {
-      instructions: orgBlock,
-      model: this.resolvedChatModel,
-    };
+    // No instructions/model overrides: the system prompt is the context
+    // blocks (org header + org_memory) and the model is `getModel()`.
   }
 
   private requireConnectedUserId(): string {
@@ -354,7 +403,24 @@ export class OrgChat extends Think<Cloudflare.Env> {
     const productTools = getOrgAgentTools(toolsCtx);
     const displayTools = getOrgAgentDisplayTools(toolsCtx);
 
+    // D-010: the read-only fetch tool is opt-in via FETCH_ALLOWED_HOSTS
+    // (comma-separated hostnames). Empty/unset means no fetch tool at all.
+    const fetchTools = fetchToolsForEnv(this.env.FETCH_ALLOWED_HOSTS);
+
+    // D-010 / D-015: code execution (codemode). The one-liner infers state.*
+    // from this.workspace and the executor from env.LOADER; the sandbox sees
+    // ONLY the org's own product tools — `update_product` / `delete_product`
+    // keep needsApproval, which inside the sandbox maps to the codemode
+    // runtime's durable pause/approve/resume (resolved client-side via Think's
+    // `approveExecution` / `rejectExecution` callables). No browser (no
+    // BROWSER binding) and no delegate/display tools reach the sandbox. The
+    // execute tool itself is NOT gated (D-015): read-only code runs freely in
+    // the no-network sandbox; approvals come from the gated tools the code
+    // calls.
+    const executeTool = createExecuteTool(this, { tools: productTools });
+
     return {
+      ...fetchTools,
       ...productTools,
       // Child dynamic agent with its own context window — see `OrgSubAgent`.
       delegate: agentTool(OrgSubAgent, {
@@ -371,15 +437,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
         displayName: "Sub-agent",
       }),
       ...displayTools,
+      execute: executeTool,
     };
   }
 }
-
-// Mirror Think: register dynamic-agent RPCs on the prototype after the class
-// body so `agent.call(...)` from the browser passes `_isCallable`. Think uses
-// the same `callable()(proto.method, void 0)` form (see think.js after the
-// class body).
-callable()(
-  OrgChat.prototype.compactNow,
-  undefined as unknown as ClassMethodDecoratorContext
-);

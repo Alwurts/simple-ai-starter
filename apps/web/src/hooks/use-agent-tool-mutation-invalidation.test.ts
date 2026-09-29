@@ -47,7 +47,7 @@ describe("collectWriteToolCompletionEvents", () => {
     const first = collectWriteToolCompletionEvents(messages, new Set());
     expect(first).toEqual([
       {
-        toolCallId: "tc_1",
+        eventId: "tc_1",
         writes: [
           {
             method: "update_product",
@@ -98,6 +98,101 @@ describe("collectWriteToolCompletionEvents", () => {
         input: { id: "missing" },
         output: { ok: false, error: "not found", code: "not_found" },
       }),
+    ];
+    expect(collectWriteToolCompletionEvents(messages, new Set())).toEqual([]);
+  });
+});
+
+describe("collectWriteToolCompletionEvents — codemode execute calls", () => {
+  function assistantWithExecute(
+    output: unknown,
+    toolCallId = "tc_exec"
+  ): OrgChatMessage {
+    return {
+      id: "m1",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-execute",
+          toolCallId,
+          state: "output-available",
+          input: { code: "await tools.update_product(...)" },
+          output,
+        },
+      ],
+    } as OrgChatMessage;
+  }
+
+  const appliedUpdate = {
+    seq: 2,
+    connector: "tools",
+    method: "update_product",
+    args: { id: "prod_9", data: { price: 949 } },
+    requiresApproval: true,
+    state: "applied",
+  };
+
+  it("emits applied sandbox writes from a settled execute output", () => {
+    const messages = [
+      assistantWithExecute({
+        status: "completed",
+        executionId: "ex_1",
+        result: { done: true },
+        calls: [
+          {
+            seq: 1,
+            connector: "tools",
+            method: "list_products",
+            args: {},
+            requiresApproval: false,
+            state: "applied",
+          },
+          appliedUpdate,
+        ],
+      }),
+    ];
+    const events = collectWriteToolCompletionEvents(messages, new Set());
+    expect(events).toEqual([
+      {
+        eventId: "tc_exec:calls",
+        writes: [
+          {
+            method: "update_product",
+            args: { id: "prod_9", data: { price: 949 } },
+          },
+        ],
+      },
+    ]);
+    // Deduped on the next scan.
+    expect(
+      collectWriteToolCompletionEvents(messages, new Set(["tc_exec:calls"]))
+    ).toEqual([]);
+  });
+
+  it("ignores paused runs, non-applied entries and unregistered methods", () => {
+    const messages: OrgChatMessage[] = [
+      assistantWithExecute({
+        status: "paused",
+        executionId: "ex_1",
+        pending: [],
+        calls: [appliedUpdate],
+      }),
+      assistantWithExecute(
+        {
+          status: "completed",
+          executionId: "ex_2",
+          calls: [
+            { ...appliedUpdate, seq: 1, state: "pending" },
+            {
+              ...appliedUpdate,
+              seq: 3,
+              method: "list_products",
+              requiresApproval: false,
+            },
+          ],
+        },
+        "tc_exec_2"
+      ),
     ];
     expect(collectWriteToolCompletionEvents(messages, new Set())).toEqual([]);
   });
@@ -170,7 +265,7 @@ describe("applyWriteToolCompletionInvalidations", () => {
     applyWriteToolCompletionInvalidations({
       events: [
         {
-          toolCallId: "tc_update",
+          eventId: "tc_update",
           writes: [
             {
               method: "update_product",
@@ -197,7 +292,7 @@ describe("applyWriteToolCompletionInvalidations", () => {
     applyWriteToolCompletionInvalidations({
       events: [
         {
-          toolCallId: "tc_create",
+          eventId: "tc_create",
           writes: [
             {
               method: "create_product",
@@ -222,7 +317,7 @@ describe("applyWriteToolCompletionInvalidations", () => {
 
     const events = [
       {
-        toolCallId: "tc_once",
+        eventId: "tc_once",
         writes: [
           {
             method: "create_product",

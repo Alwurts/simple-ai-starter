@@ -1,5 +1,6 @@
-import { type Session, Think, type TurnContext } from "@cloudflare/think";
+import { type Session, Think } from "@cloudflare/think";
 import { errorMessage, structuredLog } from "@workspace/log";
+import type { ContextConfig } from "agents/context";
 import { createCompactFunction } from "agents/sessions";
 import { generateText, type LanguageModel, type ToolSet } from "ai";
 import { buildOrgContext } from "../../context/assemble";
@@ -90,11 +91,26 @@ export class OrgSubAgent extends Think<Cloudflare.Env> {
     });
   }
 
-  override async beforeTurn(_ctx: TurnContext) {
-    const { header } = await buildOrgContext(this.organizationId);
-    return {
-      instructions: `${header}\n\n${SUB_AGENT_INSTRUCTIONS}`,
-      model: this.resolvedChatModel,
-    };
+  /**
+   * Prompt blocks, same pattern as OrgChat: static instructions and the
+   * per-org header are read-only context blocks (frozen, persisted prompt),
+   * replacing the old per-turn `beforeTurn` instructions/model override.
+   */
+  override configureContext(): ContextConfig[] {
+    return [
+      {
+        label: "instructions",
+        provider: { get: async () => SUB_AGENT_INSTRUCTIONS },
+      },
+      {
+        label: "org",
+        provider: {
+          get: async () => {
+            const { header } = await buildOrgContext(this.organizationId);
+            return header;
+          },
+        },
+      },
+    ];
   }
 }

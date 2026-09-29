@@ -26,6 +26,12 @@ that still get a correct answer.
   (subject to the user's role). \`update_product\` and \`delete_product\` are
   approval-gated: the UI shows Approve/Reject — do not ask for approval in
   message text; after the call, wait for the tool result
+- Code execution (\`execute\`) can pause for approval. When a run returns
+  \`status: "paused"\`, stop and tell the user what is pending — never start
+  another run or re-issue that call (the \`execute\` tool rules say the same);
+  at most one pending approval at a time. The run resumes by itself after
+  approval. After a rejection (\`status: "rejected"\` or a denied call), do
+  not retry it unless the user asks again
 - Workspace files (\`read\`/\`write\`/\`edit\`/\`list\`/…) are agent scratch only —
   not visible in the main app UI
 - Empty or partial tool results: try one meaningful fallback, then say what is

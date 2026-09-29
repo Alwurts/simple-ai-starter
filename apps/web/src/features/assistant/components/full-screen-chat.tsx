@@ -1,5 +1,6 @@
 "use client";
 
+import type { PendingAction } from "@cloudflare/codemode";
 import { useAgentChat } from "@cloudflare/think/react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatSummary } from "@workspace/agent/types";
@@ -20,6 +21,7 @@ import {
 } from "@workspace/ui/components/shadcn/dropdown-menu";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -67,6 +69,7 @@ import {
   type OutgoingUserMessage,
   toSendableMessage,
 } from "../lib/ai-types";
+import { chatRouteState } from "../lib/chat-route";
 import { defaultNewChatTitle } from "../lib/chat-titles";
 import { firstSendPlan } from "../lib/first-send";
 import { ChatComposer, type PromptMessage } from "./chat-input";
@@ -97,6 +100,9 @@ function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
   return chats.find((chat) => chat.id === chatId)?.title ?? "Chat";
 }
 
+/** Short, model-facing reason sent with `rejectExecution`. */
+const REJECT_REASON = "Denied by the user";
+
 function errorMessageFrom(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -111,9 +117,15 @@ function errorMessageFrom(error: unknown): string {
  * The chat page. `chatId === null` is a draft: nothing connects until the
  * first send, which creates the chat via `OrgAgent.createChat` and hands off
  * to `/chat/$chatId` — no empty chats pile up (matches the starter's dock).
+ * An unknown chat id never mounts ChatView (no chat socket): the sub-agent
+ * 404 reaches the browser as a non-terminal close and would reconnect
+ * forever, so the missing chat is detected from the org state's chat list
+ * once it has loaded (`chatRouteState`).
  */
 export function FullScreenChat({ chatId }: { chatId: string | null }) {
-  const { chats } = useOrgConnection();
+  const { chats, chatsLoadState } = useOrgConnection();
+  const routeState =
+    chatId === null ? "open" : chatRouteState(chatId, chatsLoadState, chats);
   return (
     <div
       className="@container flex h-full min-h-0 flex-col overflow-hidden bg-background"
@@ -124,17 +136,48 @@ export function FullScreenChat({ chatId }: { chatId: string | null }) {
         data-slot="full-screen-chat-layout"
         orientation="horizontal"
       >
-        {chatId === null ? (
+        {routeState === "not-found" ? <ChatNotFound /> : null}
+        {routeState === "open" && chatId === null ? (
           <DraftView title={chatTitleOf(chats, null)} />
-        ) : (
+        ) : null}
+        {routeState === "open" && chatId !== null ? (
           <ChatView
             key={chatId}
             chatId={chatId}
             title={chatTitleOf(chats, chatId)}
           />
-        )}
+        ) : null}
       </ResizablePanelGroup>
     </div>
+  );
+}
+
+function ChatNotFound() {
+  const navigate = useNavigate();
+  return (
+    <Empty className="h-full border-0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <MessageCircleDashedIcon />
+        </EmptyMedia>
+        <EmptyTitle>Chat not found</EmptyTitle>
+        <EmptyDescription>
+          This conversation doesn't exist (it may have been deleted from another
+          device).
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button
+          onClick={() =>
+            navigate({ params: { chatId: "new" }, to: "/chat/$chatId" })
+          }
+          type="button"
+        >
+          <MessageCircleDashedIcon />
+          Start a new chat
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }
 
@@ -275,21 +318,103 @@ function ChatView({ chatId, title }: ChatViewProps) {
     clearPendingMessage,
   ]);
 
+  // Server-driven continuations (approve/rejectExecution, resume, another
+  // tab's turn) set the hook's server-stream flag without changing `status`,
+  // so busy/streaming come from `isStreaming` + `isRecovering`, not `status`.
+  const chatBusy = helpers.isStreaming || helpers.isRecovering;
+
   const handleToolApproval = useCallback(
     (id: string, approved: boolean) =>
       helpers.addToolApprovalResponse({ id, approved }),
     [helpers]
   );
 
+  // Codemode executions (the `execute` tool) pause durably instead of using
+  // the AI SDK approval flow: Think resolves them via these callables, replays
+  // the run and auto-continues the chat. Both callables return
+  // `{ status: "error", error }` instead of throwing when the run is stale or
+  // already resolved — surface that as a toast, never an unhandled rejection.
+  const [resolvingExecutions, setResolvingExecutions] = useState(
+    () => new Set<string>()
+  );
+
+  const handleExecutionApproval = useCallback(
+    (executionId: string, approved: boolean) => {
+      setResolvingExecutions((prev) => new Set(prev).add(executionId));
+      const call = approved ? "approveExecution" : "rejectExecution";
+      chatAgent
+        .call(call, approved ? [executionId] : [executionId, REJECT_REASON])
+        .then((result) => {
+          if (
+            result &&
+            typeof result === "object" &&
+            "status" in result &&
+            (result as { status: unknown }).status === "error"
+          ) {
+            const errorText =
+              (result as { error?: unknown }).error ?? "Unknown error";
+            console.error(`[FullScreenChat] ${call} failed:`, errorText);
+            toast.error(
+              `Couldn't ${approved ? "approve" : "reject"}: this run already moved on.`,
+              {
+                position: "top-center",
+              }
+            );
+          }
+        })
+        .catch((error: unknown) => {
+          console.error(`[FullScreenChat] ${call} failed`, error);
+          toast.error("Couldn't resolve the execution. Please try again.", {
+            position: "top-center",
+          });
+        })
+        .finally(() => {
+          setResolvingExecutions((prev) => {
+            const next = new Set(prev);
+            next.delete(executionId);
+            return next;
+          });
+        });
+    },
+    [chatAgent]
+  );
+
+  // Upstream PausedExecutionCard contract: wait for the socket to be
+  // identified before calling (an RPC issued during connect/reconnect churn
+  // can be dropped with its promise pending forever) and retry once with a
+  // timeout for the same reason.
+  const handleLoadPendingExecution = useCallback(
+    async (executionId: string): Promise<PendingAction[]> => {
+      await chatAgent.ready;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          return (await chatAgent.call("pendingExecutions", [executionId], {
+            timeout: 10_000,
+          })) as PendingAction[];
+        } catch (error) {
+          console.error("[FullScreenChat] pendingExecutions failed", error);
+          await chatAgent.ready;
+        }
+      }
+      return [];
+    },
+    [chatAgent]
+  );
+
   const handleRegenerate = useCallback(
     (messageId: string) => {
+      // Server-driven continuations (approvals, resume, other tabs) surface
+      // through isStreaming too — never stack a regenerate on a live turn.
+      if (chatBusy) {
+        return;
+      }
       setSendError(null);
       helpers.regenerate({ messageId }).catch((error: unknown) => {
         console.error("[ChatConnection] regenerate failed", error);
         setSendError(errorMessageFrom(error));
       });
     },
-    [helpers]
+    [chatBusy, helpers]
   );
 
   const handleCopyConversation = useCallback(() => {
@@ -347,8 +472,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   const hydrating = !(chatAgent.identified || chatAgent.connectionError);
   const streamingMessageId =
-    helpers.status === "streaming" &&
-    helpers.messages.at(-1)?.role === "assistant"
+    chatBusy && helpers.messages.at(-1)?.role === "assistant"
       ? (helpers.messages.at(-1)?.id ?? null)
       : null;
 
@@ -393,12 +517,17 @@ function ChatView({ chatId, title }: ChatViewProps) {
             <MessageScroller className="h-0 min-h-0 flex-1">
               <MessageScrollerViewport>
                 <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-6 p-4">
-                  {hydrating ? (
-                    <HydratingSkeleton />
-                  ) : (
+                  {hydrating ? <HydratingSkeleton /> : null}
+                  {!hydrating && chatAgent.connectionError ? (
+                    <ChatUnavailable error={chatAgent.connectionError} />
+                  ) : null}
+                  {hydrating || chatAgent.connectionError ? null : (
                     <MessageListOrEmpty
                       messages={helpers.messages}
+                      resolvingExecutions={resolvingExecutions}
                       streamingMessageId={streamingMessageId}
+                      onExecutionApproval={handleExecutionApproval}
+                      onLoadPendingExecution={handleLoadPendingExecution}
                       onRegenerate={handleRegenerate}
                       onToolApproval={handleToolApproval}
                     />
@@ -414,6 +543,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
         }
         footer={
           <ChatComposer
+            status={chatBusy ? "streaming" : helpers.status}
             onSubmit={(message) => {
               const plan = firstSendPlan(message);
               if (!plan) {
@@ -429,7 +559,6 @@ function ChatView({ chatId, title }: ChatViewProps) {
                 });
             }}
             onStop={helpers.stop}
-            status={helpers.status}
           />
         }
         header={
@@ -488,11 +617,17 @@ function MessageListOrEmpty({
   streamingMessageId,
   onRegenerate,
   onToolApproval,
+  onExecutionApproval,
+  onLoadPendingExecution,
+  resolvingExecutions,
 }: {
   messages: OrgChatMessage[];
   streamingMessageId: string | null;
   onRegenerate: (messageId: string) => void;
   onToolApproval: (id: string, approved: boolean) => void;
+  onExecutionApproval: (executionId: string, approved: boolean) => void;
+  onLoadPendingExecution: (executionId: string) => Promise<PendingAction[]>;
+  resolvingExecutions: ReadonlySet<string>;
 }) {
   if (messages.length === 0) {
     return <EmptyConversation />;
@@ -508,8 +643,11 @@ function MessageListOrEmpty({
           <ChatMessageRow
             isStreaming={streamingMessageId === message.id}
             message={message}
+            onExecutionApproval={onExecutionApproval}
+            onLoadPendingExecution={onLoadPendingExecution}
             onRegenerate={onRegenerate}
             onToolApproval={onToolApproval}
+            resolvingExecutions={resolvingExecutions}
           />
         </MessageScrollerItem>
       ))}
@@ -575,6 +713,33 @@ function ChatHeader({
         </ShellHeaderActions>
       )}
     </ShellHeader>
+  );
+}
+
+function ChatUnavailable({
+  error,
+}: {
+  error: Error & { code: number; reason: string; wasClean: boolean };
+}) {
+  // connectionError only carries terminal closes (1008/4xxx); an unknown chat
+  // never gets this far (chatRouteState shows "Chat not found" from state).
+  const notFound = error.reason.includes("not found");
+  return (
+    <Empty className="h-full border-0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <MessageCircleDashedIcon />
+        </EmptyMedia>
+        <EmptyTitle>
+          {notFound ? "Chat not found" : "Connection lost"}
+        </EmptyTitle>
+        <EmptyDescription>
+          {notFound
+            ? "This conversation doesn't exist (it may have been deleted). Head back to Chats and pick another."
+            : `Couldn't reach the chat: ${error.reason || error.message || "connection error"}. Reload to retry.`}
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
 
