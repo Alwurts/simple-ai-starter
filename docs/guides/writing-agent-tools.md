@@ -187,7 +187,8 @@ On `@cloudflare/think` + the AI SDK tool loop:
 
 - `needsApproval: true` on a top-level tool pauses before `execute` with
   part state `approval-requested`.
-- The chat renders Approve/Reject (`default-tool.tsx` →
+- The chat renders Approve/Reject
+  (`apps/web/src/features/assistant/components/chat-message-parts.tsx` →
   `addToolApprovalResponse`).
 - **Pause happens before `execute`.** After approve, `execute` runs and returns
   `ToolResult` — a miss is a soft `{ ok: false }`, not a throw.
@@ -274,4 +275,4 @@ For day-to-day "add `get_foo`," skip the grill and follow **Adding a new tool**.
 - `packages/agent/src/tool-parts/catalog/products.ts` — named pieces
 - `packages/agent/src/in-app/compose-org-tools.ts` — compose entry points
 - `packages/agent/src/tools/guard.ts` — RBAC
-- `apps/web/src/components/chat/tools/default-tool.tsx` — Approve/Reject UI
+- `apps/web/src/features/assistant/components/chat-message-parts.tsx` — Approve/Reject UI
