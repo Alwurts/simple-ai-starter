@@ -1,12 +1,10 @@
 import { splitWorkedParts } from "@workspace/ui/components/shadcn/worked";
-import type { DynamicToolUIPart, ToolUIPart } from "ai";
+import type { ToolUIPart } from "ai";
 import { describe, expect, it } from "vitest";
-import { getToolName } from "../lib/tool-name";
 import {
   isCollapsedWorkedPart,
   isPausedExecutionPart,
   isProductListCardPart,
-  PRODUCT_LIST_TOOL_NAME,
 } from "./chat-message-parts";
 
 function toolPart(overrides: Partial<Record<string, unknown>> = {}) {
@@ -19,20 +17,6 @@ function toolPart(overrides: Partial<Record<string, unknown>> = {}) {
     ...overrides,
   } as unknown as ToolUIPart;
 }
-
-describe("getToolName", () => {
-  it("prefers the dynamic toolName field", () => {
-    const part = {
-      type: "dynamic-tool",
-      toolName: "delegate",
-    } as unknown as DynamicToolUIPart;
-    expect(getToolName(part)).toBe("delegate");
-  });
-
-  it("slices the tool- prefix off typed parts", () => {
-    expect(getToolName(toolPart())).toBe(PRODUCT_LIST_TOOL_NAME);
-  });
-});
 
 describe("isProductListCardPart", () => {
   it("renders the card only for a completed display_product_list echo", () => {

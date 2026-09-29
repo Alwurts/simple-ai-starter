@@ -1,5 +1,6 @@
 "use client";
 
+import type { PendingAction } from "@cloudflare/codemode";
 import { useAgentChat } from "@cloudflare/think/react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatSummary } from "@workspace/agent/types";
@@ -303,7 +304,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
   const handleLoadPendingExecution = useCallback(
     (executionId: string) =>
       chatAgent.call("pendingExecutions", [executionId]) as Promise<
-        { args?: unknown; connector: string; method: string; seq?: number }[]
+        PendingAction[]
       >,
     [chatAgent]
   );
@@ -525,11 +526,7 @@ function MessageListOrEmpty({
   onRegenerate: (messageId: string) => void;
   onToolApproval: (id: string, approved: boolean) => void;
   onExecutionApproval: (executionId: string, approved: boolean) => void;
-  onLoadPendingExecution: (
-    executionId: string
-  ) => Promise<
-    { args?: unknown; connector: string; method: string; seq?: number }[]
-  >;
+  onLoadPendingExecution: (executionId: string) => Promise<PendingAction[]>;
 }) {
   if (messages.length === 0) {
     return <EmptyConversation />;

@@ -1,10 +1,14 @@
 "use client";
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { type DynamicToolUIPart, isToolUIPart, type ToolUIPart } from "ai";
+import {
+  type DynamicToolUIPart,
+  getToolName,
+  isToolUIPart,
+  type ToolUIPart,
+} from "ai";
 import { useEffect, useRef } from "react";
 import type { OrgChatMessage } from "@/features/assistant/lib/ai-types";
-import { getToolName } from "@/features/assistant/lib/tool-name";
 import {
   AGENT_TOOL_INVALIDATION_REGISTRY,
   type AgentAppliedWrite,
@@ -24,7 +28,8 @@ function isWriteToolPart(part: OrgChatMessage["parts"][number]): part is (
   input?: unknown;
   output?: unknown;
 } {
-  if (!(part.type === "dynamic-tool" || isToolUIPart(part))) {
+  // `ai`'s guard covers dynamic-tool parts too — no separate type check.
+  if (!isToolUIPart(part)) {
     return false;
   }
   if (!isRegisteredWrite(getToolName(part))) {

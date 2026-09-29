@@ -1,5 +1,6 @@
 "use client";
 
+import type { PendingAction, ProxyToolOutput } from "@cloudflare/codemode";
 import { PERMISSION_DENIED_MESSAGE } from "@workspace/agent/constants";
 import type { AIDataPart } from "@workspace/contract/ai";
 import { Bubble, BubbleContent } from "@workspace/ui/components/shadcn/bubble";
@@ -35,6 +36,7 @@ import {
 import { cn } from "@workspace/ui/lib/utils";
 import {
   type DynamicToolUIPart,
+  getToolName,
   isTextUIPart,
   isToolUIPart,
   type ToolUIPart,
@@ -52,7 +54,6 @@ import {
 import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { OrgChatMessage } from "../lib/ai-types";
-import { getToolName } from "../lib/tool-name";
 import { ProductListCard } from "./product-list-card";
 
 function MarkdownBody({
@@ -114,31 +115,18 @@ export const PRODUCT_LIST_TOOL_NAME = "display_product_list";
 
 export const EXECUTE_TOOL_NAME = "execute";
 
-/** Sandbox tool call recorded on a paused/completed codemode execution. */
-interface ExecutionCall {
-  args?: unknown;
-  connector: string;
-  method: string;
-  seq?: number;
-  state?: string;
+/**
+ * The `execute` tool's output. `ProxyToolOutput` is codemode's outcome union;
+ * Think adds a fourth `rejected` member when `rejectExecution` settles a run
+ * (see `rejectExecution` in think.js — it is not part of codemode's union).
+ */
+interface RejectedExecutionOutput {
+  executionId: string;
+  reason?: string;
+  status: "rejected";
 }
 
-/** The `execute` tool's output — codemode's durable run outcomes. */
-type ExecuteToolOutput =
-  | {
-      executionId: string;
-      logs?: string[];
-      pending: ExecutionCall[];
-      status: "paused";
-    }
-  | {
-      executionId: string;
-      logs?: string[];
-      result?: unknown;
-      status: "completed";
-    }
-  | { executionId: string; error: string; logs?: string[]; status: "error" }
-  | { reason?: string; status: "rejected" };
+type ExecuteToolOutput = ProxyToolOutput | RejectedExecutionOutput;
 
 function executeOutputOf(part: { output?: unknown }): ExecuteToolOutput | null {
   if (
@@ -304,13 +292,13 @@ function PausedExecutionCard({
   code: string;
   output: Extract<ExecuteToolOutput, { status: "paused" }>;
   onLoadPendingExecution?:
-    | ((executionId: string) => Promise<ExecutionCall[]>)
+    | ((executionId: string) => Promise<PendingAction[]>)
     | undefined;
   onExecutionApproval?:
     | ((executionId: string, approved: boolean) => void)
     | undefined;
 }) {
-  const [pending, setPending] = useState<ExecutionCall[]>(output.pending);
+  const [pending, setPending] = useState<PendingAction[]>(output.pending);
   const [pendingLoaded, setPendingLoaded] = useState(
     () => !onLoadPendingExecution
   );
@@ -496,7 +484,7 @@ function ToolPartSwitch({
   partIndex: number;
   onToolApproval?: (id: string, approved: boolean) => void;
   onExecutionApproval?: (executionId: string, approved: boolean) => void;
-  onLoadPendingExecution?: (executionId: string) => Promise<ExecutionCall[]>;
+  onLoadPendingExecution?: (executionId: string) => Promise<PendingAction[]>;
 }) {
   if (isProductListCardPart(part)) {
     return <ProductListCard output={part.output} />;
@@ -586,7 +574,7 @@ function OrgMessagePart({
   role: OrgChatMessage["role"];
   onToolApproval?: (id: string, approved: boolean) => void;
   onExecutionApproval?: (executionId: string, approved: boolean) => void;
-  onLoadPendingExecution?: (executionId: string) => Promise<ExecutionCall[]>;
+  onLoadPendingExecution?: (executionId: string) => Promise<PendingAction[]>;
 }) {
   if (part.type === "text") {
     if (role === "user") {
@@ -621,7 +609,7 @@ function OrgMessagePart({
     );
   }
 
-  if (part.type === "dynamic-tool" || isToolUIPart(part)) {
+  if (isToolUIPart(part)) {
     return (
       <ToolPartSwitch
         key={`${messageId}-tool-${partIndex}`}
@@ -629,7 +617,7 @@ function OrgMessagePart({
         onExecutionApproval={onExecutionApproval}
         onLoadPendingExecution={onLoadPendingExecution}
         onToolApproval={onToolApproval}
-        part={part as DynamicToolUIPart | ToolUIPart}
+        part={part}
         partIndex={partIndex}
       />
     );
@@ -669,7 +657,7 @@ export function ChatMessageRow({
   isStreaming?: boolean;
   onToolApproval?: (id: string, approved: boolean) => void;
   onExecutionApproval?: (executionId: string, approved: boolean) => void;
-  onLoadPendingExecution?: (executionId: string) => Promise<ExecutionCall[]>;
+  onLoadPendingExecution?: (executionId: string) => Promise<PendingAction[]>;
   onRegenerate?: (messageId: string) => void;
 }) {
   const textForCopy = message.parts
