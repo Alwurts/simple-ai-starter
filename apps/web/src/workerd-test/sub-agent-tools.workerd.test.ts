@@ -78,17 +78,31 @@ describe("OrgSubAgent read-only tool composition", () => {
   it("read executions only see the given org's products", async () => {
     const mine = await seedOrgWithProduct("Org Mine", "My Product");
     const other = await seedOrgWithProduct("Org Other", "Other Product");
+    if (!other.product) {
+      throw new Error("seed failed");
+    }
 
     const tools = getOrgAgentReadOnlyTools({ organizationId: mine.orgId });
-    const list = (await (
-      tools.list_products as { execute: (input: unknown) => Promise<unknown> }
-    ).execute({})) as { ok: boolean; data?: Array<{ name: string }> };
+    const exec = (name: string) => {
+      const tool = tools[name] as unknown as {
+        execute?: (input: unknown) => Promise<unknown>;
+      };
+      if (!tool.execute) {
+        throw new Error(`tool "${name}" has no execute`);
+      }
+      return tool.execute;
+    };
+
+    const list = (await exec("list_products")({})) as {
+      ok: boolean;
+      data?: Array<{ name: string }>;
+    };
     expect(list.ok).toBe(true);
     expect((list.data ?? []).map((p) => p.name)).toEqual(["My Product"]);
 
-    const getResult = (await (
-      tools.get_product as { execute: (input: unknown) => Promise<unknown> }
-    ).execute({ id: other.product.id })) as { ok: boolean };
+    const getResult = (await exec("get_product")({
+      id: other.product.id,
+    })) as { ok: boolean };
     expect(getResult.ok).toBe(false);
   });
 });
