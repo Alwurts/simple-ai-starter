@@ -7,6 +7,7 @@ import {
   Think,
   type TurnContext,
 } from "@cloudflare/think";
+import { createFetchTools } from "@cloudflare/think/tools/fetch";
 import { auth } from "@workspace/auth";
 import { errorMessage, structuredLog } from "@workspace/log";
 import {
@@ -40,6 +41,10 @@ import {
 import type { ChatMessageHit } from "../../types";
 import { resolveTurnUserId } from "../bootstrap";
 import { OrgAgent } from "../org-agent";
+import {
+  fetchAllowlistForHosts,
+  parseFetchAllowedHosts,
+} from "./fetch-allowlist";
 import { OrgMemoryProvider } from "./org-memory-provider";
 import { OrgSubAgent } from "./org-sub-agent";
 import { SEARCH_MAX_HITS_PER_CHAT, snippetAround } from "./search";
@@ -398,7 +403,17 @@ export class OrgChat extends Think<Cloudflare.Env> {
     const productTools = getOrgAgentTools(toolsCtx);
     const displayTools = getOrgAgentDisplayTools(toolsCtx);
 
+    // D-010: the read-only fetch tool is opt-in via FETCH_ALLOWED_HOSTS
+    // (comma-separated hostnames). Empty/unset means no fetch tool at all —
+    // `createFetchTools` is only called when the allowlist parses non-empty.
+    const fetchHosts = parseFetchAllowedHosts(this.env.FETCH_ALLOWED_HOSTS);
+    const fetchTools =
+      fetchHosts.length > 0
+        ? createFetchTools({ allowlist: fetchAllowlistForHosts(fetchHosts) })
+        : {};
+
     return {
+      ...fetchTools,
       ...productTools,
       // Child dynamic agent with its own context window — see `OrgSubAgent`.
       delegate: agentTool(OrgSubAgent, {

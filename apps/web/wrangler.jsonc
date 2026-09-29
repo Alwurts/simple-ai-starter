@@ -28,7 +28,12 @@
     // binding nor a migration. See the agents SDK multi-ai-chat example.
     "bindings": [{ "class_name": "OrgAgent", "name": "OrgAgent" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["OrgAgent"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["OrgAgent"] }],
+  // Non-secret vars. Comma-separated hostnames the chat agent's read-only
+  // `fetch_url` tool may GET; empty disables the fetch tool entirely.
+  "vars": {
+    "FETCH_ALLOWED_HOSTS": ""
+  }
   /**
    * Smart Placement
    * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
