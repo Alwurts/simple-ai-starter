@@ -279,6 +279,11 @@ function ChatView({ chatId, title }: ChatViewProps) {
     clearPendingMessage,
   ]);
 
+  // Server-driven continuations (approve/rejectExecution, resume, another
+  // tab's turn) set the hook's server-stream flag without changing `status`,
+  // so busy/streaming come from `isStreaming` + `isRecovering`, not `status`.
+  const chatBusy = helpers.isStreaming || helpers.isRecovering;
+
   const handleToolApproval = useCallback(
     (id: string, approved: boolean) =>
       helpers.addToolApprovalResponse({ id, approved }),
@@ -359,13 +364,18 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   const handleRegenerate = useCallback(
     (messageId: string) => {
+      // Server-driven continuations (approvals, resume, other tabs) surface
+      // through isStreaming too — never stack a regenerate on a live turn.
+      if (chatBusy) {
+        return;
+      }
       setSendError(null);
       helpers.regenerate({ messageId }).catch((error: unknown) => {
         console.error("[ChatConnection] regenerate failed", error);
         setSendError(errorMessageFrom(error));
       });
     },
-    [helpers]
+    [chatBusy, helpers]
   );
 
   const handleCopyConversation = useCallback(() => {
@@ -423,8 +433,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   const hydrating = !(chatAgent.identified || chatAgent.connectionError);
   const streamingMessageId =
-    helpers.status === "streaming" &&
-    helpers.messages.at(-1)?.role === "assistant"
+    chatBusy && helpers.messages.at(-1)?.role === "assistant"
       ? (helpers.messages.at(-1)?.id ?? null)
       : null;
 
@@ -469,9 +478,11 @@ function ChatView({ chatId, title }: ChatViewProps) {
             <MessageScroller className="h-0 min-h-0 flex-1">
               <MessageScrollerViewport>
                 <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-6 p-4">
-                  {hydrating ? (
-                    <HydratingSkeleton />
-                  ) : (
+                  {hydrating ? <HydratingSkeleton /> : null}
+                  {!hydrating && chatAgent.connectionError ? (
+                    <ChatUnavailable error={chatAgent.connectionError} />
+                  ) : null}
+                  {hydrating || chatAgent.connectionError ? null : (
                     <MessageListOrEmpty
                       messages={helpers.messages}
                       resolvingExecutions={resolvingExecutions}
@@ -493,6 +504,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
         }
         footer={
           <ChatComposer
+            status={chatBusy ? "streaming" : helpers.status}
             onSubmit={(message) => {
               const plan = firstSendPlan(message);
               if (!plan) {
@@ -508,7 +520,6 @@ function ChatView({ chatId, title }: ChatViewProps) {
                 });
             }}
             onStop={helpers.stop}
-            status={helpers.status}
           />
         }
         header={
@@ -663,6 +674,31 @@ function ChatHeader({
         </ShellHeaderActions>
       )}
     </ShellHeader>
+  );
+}
+
+function ChatUnavailable({
+  error,
+}: {
+  error: Error & { code: number; reason: string; wasClean: boolean };
+}) {
+  const notFound = error.reason.includes("not found") || error.code === 1006;
+  return (
+    <Empty className="h-full border-0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <MessageCircleDashedIcon />
+        </EmptyMedia>
+        <EmptyTitle>
+          {notFound ? "Chat not found" : "Connection lost"}
+        </EmptyTitle>
+        <EmptyDescription>
+          {notFound
+            ? "This conversation doesn't exist (it may have been deleted). Head back to Chats and pick another."
+            : `Couldn't reach the chat: ${error.reason || error.message || "connection error"}. Reload to retry.`}
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
 
