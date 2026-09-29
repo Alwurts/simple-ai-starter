@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 /**
  * ALW-348 / ALW-456 / ALW-524 / ALW-740 — human-approval-gated agent writes.
  *
- * ERP tools are top-level Think tools. `needsApproval: true` uses the AI SDK
+ * Product tools are top-level Think tools. `needsApproval: true` uses the AI SDK
  * approval pause (`approval-requested` → DefaultTool Approve/Reject via
  * `addToolApprovalResponse`).
  *

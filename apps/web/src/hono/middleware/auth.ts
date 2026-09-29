@@ -53,7 +53,7 @@ export const requireActiveOrg = async (
  * where any member could call any org-protected endpoint.
  *
  * Use after requireActiveOrg, scoped to the gated route(s):
- *   routes.post("/:id/void", requirePermission("document:void"), handler)
+ *   routes.post("/:id", requirePermission("catalog:write"), handler)
  */
 export const requirePermission =
   (action: Action) =>

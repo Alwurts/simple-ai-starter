@@ -66,8 +66,8 @@ export function majorToMinor(major: number, currencyCode: string): MoneyMinor {
 }
 
 /**
- * Display formatting for money — routes all currency rendering through one seam
- * (operator-ux §3). Uses locale + currency code; never hardcode USD.
+ * Display formatting for money — routes all currency rendering through one seam.
+ * Uses locale + currency code; never hardcode USD.
  */
 export function formatMoneyMinor(
   amountMinor: MoneyMinor,

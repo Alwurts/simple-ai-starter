@@ -201,7 +201,7 @@ describe("applyWriteToolCompletionInvalidations", () => {
           writes: [
             {
               method: "create_product",
-              args: { name: "New", sku: "N-1", price: 1 },
+              args: { name: "New", description: "Fresh", price: 1 },
             },
           ],
         },
@@ -226,7 +226,7 @@ describe("applyWriteToolCompletionInvalidations", () => {
         writes: [
           {
             method: "create_product",
-            args: { name: "A", sku: "A-1", price: 1 },
+            args: { name: "A", description: "First", price: 1 },
           },
         ],
       },
