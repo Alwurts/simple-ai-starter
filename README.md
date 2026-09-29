@@ -61,9 +61,10 @@ secrets with `wrangler secret put`, and migrate the remote D1 database before
 serving traffic.
 
 This template uses Durable Objects for the org agent. On Cloudflare that
-typically requires a **Workers Paid** plan. It does **not** require Dynamic
-Workers / `worker_loaders` (`LOADER`) — ERP tools run as ordinary top-level
-Think tools.
+typically requires a **Workers Paid** plan. Code execution (the agent's
+`execute` tool) needs the `worker_loaders` binding declared in
+`apps/web/wrangler.jsonc`; the optional fetch tool is off until
+`FETCH_ALLOWED_HOSTS` names allowed hosts.
 
 ## What's included
 
