@@ -37,7 +37,6 @@ import {
 } from "lucide-react";
 import { LanguageMenuItems } from "@/components/common/language-switcher";
 import { ThemeMenuItem } from "@/components/common/theme-toggle";
-import { m } from "@/paraglide/messages.js";
 
 function orgInitials(name: string | undefined) {
   return name?.slice(0, 2).toUpperCase() ?? "??";
@@ -47,7 +46,7 @@ function SidebarFooterSkeleton() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton aria-label={m.org_loading()} disabled size="lg">
+        <SidebarMenuButton aria-label="Loading organization" disabled size="lg">
           <Skeleton className="h-8 w-8 rounded-lg" />
           <div className="grid flex-1 text-left text-sm leading-tight">
             <Skeleton className="mb-1 h-4 w-24" />
@@ -69,10 +68,10 @@ function SidebarFooterError() {
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold text-destructive">
-              {m.org_auth_error()}
+              Authentication Error
             </span>
             <span className="truncate text-muted-foreground text-xs">
-              {m.org_auth_error_hint()}
+              Please sign in again
             </span>
           </div>
         </SidebarMenuButton>
@@ -115,7 +114,7 @@ export function AppSidebarFooter() {
       };
     },
     onSuccess: ({ organizationId }) => {
-      toast.success(m.org_set_active());
+      toast.success("Organization set as active");
       navigate({
         to: "/",
       });
@@ -171,7 +170,7 @@ export function AppSidebarFooter() {
           >
             <Avatar className="h-8 w-8 rounded-lg">
               <AvatarImage
-                alt={displayOrganization?.name ?? m.org_organization()}
+                alt={displayOrganization?.name ?? "Organization"}
                 src={displayOrganization?.logo ?? undefined}
               />
               <AvatarFallback className="rounded-lg">
@@ -180,7 +179,7 @@ export function AppSidebarFooter() {
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">
-                {displayOrganization?.name ?? m.org_no_organization()}
+                {displayOrganization?.name ?? "No Organization"}
               </span>
               <span className="truncate text-xs">{user.email}</span>
             </div>
@@ -194,7 +193,7 @@ export function AppSidebarFooter() {
           >
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-muted-foreground text-xs">
-                {m.org_organizations()}
+                Organizations
               </DropdownMenuLabel>
               {organizations?.map((organization) => (
                 <DropdownMenuItem
@@ -223,7 +222,7 @@ export function AppSidebarFooter() {
                   <Plus className="size-4" />
                 </div>
                 <div className="font-medium text-muted-foreground">
-                  {m.org_create()}
+                  Create an organization
                 </div>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -253,7 +252,7 @@ export function AppSidebarFooter() {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Languages className="size-4" />
-                {m.language_label()}
+                Language
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <LanguageMenuItems />
@@ -263,7 +262,7 @@ export function AppSidebarFooter() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 size-4" />
-              {m.auth_sign_out()}
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

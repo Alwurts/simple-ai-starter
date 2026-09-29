@@ -25,12 +25,11 @@ import { useCallback, useMemo } from "react";
 import { CreateProductDialog } from "@/components/catalog/create-product-dialog";
 import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
 import { type Product, useProducts } from "@/hooks/use-products";
-import { intlLocale } from "@/lib/locale";
+import { INTL_LOCALE } from "@/lib/locale";
 import {
   sortableHeaderAriaLabel,
   tableToolbarLabels,
 } from "@/lib/table-toolbar-labels";
-import { m } from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_protected/catalog/")({
   component: CatalogPage,
@@ -42,9 +41,9 @@ function productFilterDefinitions(): TableFilterDefinition[] {
     {
       id: "search",
       columnId: "search",
-      label: m.catalog_filter_search(),
+      label: "Search",
       type: "text",
-      placeholder: m.catalog_filter_search_placeholder(),
+      placeholder: "Search products…",
     },
   ];
 }
@@ -59,9 +58,9 @@ function resolveCollectionEmpty({
   if (isTrueEmpty) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-        <p className="font-medium text-sm">{m.catalog_empty_title()}</p>
+        <p className="font-medium text-sm">No products yet</p>
         <p className="text-muted-foreground text-sm">
-          {m.catalog_empty_hint()}
+          Create a product to populate the catalog.
         </p>
       </div>
     );
@@ -70,7 +69,7 @@ function resolveCollectionEmpty({
   if (isPresetEmpty) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-        <p className="font-medium text-sm">{m.catalog_empty_filtered()}</p>
+        <p className="font-medium text-sm">No products match these filters</p>
       </div>
     );
   }
@@ -174,7 +173,7 @@ function CatalogPage() {
   const columns: DataTableColumnDef<Product>[] = [
     {
       id: "name",
-      meta: { label: m.catalog_column_name() },
+      meta: { label: "Name" },
       accessorKey: "name",
       header: ({ column }) => (
         <SortableHeader
@@ -197,7 +196,7 @@ function CatalogPage() {
     },
     {
       id: "price",
-      meta: { label: m.catalog_column_price() },
+      meta: { label: "Price" },
       accessorKey: "price",
       header: ({ column }) => (
         <SortableHeader
@@ -210,7 +209,7 @@ function CatalogPage() {
         return (
           <div className="text-right font-medium">
             {formatMoneyMinor(price, DEFAULT_CURRENCY, {
-              locale: intlLocale(),
+              locale: INTL_LOCALE,
             })}
           </div>
         );
@@ -223,9 +222,9 @@ function CatalogPage() {
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
         <AppBreadcrumbs
-          ellipsisAriaLabel={m.breadcrumb_ellipsis_aria()}
-          homeLabel={m.nav_home()}
-          items={[{ title: m.catalog_title() }]}
+          ellipsisAriaLabel="Show hidden breadcrumb segments"
+          homeLabel="Today"
+          items={[{ title: "Catalog" }]}
         />
         <ShellHeaderActions>
           <CreateProductDialog />
@@ -235,7 +234,7 @@ function CatalogPage() {
       <ShellContent>
         {isLoading && !productsResponse ? (
           <div className="flex h-40 items-center justify-center text-muted-foreground">
-            {m.catalog_loading_list()}
+            Loading products...
           </div>
         ) : (
           <ResourceTable

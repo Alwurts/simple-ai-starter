@@ -27,12 +27,11 @@ import {
 } from "@/components/layout/platform-navigation";
 import { SearchCommand } from "@/components/search/search-command";
 import { useOrgConnection } from "@/features/assistant/connection/org-connection";
-import { m } from "@/paraglide/messages.js";
 
 export function AppSidebar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { data: activeOrganization } = authClient.useActiveOrganization();
-  const appName = activeOrganization?.name ?? m.app_name();
+  const appName = activeOrganization?.name ?? "App";
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
@@ -45,7 +44,7 @@ export function AppSidebar() {
             <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
               <span className="block truncate font-semibold">{appName}</span>
               <span className="block truncate text-muted-foreground text-xs">
-                {m.app_brand_subtitle()}
+                Starter
               </span>
             </div>
 
@@ -54,16 +53,16 @@ export function AppSidebar() {
                 className="h-8 w-8"
                 onClick={() => setSearchOpen(true)}
                 size="sm"
-                tooltip={m.common_search()}
+                tooltip="Search"
                 variant="default"
               >
                 <Search className="size-4" />
-                <span className="sr-only">{m.common_search()}</span>
+                <span className="sr-only">Search</span>
               </SidebarMenuButton>
 
               <SidebarTrigger
                 className="hidden h-8 w-8 md:flex"
-                toggleLabel={m.sidebar_toggle()}
+                toggleLabel="Toggle Sidebar"
               />
             </div>
           </SidebarMenuItem>
@@ -71,18 +70,15 @@ export function AppSidebar() {
 
         <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
           <SidebarMenuItem>
-            <SidebarTrigger
-              className="h-8 w-8"
-              toggleLabel={m.sidebar_toggle()}
-            />
+            <SidebarTrigger className="h-8 w-8" toggleLabel="Toggle Sidebar" />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setSearchOpen(true)}
-              tooltip={m.common_search()}
+              tooltip="Search"
             >
               <Search />
-              <span>{m.common_search()}</span>
+              <span>Search</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -115,7 +111,7 @@ export function AppSidebarMainNavigation() {
   const items = getPlatformNavigationItems();
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{m.nav_platform()}</SidebarGroupLabel>
+      <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const isActive = isPlatformNavActive(pathname, item.url);

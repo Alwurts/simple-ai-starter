@@ -20,7 +20,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { getPlatformNavigationItems } from "@/components/layout/platform-navigation";
 import { useCatalogSearch } from "@/hooks/use-catalog-search";
-import { m } from "@/paraglide/messages.js";
 
 const MIN_QUERY_LENGTH = 2;
 
@@ -117,26 +116,26 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
     [resetQuery, router, setOpen]
   );
 
-  let emptyMessage = m.search_empty_min_chars({ count: MIN_QUERY_LENGTH });
+  let emptyMessage = `Type at least ${MIN_QUERY_LENGTH} characters to search records…`;
   if (query.trim().length === 0) {
-    emptyMessage = m.search_empty_hint();
+    emptyMessage = "Search pages, products…";
   } else if (isSearching) {
-    emptyMessage = m.search_empty_searching();
+    emptyMessage = "Searching…";
   } else if (!hasResults) {
-    emptyMessage = m.search_empty_no_results();
+    emptyMessage = "No results found.";
   }
 
   return (
     <CommandDialog
-      description={m.search_description()}
+      description="Search pages and products"
       onOpenChange={handleOpenChange}
       open={open}
       shouldFilter={false}
-      title={m.search_title()}
+      title="Global Search"
     >
       <CommandInput
         onValueChange={onQueryChange}
-        placeholder={m.search_placeholder()}
+        placeholder="Search pages, products…"
         value={query}
       />
 
@@ -144,10 +143,10 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
         {!hasResults && <CommandEmpty>{emptyMessage}</CommandEmpty>}
 
         {pages.length > 0 && (
-          <CommandGroup heading={m.search_group_pages()}>
+          <CommandGroup heading="Pages">
             {pages.map((page) => (
               <PaletteItem
-                badge={m.search_badge_page()}
+                badge="Page"
                 icon={page.icon}
                 key={page.url}
                 onSelect={() => navigateTo(page.url)}
@@ -160,10 +159,10 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
         )}
 
         {products.length > 0 && (
-          <CommandGroup heading={m.search_group_products()}>
+          <CommandGroup heading="Products">
             {products.map((product) => (
               <PaletteItem
-                badge={m.search_badge_product()}
+                badge="Product"
                 icon={Package}
                 key={product.metadata.id}
                 onSelect={() => navigateTo(product.path)}
@@ -178,7 +177,7 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
 
       <div className="flex h-10 items-center justify-between border-t px-3 text-muted-foreground text-xs">
         <span className="flex items-center gap-1">
-          <CornerDownLeft className="size-3" /> {m.search_footer_open()}
+          <CornerDownLeft className="size-3" /> Open
         </span>
         <span className="flex items-center gap-2">
           {isSearching && <Loader2 className="size-3 animate-spin" />}

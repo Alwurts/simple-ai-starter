@@ -18,7 +18,6 @@ import {
 } from "@workspace/ui/lib/money";
 import { Controller, useForm } from "react-hook-form";
 import type { z } from "zod";
-import { m } from "@/paraglide/messages.js";
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 
@@ -35,7 +34,7 @@ export function ProductForm({
   defaultValues,
   onSubmit,
   isLoading,
-  submitLabel = mode === "create" ? m.catalog_create() : m.common_save(),
+  submitLabel = mode === "create" ? "Add Product" : "Save Changes",
 }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -61,14 +60,14 @@ export function ProductForm({
                 className="text-muted-foreground"
                 htmlFor={field.name}
               >
-                {m.common_name()}
+                Name
               </FieldLabel>
               <FieldContent>
                 <Input
                   {...field}
                   aria-invalid={fieldState.invalid}
                   id={field.name}
-                  placeholder={m.catalog_name_placeholder()}
+                  placeholder="Product Name"
                 />
                 {fieldState.invalid && (
                   <FieldError errors={[fieldState.error]} />
@@ -87,7 +86,7 @@ export function ProductForm({
                 className="text-muted-foreground"
                 htmlFor={field.name}
               >
-                {m.catalog_column_price()}
+                Price
               </FieldLabel>
               <FieldContent>
                 <Input
@@ -118,7 +117,7 @@ export function ProductForm({
                 className="text-muted-foreground"
                 htmlFor={field.name}
               >
-                {m.common_description()}
+                Description
               </FieldLabel>
               <FieldContent>
                 <Textarea
@@ -126,7 +125,7 @@ export function ProductForm({
                   aria-invalid={fieldState.invalid}
                   className="resize-none"
                   id={field.name}
-                  placeholder={m.catalog_description_placeholder()}
+                  placeholder="Product details..."
                   value={field.value ?? ""}
                 />
                 {fieldState.invalid && (
@@ -139,7 +138,7 @@ export function ProductForm({
 
         <div className="flex justify-end pt-1">
           <Button disabled={submitDisabled} type="submit">
-            {isLoading ? m.common_saving() : submitLabel}
+            {isLoading ? "Saving..." : submitLabel}
           </Button>
         </div>
       </FieldGroup>
