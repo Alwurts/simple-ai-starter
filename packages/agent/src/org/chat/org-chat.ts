@@ -413,15 +413,16 @@ export class OrgChat extends Think<Cloudflare.Env> {
         ? createFetchTools({ allowlist: fetchAllowlistForHosts(fetchHosts) })
         : {};
 
-    // D-010: code execution (codemode). The one-liner infers state.* from
-    // this.workspace and the executor from env.LOADER; the sandbox sees ONLY
-    // the org's own product tools — `update_product` / `delete_product` keep
-    // needsApproval, which inside the sandbox maps to the codemode runtime's
-    // durable pause/approve/resume (resolved client-side via Think's
+    // D-010 / D-015: code execution (codemode). The one-liner infers state.*
+    // from this.workspace and the executor from env.LOADER; the sandbox sees
+    // ONLY the org's own product tools — `update_product` / `delete_product`
+    // keep needsApproval, which inside the sandbox maps to the codemode
+    // runtime's durable pause/approve/resume (resolved client-side via Think's
     // `approveExecution` / `rejectExecution` callables). No browser (no
-    // BROWSER binding) and no delegate/display tools reach the sandbox.
-    // Running code is itself approval-gated: the AI SDK pauses before the
-    // tool runs, so every execution waits on the user first.
+    // BROWSER binding) and no delegate/display tools reach the sandbox. The
+    // execute tool itself is NOT gated (D-015): read-only code runs freely in
+    // the no-network sandbox; approvals come from the gated tools the code
+    // calls.
     const executeTool = createExecuteTool(this, { tools: productTools });
 
     return {
@@ -442,10 +443,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
         displayName: "Sub-agent",
       }),
       ...displayTools,
-      execute: {
-        ...executeTool,
-        needsApproval: true,
-      },
+      execute: executeTool,
     };
   }
 }

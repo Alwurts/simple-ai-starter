@@ -15,27 +15,29 @@ from `useAgentChat`
 (`apps/web/src/features/assistant/components/full-screen-chat.tsx`). The
 agents client sends that as a tool-approval frame and continues the turn.
 
-## 2. Codemode (`execute` tool) — two gates
+## 2. Codemode (`execute` tool) — approval at the gated tool call
 
-Code execution is gated before it runs and again inside the sandbox:
+The `execute` tool itself is **not** approval-gated (D-015): read-only sandbox
+code (list/get, workspace reads, data munging) runs freely — the sandbox has
+no network and only the org's own tools. The approval lives where the side
+effect is: a sandbox call to `update_product` / `delete_product` does not run
+immediately — the codemode runtime pauses the run durably and the tool returns
+`{ status: "paused", executionId, pending }` (a *truncated* preview). Think
+exposes three client callables on `OrgChat` to resolve it:
 
-1. **Before any code runs** the `execute` tool itself has `needsApproval: true`
-   (same flow as above).
-2. **Inside the sandbox**, calls to approval-gated tools
-   (`update_product` / `delete_product`) do not run immediately: the codemode
-   runtime pauses the run durably and the tool returns
-   `{ status: "paused", executionId, pending }` (a *truncated* preview). Think
-   exposes three client callables on `OrgChat` to resolve it:
-   - `pendingExecutions(executionId)` — the **full** args (the transcript copy
-     is ~2 KB-bounded); the approval card fetches these before enabling
-     Approve.
-   - `approveExecution(executionId)` — replays the run up to the paused call,
-     executes it, and auto-continues the chat; the outcome replaces the paused
-     tool output in the transcript.
-   - `rejectExecution(executionId, reason?)` — ends the run with
-     `{ status: "rejected", reason }` so the model can adapt.
+- `pendingExecutions(executionId)` — the **full** args (the transcript copy
+  is ~2 KB-bounded); the approval card fetches these before enabling
+  Approve.
+- `approveExecution(executionId)` — replays the run up to the paused call,
+  executes it, and auto-continues the chat; the outcome replaces the paused
+  tool output in the transcript.
+- `rejectExecution(executionId, reason?)` — ends the run with
+  `{ status: "rejected", reason }` so the model can adapt.
 
 The paused card lives outside the collapsed Worked group
 (`isPausedExecutionPart` / `PausedExecutionCard` in
 `chat-message-parts.tsx`); a completed/errored run folds back in and renders
-the code (as a code block) plus its result, logs, or error.
+the code (as a code block) plus its result, logs, or error. One execution can
+pause more than once (a loop that hits both gated tools): the card remounts
+per pause (keyed by `executionId` + pending `seq`) so a second pause never
+shows the first pause's args.

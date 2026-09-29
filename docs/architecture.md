@@ -173,8 +173,8 @@ The DO fixture + reference test live in `apps/web/src/workerd-test/`.
   (`OrgAgent.searchChats` over each chat's Sessions FTS index), Agent Skills
   (bundled `agents:skills` on `OrgChat` only), the opt-in read-only fetch tool
   (`FETCH_ALLOWED_HOSTS`, absent when empty), and sandboxed code execution via
-  `@cloudflare/codemode` (`execute` tool, `LOADER` binding,
-  approval-gated — see
+  `@cloudflare/codemode` (`execute` tool, `LOADER` binding; gated writes pause
+  inside the sandbox — see
   [`docs/guides/agent-tool-approvals.md`](guides/agent-tool-approvals.md)).
 - **Why** a choice was made → `docs/decisions/` (ADRs, under a strict
   significance bar — see ADR-005).

@@ -93,14 +93,11 @@ Inside the sandbox the model sees `tools.*` (the five product tools),
 (there is no `BROWSER` binding) and no `delegate`. Sandbox code runs with
 network access blocked.
 
-Running code is **approval-gated twice**:
-
-1. The `execute` tool itself carries `needsApproval: true` — the AI SDK pauses
-   before any code runs, and the chat's Approve/Reject card gates it.
-2. Sandbox calls to `update_product` / `delete_product` keep their
-   `needsApproval`, which the codemode runtime maps to its durable
-   pause/approve/resume — see
-   [`agent-tool-approvals.md`](./agent-tool-approvals.md).
+Running code is **not** gated itself (D-015) — approvals come from the gated
+tools the code calls: sandbox calls to `update_product` / `delete_product`
+keep their `needsApproval`, which the codemode runtime maps to its durable
+pause/approve/resume — see
+[`agent-tool-approvals.md`](./agent-tool-approvals.md).
 
 A paused run renders an approval card outside the collapsed Worked group
 (`PausedExecutionCard` in
