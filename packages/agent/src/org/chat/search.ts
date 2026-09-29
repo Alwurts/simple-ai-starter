@@ -34,10 +34,10 @@ export function snippetAround(
 }
 
 /**
- * Merge per-chat hit lists (already ordered best-first within each chat) into
- * one newest-first list capped at `maxResults`. Chat identity comes from the
- * registry entry; a chat that failed to search simply contributes nothing.
- * Pure — shared by `OrgAgent.searchChats` and its tests.
+ * Merge per-chat hit lists into one list capped at `maxResults`. Chat identity
+ * comes from the registry entry; a chat that failed to search contributes
+ * nothing. Order = chat iteration order (already most-recently-active first
+ * from `listChats`), since Sessions' search projects no timestamps.
  */
 export function mergeChatSearchResults(
   chats: ChatSummary[],
@@ -54,7 +54,5 @@ export function mergeChatSearchResults(
       });
     }
   }
-  return merged
-    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
-    .slice(0, maxResults);
+  return merged.slice(0, maxResults);
 }

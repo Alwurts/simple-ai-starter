@@ -23,9 +23,8 @@ interface ChatStub {
   searchMessages: (query: string, limit?: number) => Promise<ChatMessageHit[]>;
 }
 
-function hit(messageId: string, createdAt: string): ChatMessageHit {
+function hit(messageId: string): ChatMessageHit {
   return {
-    createdAt,
     messageId,
     role: "user",
     snippet: `snippet ${messageId}`,
@@ -117,7 +116,7 @@ describe("OrgAgent.searchChats (in workerd)", () => {
     expect(searched).toEqual([]);
   });
 
-  it("merges hits across chats, stamping id + title, newest first", async () => {
+  it("merges hits across chats in most-recently-active chat order", async () => {
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("search-merge"));
     const { result } = await runInDurableObject(stub, async (o, state) => {
       const searched: string[] = [];
@@ -128,18 +127,13 @@ describe("OrgAgent.searchChats (in workerd)", () => {
           [
             "older",
             {
-              searchMessages: async () => [
-                hit("old-1", "2026-09-28T08:00:00.000Z"),
-              ],
+              searchMessages: async () => [hit("old-1")],
             },
           ],
           [
             "newer",
             {
-              searchMessages: async () => [
-                hit("new-1", "2026-09-28T10:00:00.000Z"),
-                hit("new-2", "2026-09-28T09:00:00.000Z"),
-              ],
+              searchMessages: async () => [hit("new-1"), hit("new-2")],
             },
           ],
         ]),
@@ -200,9 +194,7 @@ describe("OrgAgent.searchChats (in workerd)", () => {
           [
             "healthy",
             {
-              searchMessages: async () => [
-                hit("ok-1", "2026-09-28T10:00:00.000Z"),
-              ],
+              searchMessages: async () => [hit("ok-1")],
             },
           ],
         ]),

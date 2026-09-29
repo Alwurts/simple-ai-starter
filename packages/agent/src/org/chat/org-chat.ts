@@ -305,7 +305,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
       messageId: result.id,
       role: result.role,
       snippet: snippetAround(result.content, trimmed),
-      createdAt: result.createdAt ?? null,
     }));
   }
 

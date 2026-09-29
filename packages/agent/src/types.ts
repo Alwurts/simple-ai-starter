@@ -22,13 +22,13 @@ export interface OrgMemorySnapshot {
 /**
  * One FTS hit inside a single chat's transcript (`OrgChat.searchMessages`).
  * Chat identity (id + title) is stamped by `OrgAgent.searchChats`, which fans
- * the query out to each registered chat.
+ * the query out to each registered chat. Sessions' `search()` projects only
+ * id/role/content — there is no per-hit timestamp to surface.
  */
 export interface ChatMessageHit {
   messageId: string;
   role: string;
   snippet: string;
-  createdAt: string | null;
 }
 
 /** A search hit attributed to the chat that contains it (sidebar results). */

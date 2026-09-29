@@ -35,7 +35,7 @@ describe("mergeChatSearchResults", () => {
     { id: "a", title: "Alpha", createdAt: 1, updatedAt: 1 },
   ];
 
-  it("stamps chat identity and sorts newest-first across chats", () => {
+  it("stamps chat identity and keeps the chats' most-recently-active order", () => {
     const hits = mergeChatSearchResults(
       chats,
       new Map([
@@ -46,7 +46,6 @@ describe("mergeChatSearchResults", () => {
               messageId: "m2",
               role: "user",
               snippet: "beta hit",
-              createdAt: "2026-09-28T10:00:00Z",
             },
           ],
         ],
@@ -57,15 +56,15 @@ describe("mergeChatSearchResults", () => {
               messageId: "m1",
               role: "assistant",
               snippet: "alpha hit",
-              createdAt: "2026-09-28T12:00:00Z",
             },
           ],
         ],
       ])
     );
-    expect(hits.map((hit) => hit.messageId)).toEqual(["m1", "m2"]);
-    expect(hits[0]).toMatchObject({ chatId: "a", chatTitle: "Alpha" });
-    expect(hits[1]).toMatchObject({ chatId: "b", chatTitle: "Beta" });
+    // `chats` is already ordered most-recently-active first by listChats.
+    expect(hits.map((hit) => hit.messageId)).toEqual(["m2", "m1"]);
+    expect(hits[0]).toMatchObject({ chatId: "b", chatTitle: "Beta" });
+    expect(hits[1]).toMatchObject({ chatId: "a", chatTitle: "Alpha" });
   });
 
   it("skips chats with no hits or missing entries, and caps the total", () => {
@@ -73,7 +72,6 @@ describe("mergeChatSearchResults", () => {
       messageId: `m${i}`,
       role: "user",
       snippet: "hit",
-      createdAt: new Date(1_000_000 + i).toISOString(),
     }));
     const merged = mergeChatSearchResults(chats, new Map([["b", many]]));
     expect(merged).toHaveLength(SEARCH_MAX_RESULTS);
