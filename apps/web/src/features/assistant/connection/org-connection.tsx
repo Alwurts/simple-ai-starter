@@ -77,6 +77,8 @@ export function OrgConnection({
   const [chatsLoadState, setChatsLoadState] = useState<
     "loading" | "ready" | "error"
   >("loading");
+  /** Just-created chats, held until the agent's state broadcast catches up. */
+  const [optimisticChats, setOptimisticChats] = useState<ChatSummary[]>([]);
 
   // The chat list lives in the OrgAgent's broadcast state (upstream directory
   // pattern): create/rename/delete/touch all re-broadcast, so this stays live
@@ -104,10 +106,21 @@ export function OrgConnection({
     },
   });
 
-  const chats = useMemo(
-    () => (Array.isArray(orgAgent.state?.chats) ? orgAgent.state.chats : []),
-    [orgAgent.state]
-  );
+  const chats = useMemo(() => {
+    const stateChats = Array.isArray(orgAgent.state?.chats)
+      ? orgAgent.state.chats
+      : [];
+    if (optimisticChats.length === 0) {
+      return stateChats;
+    }
+    // Trust the createChat response: include a just-created chat until the
+    // next state broadcast contains it (then the optimistic entry drops out).
+    const known = new Set(stateChats.map((chat) => chat.id));
+    const missing = optimisticChats.filter((chat) => !known.has(chat.id));
+    return [...missing, ...stateChats].sort(
+      (a, b) => b.updatedAt - a.updatedAt
+    );
+  }, [optimisticChats, orgAgent.state]);
 
   // biome-ignore lint/plugin/no-use-effect: derive load state from the socket lifecycle
   useEffect(() => {
@@ -129,7 +142,9 @@ export function OrgConnection({
       if (!chat) {
         throw new Error("createChat returned no chat");
       }
-      // The list refresh arrives via the agent's state broadcast.
+      // Trust the create response: hold the chat locally so the route check
+      // accepts the immediate navigation before the state broadcast lands.
+      setOptimisticChats((prev) => [...prev, chat]);
       return chat;
     },
     [orgAgent]

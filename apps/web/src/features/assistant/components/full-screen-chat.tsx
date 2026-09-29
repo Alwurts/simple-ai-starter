@@ -21,6 +21,7 @@ import {
 } from "@workspace/ui/components/shadcn/dropdown-menu";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -68,6 +69,7 @@ import {
   type OutgoingUserMessage,
   toSendableMessage,
 } from "../lib/ai-types";
+import { chatRouteState } from "../lib/chat-route";
 import { defaultNewChatTitle } from "../lib/chat-titles";
 import { firstSendPlan } from "../lib/first-send";
 import { ChatComposer, type PromptMessage } from "./chat-input";
@@ -115,9 +117,15 @@ function errorMessageFrom(error: unknown): string {
  * The chat page. `chatId === null` is a draft: nothing connects until the
  * first send, which creates the chat via `OrgAgent.createChat` and hands off
  * to `/chat/$chatId` — no empty chats pile up (matches the starter's dock).
+ * An unknown chat id never mounts ChatView (no chat socket): the sub-agent
+ * 404 reaches the browser as a non-terminal close and would reconnect
+ * forever, so the missing chat is detected from the org state's chat list
+ * once it has loaded (`chatRouteState`).
  */
 export function FullScreenChat({ chatId }: { chatId: string | null }) {
-  const { chats } = useOrgConnection();
+  const { chats, chatsLoadState } = useOrgConnection();
+  const routeState =
+    chatId === null ? "open" : chatRouteState(chatId, chatsLoadState, chats);
   return (
     <div
       className="@container flex h-full min-h-0 flex-col overflow-hidden bg-background"
@@ -128,17 +136,48 @@ export function FullScreenChat({ chatId }: { chatId: string | null }) {
         data-slot="full-screen-chat-layout"
         orientation="horizontal"
       >
-        {chatId === null ? (
+        {routeState === "not-found" ? <ChatNotFound /> : null}
+        {routeState === "open" && chatId === null ? (
           <DraftView title={chatTitleOf(chats, null)} />
-        ) : (
+        ) : null}
+        {routeState === "open" && chatId !== null ? (
           <ChatView
             key={chatId}
             chatId={chatId}
             title={chatTitleOf(chats, chatId)}
           />
-        )}
+        ) : null}
       </ResizablePanelGroup>
     </div>
+  );
+}
+
+function ChatNotFound() {
+  const navigate = useNavigate();
+  return (
+    <Empty className="h-full border-0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <MessageCircleDashedIcon />
+        </EmptyMedia>
+        <EmptyTitle>Chat not found</EmptyTitle>
+        <EmptyDescription>
+          This conversation doesn't exist (it may have been deleted from another
+          device).
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button
+          onClick={() =>
+            navigate({ params: { chatId: "new" }, to: "/chat/$chatId" })
+          }
+          type="button"
+        >
+          <MessageCircleDashedIcon />
+          Start a new chat
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }
 
