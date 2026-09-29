@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 import { useEffect } from "react";
 import { useOrgConnection } from "@/features/assistant/connection/org-connection";
+import { homeRedirectChatId } from "@/features/assistant/lib/home-redirect";
 
 export const Route = createFileRoute("/_protected/")({
   component: ChatHomeRedirect,
@@ -10,20 +11,21 @@ export const Route = createFileRoute("/_protected/")({
 /**
  * The chat is the signed-in home. `/` opens the most recent chat — or the
  * new-chat draft when the org has none — so a thread always lives at its
- * linkable `/chat/$chatId` URL.
+ * linkable `/chat/$chatId` URL. A failed chat-list load also lands on the
+ * draft (a draft needs no list); the sidebar offers Retry for the list.
  */
 function ChatHomeRedirect() {
   const { chats, chatsLoadState } = useOrgConnection();
   const navigate = useNavigate();
 
-  // biome-ignore lint/plugin/no-use-effect: redirect to the most recent chat once the list loads
+  // biome-ignore lint/plugin/no-use-effect: redirect once the chat list resolves (or fails)
   useEffect(() => {
-    if (chatsLoadState !== "ready") {
+    const chatId = homeRedirectChatId(chatsLoadState, chats);
+    if (chatId === null) {
       return;
     }
-    const latest = chats[0]?.id;
     navigate({
-      params: { chatId: latest ?? "new" },
+      params: { chatId },
       replace: true,
       to: "/chat/$chatId",
     });

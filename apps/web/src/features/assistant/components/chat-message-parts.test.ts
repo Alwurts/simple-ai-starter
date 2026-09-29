@@ -1,8 +1,8 @@
 import { splitWorkedParts } from "@workspace/ui/components/shadcn/worked";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import { describe, expect, it } from "vitest";
+import { getToolName } from "../lib/tool-name";
 import {
-  getToolName,
   isCollapsedWorkedPart,
   isProductListCardPart,
   PRODUCT_LIST_TOOL_NAME,

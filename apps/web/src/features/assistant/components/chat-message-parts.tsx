@@ -44,6 +44,7 @@ import {
 import { CheckIcon, CircleIcon, CopyIcon, RefreshCwIcon } from "lucide-react";
 import { Streamdown } from "streamdown";
 import type { OrgChatMessage } from "../lib/ai-types";
+import { getToolName } from "../lib/tool-name";
 import { ProductListCard } from "./product-list-card";
 
 function MarkdownBody({
@@ -102,16 +103,6 @@ function PlanPart({
 }
 
 export const PRODUCT_LIST_TOOL_NAME = "display_product_list";
-
-export function getToolName(part: ToolUIPart | DynamicToolUIPart): string {
-  if ("toolName" in part && typeof part.toolName === "string") {
-    return part.toolName;
-  }
-  if (part.type.startsWith("tool-")) {
-    return part.type.slice(5);
-  }
-  return part.type;
-}
 
 /**
  * The one custom tool card: a completed `display_product_list` echo renders as

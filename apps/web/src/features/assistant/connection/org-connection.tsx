@@ -20,6 +20,8 @@ interface OrgConnectionValue {
   chatsLoadState: "loading" | "ready" | "error";
   createChat: (opts?: { title?: string }) => Promise<ChatSummary>;
   deleteChat: (chatId: string) => Promise<void>;
+  /** Re-run `listChats` (sidebar Retry after a failed load). */
+  reloadChats: () => Promise<ChatSummary[]>;
   /** Draft bridged across the draft → createChat → navigate hand-off. */
   pendingMessage: OutgoingUserMessage | null;
   clearPendingMessage: () => void;
@@ -89,7 +91,7 @@ export function OrgConnection({
     },
   });
 
-  const refreshChats = useCallback(async () => {
+  const refreshChats = useCallback(async (): Promise<ChatSummary[]> => {
     const list = (await orgAgent.call("listChats", [])) as ChatSummary[];
     const safeList = Array.isArray(list) ? list : [];
     setChats(safeList);
@@ -141,6 +143,18 @@ export function OrgConnection({
     [orgAgent, refreshChats]
   );
 
+  /** Sidebar Retry after a failed initial load: re-run `listChats`. */
+  const reloadChats = useCallback(async () => {
+    setChatsLoadState("loading");
+    try {
+      return await refreshChats();
+    } catch (error) {
+      console.error("[OrgConnection] failed to reload chats", error);
+      setChatsLoadState("error");
+      throw error;
+    }
+  }, [refreshChats]);
+
   const listWorkspace = useCallback(
     async (path = "/"): Promise<WorkspaceFileInfo[]> => {
       await orgAgent.ready;
@@ -173,6 +187,7 @@ export function OrgConnection({
       organizationId,
       pendingMessage,
       readWorkspaceFile,
+      reloadChats,
       setPendingMessage,
       workspaceVersion,
     }),
@@ -185,10 +200,10 @@ export function OrgConnection({
       organizationId,
       pendingMessage,
       readWorkspaceFile,
+      reloadChats,
       workspaceVersion,
     ]
   );
-
   return (
     <OrgConnectionContext.Provider value={value}>
       {children}

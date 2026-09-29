@@ -4,21 +4,12 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { type DynamicToolUIPart, isToolUIPart, type ToolUIPart } from "ai";
 import { useEffect, useRef } from "react";
 import type { OrgChatMessage } from "@/features/assistant/lib/ai-types";
+import { getToolName } from "@/features/assistant/lib/tool-name";
 import {
   AGENT_TOOL_INVALIDATION_REGISTRY,
   type AgentAppliedWrite,
   invalidateForAgentWrite,
 } from "@/lib/agent-tool-invalidation-registry";
-
-function getToolName(part: ToolUIPart | DynamicToolUIPart): string {
-  if ("toolName" in part && typeof part.toolName === "string") {
-    return part.toolName;
-  }
-  if (part.type.startsWith("tool-")) {
-    return part.type.slice(5);
-  }
-  return part.type;
-}
 
 function isRegisteredWrite(method: string | undefined): method is string {
   return Boolean(method && method in AGENT_TOOL_INVALIDATION_REGISTRY);

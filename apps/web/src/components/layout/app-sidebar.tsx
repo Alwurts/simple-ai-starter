@@ -139,7 +139,7 @@ export function AppSidebarMainNavigation() {
 
 /** Org thread list (`OrgAgent.listChats`, newest first) with New chat + delete. */
 export function AppSidebarChats() {
-  const { chats, chatsLoadState, deleteChat } = useOrgConnection();
+  const { chats, chatsLoadState, deleteChat, reloadChats } = useOrgConnection();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
@@ -172,6 +172,10 @@ export function AppSidebarChats() {
     }
   };
 
+  const onRetry = () => {
+    reloadChats().catch(() => undefined);
+  };
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Chats</SidebarGroupLabel>
@@ -181,24 +185,68 @@ export function AppSidebarChats() {
       </SidebarGroupAction>
       <SidebarGroupContent>
         <SidebarMenu>
-          {chatsLoadState === "loading" ? (
-            <SidebarMenuItem>
-              <span className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-sm">
-                <Loader2Icon className="size-3.5 animate-spin" />
-                Loading…
-              </span>
-            </SidebarMenuItem>
-          ) : (
-            <ChatListRows
-              chats={chats}
-              closeOnNavigate={closeOnNavigate}
-              onDelete={onDelete}
-              pathname={pathname}
-            />
-          )}
+          <ChatListGroupRows
+            chats={chats}
+            chatsLoadState={chatsLoadState}
+            closeOnNavigate={closeOnNavigate}
+            onDelete={onDelete}
+            onRetry={onRetry}
+            pathname={pathname}
+          />
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
+  );
+}
+
+function ChatListGroupRows({
+  chats,
+  chatsLoadState,
+  closeOnNavigate,
+  onDelete,
+  onRetry,
+  pathname,
+}: {
+  chats: ReturnType<typeof useOrgConnection>["chats"];
+  chatsLoadState: ReturnType<typeof useOrgConnection>["chatsLoadState"];
+  closeOnNavigate: () => void;
+  onDelete: (chatId: string) => void;
+  onRetry: () => void;
+  pathname: string;
+}) {
+  if (chatsLoadState === "loading") {
+    return (
+      <SidebarMenuItem>
+        <span className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-sm">
+          <Loader2Icon className="size-3.5 animate-spin" />
+          Loading…
+        </span>
+      </SidebarMenuItem>
+    );
+  }
+  if (chatsLoadState === "error") {
+    return (
+      <SidebarMenuItem>
+        <span className="flex flex-col gap-1.5 px-2 py-1.5 text-muted-foreground text-sm">
+          Couldn't load chats
+          <button
+            className="w-fit rounded-md border px-2 py-1 text-foreground text-xs hover:bg-muted"
+            onClick={onRetry}
+            type="button"
+          >
+            Retry
+          </button>
+        </span>
+      </SidebarMenuItem>
+    );
+  }
+  return (
+    <ChatListRows
+      chats={chats}
+      closeOnNavigate={closeOnNavigate}
+      onDelete={onDelete}
+      pathname={pathname}
+    />
   );
 }
 

@@ -67,6 +67,7 @@ import {
   type OutgoingUserMessage,
   toSendableMessage,
 } from "../lib/ai-types";
+import { defaultNewChatTitle } from "../lib/chat-titles";
 import { firstSendPlan } from "../lib/first-send";
 import { ChatComposer, type PromptMessage } from "./chat-input";
 import { ChatMessageRow } from "./chat-message-parts";
@@ -91,7 +92,7 @@ function EmptyConversation() {
 
 function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
   if (!chatId) {
-    return "New chat";
+    return defaultNewChatTitle();
   }
   return chats.find((chat) => chat.id === chatId)?.title ?? "Chat";
 }
@@ -418,9 +419,14 @@ function ChatView({ chatId, title }: ChatViewProps) {
               if (!plan) {
                 return;
               }
-              return sendMessage(toSendableMessage(plan.outgoing)).then(
-                () => undefined
-              );
+              // The composer swallows rejections; surface send failures the
+              // same way the bridged-draft flush does.
+              return sendMessage(toSendableMessage(plan.outgoing))
+                .then(() => undefined)
+                .catch((error: unknown) => {
+                  console.error("[ChatConnection] sendMessage failed", error);
+                  setSendError(errorMessageFrom(error));
+                });
             }}
             onStop={helpers.stop}
             status={helpers.status}
