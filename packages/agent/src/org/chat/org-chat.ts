@@ -1,6 +1,8 @@
+import bundledSkills from "agents:skills";
 import type { WorkspaceFsLike } from "@cloudflare/shell";
 import {
   type Session,
+  type SkillSource,
   type StepContext,
   Think,
   type TurnContext,
@@ -105,6 +107,20 @@ export class OrgChat extends Think<Cloudflare.Env> {
 
   override getModel(): LanguageModel {
     return this.resolvedChatModel;
+  }
+
+  /**
+   * The bundled example skills (D-010). `agents:skills` is resolved by the
+   * Agents Vite plugin the app already runs (apps/web/vite.config.ts) to the
+   * `skills/` directory next to this file — currently one skill,
+   * `product-copy`. Think merges the catalog into the system prompt and
+   * exposes `activate_skill` / `read_skill_resource` on OrgChat turns only;
+   * `OrgSubAgent` does not override `getSkills`, so `delegate` gets none.
+   * Script running stays off: no `getSkillScriptRunner`, so `run_skill_script`
+   * is never registered.
+   */
+  override getSkills(): SkillSource[] {
+    return [bundledSkills];
   }
 
   /**

@@ -36,6 +36,16 @@ export default defineConfig(async (): Promise<ViteUserConfig> => {
   const migrations = await readD1Migrations(migrationsPath);
 
   return {
+    resolve: {
+      alias: {
+        // The `agents()` Vite plugin resolves `agents:skills` only in the app
+        // build; tests alias it to a stub (OrgChat's bundled skills source).
+        "agents:skills": path.resolve(
+          import.meta.dirname,
+          "test/agents-skills-shim.ts"
+        ),
+      },
+    },
     plugins: [tsconfigPaths({ projects: ["./tsconfig.json"] })],
     test: {
       projects: [
