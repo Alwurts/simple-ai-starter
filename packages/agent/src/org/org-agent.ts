@@ -9,6 +9,7 @@ import type {
   ChatMessageHit,
   ChatSearchHit,
   ChatSummary,
+  OrgAgentState,
   OrgMemorySnapshot,
 } from "../types";
 import { OrgChat } from "./chat";
@@ -23,12 +24,6 @@ interface ChatRow {
   id: string;
   title: string;
   updated_at: number;
-}
-
-/** Agent state broadcast to every connected client (upstream directory pattern). */
-interface OrgAgentState {
-  /** Ordered chat list, most-recently-active first. */
-  chats: ChatSummary[];
 }
 
 export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {

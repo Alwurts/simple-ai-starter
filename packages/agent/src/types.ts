@@ -48,6 +48,12 @@ export interface ChatSearchHit extends ChatMessageHit {
   chatTitle: string;
 }
 
+/** Agent state broadcast to every connected client (upstream directory pattern). */
+export interface OrgAgentState {
+  /** Ordered chat list, most-recently-active first. */
+  chats: ChatSummary[];
+}
+
 export interface AgentToolsContext {
   organizationId: string;
   userId: string;

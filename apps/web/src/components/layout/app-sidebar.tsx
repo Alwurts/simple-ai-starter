@@ -27,7 +27,7 @@ import {
   SearchX,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { AppSidebarFooter } from "@/components/layout/app-sidebar-footer";
@@ -141,24 +141,13 @@ function AppSidebarMainNavigation() {
 
 /** Org thread list (`OrgAgent.listChats`, newest first) with New chat + delete. */
 function AppSidebarChats() {
-  const { chats, chatsLoadState, deleteChat, reloadChats, searchChats } =
+  const { chats, chatsLoadState, deleteChat, retryConnection, searchChats } =
     useOrgConnection();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
-  const isCreating = useRef(false);
 
-  const onNewChat = async () => {
-    if (isCreating.current) {
-      return;
-    }
-    isCreating.current = true;
-    try {
-      await navigate({ to: "/chat/new" });
-    } finally {
-      isCreating.current = false;
-    }
-  };
+  const onNewChat = () => navigate({ to: "/chat/new" });
 
   const onDelete = async (chatId: string) => {
     try {
@@ -177,7 +166,7 @@ function AppSidebarChats() {
   };
 
   const onRetry = () => {
-    reloadChats().catch(() => undefined);
+    retryConnection();
   };
 
   return (

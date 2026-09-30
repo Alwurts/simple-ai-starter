@@ -3,6 +3,7 @@
 import type { PendingAction } from "@cloudflare/codemode";
 import { useAgentChat } from "@cloudflare/think/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import type { OrgChat } from "@workspace/agent/org/chat";
 import type { ChatSummary } from "@workspace/agent/types";
 import {
   ShellHeader,
@@ -249,7 +250,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
   const navigate = useNavigate();
   const sidePanel = useChatSidePanel();
 
-  const chatAgent = useAgent({
+  const chatAgent = useAgent<OrgChat, unknown>({
     agent: "OrgAgent",
     name: organizationId,
     sub: [{ agent: "OrgChat", name: chatId }],
@@ -328,19 +329,26 @@ function ChatView({ chatId, title }: ChatViewProps) {
   const handleExecutionApproval = useCallback(
     (executionId: string, approved: boolean) => {
       setResolvingExecutions((prev) => new Set(prev).add(executionId));
-      const call = approved ? "approveExecution" : "rejectExecution";
-      chatAgent
-        .call(call, approved ? [executionId] : [executionId, REJECT_REASON])
+      // Both callables return `{ status: "error", error }` instead of
+      // throwing when the run is stale or already resolved — surface that as
+      // a toast, never an unhandled rejection.
+      const call = approved
+        ? chatAgent.stub.approveExecution(executionId)
+        : chatAgent.stub.rejectExecution(executionId, REJECT_REASON);
+      call
         .then((result) => {
           if (
             result &&
             typeof result === "object" &&
             "status" in result &&
-            (result as { status: unknown }).status === "error"
+            result.status === "error"
           ) {
             const errorText =
-              (result as { error?: unknown }).error ?? "Unknown error";
-            console.error(`[ChatPage] ${call} failed:`, errorText);
+              ("error" in result ? result.error : undefined) ?? "Unknown error";
+            console.error(
+              `[ChatPage] ${approved ? "approveExecution" : "rejectExecution"} failed:`,
+              errorText
+            );
             toast.error(
               `Couldn't ${approved ? "approve" : "reject"}: this run already moved on.`,
               {
@@ -350,7 +358,10 @@ function ChatView({ chatId, title }: ChatViewProps) {
           }
         })
         .catch((error: unknown) => {
-          console.error(`[ChatPage] ${call} failed`, error);
+          console.error(
+            `[ChatPage] ${approved ? "approveExecution" : "rejectExecution"} failed`,
+            error
+          );
           toast.error("Couldn't resolve the execution. Please try again.", {
             position: "top-center",
           });
@@ -366,25 +377,11 @@ function ChatView({ chatId, title }: ChatViewProps) {
     [chatAgent]
   );
 
-  // Upstream PausedExecutionCard contract: wait for the socket to be
-  // identified before calling (an RPC issued during connect/reconnect churn
-  // can be dropped with its promise pending forever) and retry once with a
-  // timeout for the same reason.
+  // `call()`/stubs queue behind the connection and time out (30s default), so
+  // no ready-wait or manual retry is needed.
   const handleLoadPendingExecution = useCallback(
-    async (executionId: string): Promise<PendingAction[]> => {
-      await chatAgent.ready;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          return (await chatAgent.call("pendingExecutions", [executionId], {
-            timeout: 10_000,
-          })) as PendingAction[];
-        } catch (error) {
-          console.error("[ChatPage] pendingExecutions failed", error);
-          await chatAgent.ready;
-        }
-      }
-      return [];
-    },
+    (executionId: string): Promise<PendingAction[]> =>
+      chatAgent.stub.pendingExecutions(executionId),
     [chatAgent]
   );
 
@@ -426,16 +423,13 @@ function ChatView({ chatId, title }: ChatViewProps) {
     const pending = toast.loading("Compacting conversation…", {
       position: "top-center",
     });
-    return chatAgent
-      .call("compactNow", [])
+    return chatAgent.stub
+      .compactNow()
       .then((result) => {
-        const compacted =
-          typeof result === "object" &&
-          result !== null &&
-          "compacted" in result &&
-          result.compacted === true;
         toast.success(
-          compacted ? "Conversation compacted" : "Nothing to compact yet",
+          result.compacted
+            ? "Conversation compacted"
+            : "Nothing to compact yet",
           { id: pending, position: "top-center" }
         );
       })
