@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
 
 /**
- * D-010 — org-scoped conversation search. `OrgAgent.searchChats` fans a query
+ * Org-scoped conversation search. `OrgAgent.searchChats` fans a query
  * out to each registered chat's own Sessions FTS index through
  * `OrgChat.searchMessages` (a dynamic-agent stub method) and merges the hits.
  *

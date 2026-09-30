@@ -1,7 +1,7 @@
 import type { ChatMessageHit, ChatSearchHit, ChatSummary } from "../../types";
 
 /**
- * Cross-chat conversation search bounds (D-010). Each chat is its own
+ * Cross-chat conversation search bounds. Each chat is its own
  * `OrgChat` with its own Sessions FTS5 index, so search fans out from
  * `OrgAgent` to the N most recent chats and merges. The cap keeps one query
  * from waking every chat DO in a long-lived org.

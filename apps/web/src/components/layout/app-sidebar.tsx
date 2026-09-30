@@ -213,7 +213,7 @@ const CHAT_SEARCH_MIN_QUERY = 2;
 const CHAT_SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * Conversation search in the Chats group (D-010): a debounced query fans out
+ * Conversation search in the Chats group: a debounced query fans out
  * to `OrgAgent.searchChats` (FTS over each chat's transcript) and renders
  * matching chats with a snippet. Clicking a hit opens that chat.
  */

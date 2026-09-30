@@ -11,9 +11,9 @@ import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
 
 /**
- * D-010 (carried from unit 3 review) — behaviour-level compaction test.
+ * Behaviour-level compaction test.
  *
- * OrgChat's compaction triggers are Think built-ins (D-016): `compactAfter`
+ * OrgChat's compaction triggers are Think built-ins: `compactAfter`
  * (pre-turn estimate heuristic, from `configureSession`) and
  * `contextOverflow` reactive + proactive — all of which run **this session's
  * registered compaction function via `session.compact()`**. The vitest pool

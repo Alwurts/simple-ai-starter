@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import raw from "./skills/product-copy/SKILL.md?raw";
 
 /**
- * D-010 — the one bundled example skill. `OrgChat.getSkills()` returns the
+ * The one bundled example skill. `OrgChat.getSkills()` returns the
  * `agents:skills` source the Agents Vite plugin builds from
  * `src/org/chat/skills/` (an empty-catalog stub replaces that virtual module
  * under vitest — see apps/web/test/agents-skills-shim.ts), so the contract

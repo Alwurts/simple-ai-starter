@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Think 0.18 moved prompt context from the `withContext()` /
- * `configureSession()` chain to `configureContext()` (D-009). The org memory
+ * `configureSession()` chain to `configureContext()`. The org memory
  * block is the starter's only context block, and its provider round-trips
  * through the parent `OrgAgent`'s `org_memory` table so every chat in the org
  * shares one memory. This pins the moved wiring: the block is declared by
@@ -52,7 +52,7 @@ function orgChatWithParent(getParent: () => Promise<MemoryParent>): OrgChat {
 
 /**
  * The `org_memory` block `configureContext()` must declare (after the
- * read-only `org` header block, D-016 fix round).
+ * read-only `org` header block).
  */
 function orgMemoryBlock(chat: OrgChat) {
   const blocks = chat.configureContext();

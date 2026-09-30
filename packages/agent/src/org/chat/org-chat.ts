@@ -77,7 +77,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
     this.resolvedModelId = resolved.modelId;
     this.resolvedContextWindow = resolved.contextWindow;
     this.resolvedCapabilities = resolved.capabilities;
-    // Context-window overflow recovery (Think built-in, D-016) — the reactive
+    // Context-window overflow recovery (a Think built-in) — the reactive
     // backstop compacts and retries a turn a provider rejected as too long,
     // and the proactive guard compacts mid-turn once real step usage crosses
     // 90% of the model's window. `compactAfter` (below) keeps the cheaper
@@ -126,7 +126,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   /**
-   * The bundled example skills (D-010). `agents:skills` is resolved by the
+   * The bundled example skills. `agents:skills` is resolved by the
    * Agents Vite plugin the app already runs (apps/web/vite.config.ts) to the
    * `skills/` directory next to this file — currently one skill,
    * `product-copy`. Think merges the catalog into the system prompt and
@@ -403,18 +403,18 @@ export class OrgChat extends Think<Cloudflare.Env> {
     const productTools = getOrgAgentTools(toolsCtx);
     const displayTools = getOrgAgentDisplayTools(toolsCtx);
 
-    // D-010: the read-only fetch tool is opt-in via FETCH_ALLOWED_HOSTS
+    // The read-only fetch tool is opt-in via FETCH_ALLOWED_HOSTS
     // (comma-separated hostnames). Empty/unset means no fetch tool at all.
     const fetchTools = fetchToolsForEnv(this.env.FETCH_ALLOWED_HOSTS);
 
-    // D-010 / D-015: code execution (codemode). The one-liner infers state.*
+    // Code execution (codemode). The one-liner infers state.*
     // from this.workspace and the executor from env.LOADER; the sandbox sees
     // ONLY the org's own product tools — `update_product` / `delete_product`
     // keep needsApproval, which inside the sandbox maps to the codemode
     // runtime's durable pause/approve/resume (resolved client-side via Think's
     // `approveExecution` / `rejectExecution` callables). No browser (no
     // BROWSER binding) and no delegate/display tools reach the sandbox. The
-    // execute tool itself is NOT gated (D-015): read-only code runs freely in
+    // execute tool itself is NOT gated: read-only code runs freely in
     // the no-network sandbox; approvals come from the gated tools the code
     // calls.
     const executeTool = createExecuteTool(this, { tools: productTools });
