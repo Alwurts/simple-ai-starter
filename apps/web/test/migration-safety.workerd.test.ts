@@ -17,9 +17,7 @@ import { describe, expect, it } from "vitest";
 // recreate migration to swap it.
 // See docs/decisions/007-d1-drizzle-table-recreate-fk-cascades.md
 //
-// Mechanically identical to the platform's migration-safety guard
-// (packages/db/src/migration-safety.test.ts, built under ALW-108) so the two
-// stay easy to diff and co-evolve. Two intentional diffs, both forced by this
+// Two intentional diffs from a plain-node guard, both forced by this
 // repo's test layout:
 //  - source: the migrations are already parsed into the `TEST_MIGRATIONS`
 //    binding by vitest.config.ts (readD1Migrations, run in Node at config time,

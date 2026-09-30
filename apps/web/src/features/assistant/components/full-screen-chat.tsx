@@ -274,7 +274,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
     // HTTP fetch would be a redundant round-trip. It's also the resume-safe path:
     // the server *withholds* that broadcast while a turn is resuming so it can't
     // clobber the assistant message the client is rebuilding from the resume
-    // stream. This matches the Think reference client. (ALW-401)
+    // stream. This matches the Think reference client.
     getInitialMessages: null,
     // Coalesce streaming token updates (matches the Think reference client) so
     // a fast stream doesn't re-render the message list on every delta. Pinned:
@@ -287,7 +287,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
     // transcript as a second chat request on top of the approval frame.
   });
 
-  // ALW-500: invalidate React Query when agent write tools complete.
+  // Invalidate React Query when agent write tools complete.
   useAgentToolMutationInvalidation({ messages: helpers.messages });
 
   // Flush the draft message bridged from `/` once the socket is identified and

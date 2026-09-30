@@ -66,8 +66,8 @@ A minimal `drizzle.config.ts` (no driver) for generation, plus a
 ### Negative
 
 - Two Drizzle config files.
-- `better-sqlite3` native module required for Studio (added to
-  `pnpm.onlyBuiltDependencies`).
+- `better-sqlite3` native module required for Studio (allowed in the pnpm
+  `allowBuilds` policy).
 
 ### Operational caution
 
@@ -78,7 +78,7 @@ backward-compatible (expand/contract) migrations; if a recreate is unavoidable,
 use `PRAGMA defer_foreign_keys=true`. Never rewrite an already-applied migration
 — fixes are forward-only. This is enforced by a CI guard — see
 [ADR-007](./007-d1-drizzle-table-recreate-fk-cascades.md) for the full rationale
-(`apps/web/test/migration-safety.test.ts`), and `docs/guides/` for the
+(`apps/web/test/migration-safety.workerd.test.ts`), and `docs/guides/` for the
 data-layer house style.
 
 ## Implementation Notes

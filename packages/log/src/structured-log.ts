@@ -1,5 +1,5 @@
 /**
- * Single-line structured logging helper (ALW-700).
+ * Single-line structured logging helper.
  *
  * Emits one JSON object per call to the Workers Logs console mirror. Downstream
  * consumers (dashboard filters, detectors) parse the same envelope. Console-first;

@@ -2,7 +2,7 @@
 
 How the org agent (`OrgChat` / `OrgSubAgent`) picks its LLM, how to swap the
 provider, and how to front it with Cloudflare AI Gateway — all from environment
-variables. Introduced in ALW-411.
+variables.
 
 ## How it works
 
@@ -15,9 +15,8 @@ Both agents resolve their model once in `onStart` via
   `.../org-sub-agent.ts:onStart` (call sites), `apps/web/test/inference/chat-models.test.ts`
   (the AC coverage).
 
-The registry mirrors the main sfab platform's shape — a `Provider` union → a
-data-only `PROVIDER_BUILD` map → a `MODEL_OFFERINGS` catalog → one factory — but
-sources keys from **env vars**, not the D1 `provider_keys` table.
+The registry is a `Provider` union → a data-only `PROVIDER_BUILD` map → a
+`MODEL_OFFERINGS` catalog → one factory, with keys sourced from **env vars**.
 
 ## Selecting a provider
 
@@ -39,7 +38,7 @@ An unknown `ORG_CHAT_MODEL` override defaults to text-only (conservative, same s
 Adding a model or provider is a data edit: extend `OrgChatProvider`, `PROVIDER_BUILD`,
 and `MODEL_OFFERINGS` (include `inputModalities` on every row).
 
-Attachment gating (ALW-453): `gateChatAttachments` + `GET /api/protected/chat/capabilities`
+Attachment gating: `gateChatAttachments` + `GET /api/protected/chat/capabilities`
 hide or reject non-text parts for text-only models before the model call, so users never
 see opaque provider errors like `messages.content.type is invalid`.
 

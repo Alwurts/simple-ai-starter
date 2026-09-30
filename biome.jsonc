@@ -19,8 +19,8 @@
   "files": {
     "includes": ["!!packages/env/src/env.d.ts"]
   },
-  // ALW-672: ban useEffect/useLayoutEffect outside vendored shadcn
-  // (port of platform ALW-671). One pattern per .grit file — Biome's Grit
+  // Ban useEffect/useLayoutEffect outside vendored shadcn.
+  // One pattern per .grit file — Biome's Grit
   // compiler rejects multi-pattern files.
   "plugins": [
     {
@@ -46,7 +46,7 @@
         "noShadow": "off",
         "noUnusedExpressions": "off",
         "noUnnecessaryConditions": "off",
-        // ALW-700: fold raw-console guard into Biome. Path carve-outs below
+        // Fold the raw-console guard into Biome. Path carve-outs below
         // (and inherited test/scripts overrides from @workspace/biome-config).
         "noConsole": "error"
       },
@@ -68,7 +68,7 @@
       }
     },
     {
-      // ALW-700: browser-reachable web UI — not yet on structuredLog.
+      // Browser-reachable web UI — not yet on structuredLog.
       "includes": [
         "apps/web/src/components/**",
         "apps/web/src/features/**",
@@ -84,7 +84,7 @@
       }
     },
     {
-      // ALW-700: client / helper / scripts carve-outs.
+      // Client / helper / scripts carve-outs.
       // Also scripts/** + nested *.mjs (core preset's `*.mjs` only matches repo root).
       "includes": [
         "packages/ui/src/**",

@@ -15,8 +15,7 @@ knowledge lives and what earns a record.
 
 This decision is itself cross-cutting, costly to reverse (it shapes every doc and
 the agent entry point), and was chosen among real alternatives — so it qualifies
-under its own significance bar. It is the starter-side counterpart of the
-platform's knowledge-layer decision (ADR-0010 §H); the two are kept reconciled.
+under its own significance bar.
 
 ## Decision
 
@@ -72,7 +71,7 @@ session plan-mode — never committed under `docs/`, which is for durable knowle
 ### E4 — In-repo docs are the source of truth
 
 The starter's engineering knowledge stays **in-repo under `docs/`, PR-authored**.
-Do **not** route it through a platform docs store / MCP. Both consumers — the
+Do **not** route it through an external docs store / MCP. Both consumers — the
 adopting developer and a dispatched agent — have the repo cloned, so they read
 `docs/` from the working tree, and a forked template owns its docs as plain,
 editable markdown.
@@ -107,12 +106,11 @@ editable markdown.
 - A small, high-trust `decisions/` set; navigable buckets; a single agent entry
   point that can't drift from its Claude alias.
 - Contributors learn one test ("does this clear the bar?") before adding an ADR.
-- Doc content is owned by the repo via PR — the platform never overwrites it.
+- Doc content is owned by the repo via PR.
 
 ## Related Decisions
 
 - [ADR-001](./001-monorepo-and-architecture.md) — the architecture these docs describe.
-- Platform **ADR-0010 §H** (knowledge layer) — reconciled counterpart.
 
 ## References
 

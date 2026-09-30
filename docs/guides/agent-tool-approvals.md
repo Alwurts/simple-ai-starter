@@ -17,7 +17,7 @@ agents client sends that as a tool-approval frame and continues the turn.
 
 ## 2. Codemode (`execute` tool) — approval at the gated tool call
 
-The `execute` tool itself is **not** approval-gated (D-015): read-only sandbox
+The `execute` tool itself is **not** approval-gated: read-only sandbox
 code (list/get, workspace reads, data munging) runs freely — the sandbox has
 no network and only the org's own tools. The approval lives where the side
 effect is: a sandbox call to `update_product` / `delete_product` does not run

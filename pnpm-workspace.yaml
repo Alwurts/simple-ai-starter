@@ -3,7 +3,7 @@ packages:
   - "packages/*"
 
 # Security overrides — force patched transitive versions to clear Dependabot
-# alerts (ALW-394). Every pin stays within the dependency's existing major, so
+# alerts. Every pin stays within the dependency's existing major, so
 # it's a patch/minor forward with no breaking change:
 #   - undici  <7.28.0  → CVEs via wrangler/miniflare (and other tooling)
 #   - ws      <8.21.0  → CVE via @cloudflare/vite-plugin, tanstack devtools, jsdom
@@ -19,7 +19,7 @@ overrides:
   postcss: "^8.5.10"
   hono: "^4.12.28"
   # Do NOT add a workspace `zod` override. Direct app packages pin exact
-  # `4.3.5` (ALW-464) because `^4.3.5` → 4.4 breaks shadcn `RegistryItem`
+  # `4.3.5` because `^4.3.5` → 4.4 breaks shadcn `RegistryItem`
   # inference; a global override would also force zod 4 onto shadcn itself
   # (expects zod 3) and collapse the same types. Leave better-auth on zod 3.
   # Univer 0.25 (spreadsheet-viewer) needs rxjs >=7 — its core imports operators

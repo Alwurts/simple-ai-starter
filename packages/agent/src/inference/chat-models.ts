@@ -7,15 +7,14 @@ import {
 } from "ai";
 
 /**
- * ALW-411 — env-driven provider registry for org-agent inference.
+ * Env-driven provider registry for org-agent inference.
  *
  * The org chat model is selected at runtime from environment variables so the
  * same codebase can route through the Vercel AI Gateway (default), Cloudflare
  * Workers AI, or an OpenAI-compatible subscription (e.g. z.ai GLM) — optionally
- * with **Cloudflare AI Gateway** in front for caching/observability. This
- * mirrors the main sfab platform's provider abstraction (a `Provider` union → a
- * data-only build map → one factory), but sources keys from env vars instead of
- * the D1 `provider_keys` table.
+ * with **Cloudflare AI Gateway** in front for caching/observability. The shape
+ * is a `Provider` union → a data-only build map → one factory, with keys
+ * sourced from env vars.
  *
  * The decision (which provider, which model, which URL/key) is a pure function
  * (`resolveOrgChatModelConfig`) so it is directly testable; `resolveOrgChatModel`
@@ -77,7 +76,7 @@ export type OrgChatProvider =
 export type OrgChatInputModality = "text" | "image";
 
 /**
- * Model-level input capabilities (ALW-453).
+ * Model-level input capabilities.
  *
  * Documented per catalog offering — not inferred from the SDK — because
  * OpenAI-compatible endpoints advertise the same wire shape while rejecting
@@ -518,7 +517,7 @@ export function getCompactionLimit(contextWindow: number): number {
 }
 
 /**
- * Think's context-window overflow recovery config (D-016): the reactive
+ * Think's context-window overflow recovery config: the reactive
  * backstop compacts and retries a turn the provider rejected as too long;
  * the proactive guard compacts mid-turn once real step usage crosses ~90% of
  * the model's window. Both run the session's `onCompaction` function.

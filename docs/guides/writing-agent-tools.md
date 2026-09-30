@@ -93,7 +93,7 @@ Inside the sandbox the model sees `tools.*` (the five product tools),
 (there is no `BROWSER` binding) and no `delegate`. Sandbox code runs with
 network access blocked.
 
-Running code is **not** gated itself (D-015) — approvals come from the gated
+Running code is **not** gated itself — approvals come from the gated
 tools the code calls: sandbox calls to `update_product` / `delete_product`
 keep their `needsApproval`, which the codemode runtime maps to its durable
 pause/approve/resume — see
@@ -155,7 +155,7 @@ Not every domain is CRUD. Pick the shape before naming tools:
 | **CRUD + lifecycle** | Draft you author, then lock/delete | `list`/`get`/`create`/`update` + gated `delete_*` |
 | **Pure persist** | Config with no cascade | upsert-style write + reads |
 | **Approval-gated destructive / hard to undo** | Irreversible or user-owned state | `needsApproval: true` (AI SDK pause) + RBAC in `execute` |
-| **No agent tool** | Pure UI flows, or org management (D-006/D-007: no org tools) | Hand off to the real screen |
+| **No agent tool** | Pure UI flows, or org management (no org tools) | Hand off to the real screen |
 
 **Delete as its own verb.** Don't bury a one-way transition in a boolean on a
 generic `update` (e.g. `update(..., deleted: true)`). `delete_product` is a
@@ -262,8 +262,8 @@ On `@cloudflare/think` + the AI SDK tool loop:
 2. **Approval-gated** — `update_product` / `delete_product` with
    `needsApproval: true`; RBAC still runs post-approval (approval ≠
    authorization).
-3. **No agent tool** — org/management mutations are never exposed
-   (D-006/D-007); they hand off to the real screens.
+3. **No agent tool** — org/management mutations are never exposed;
+   they hand off to the real screens.
 
 ## Gotchas
 

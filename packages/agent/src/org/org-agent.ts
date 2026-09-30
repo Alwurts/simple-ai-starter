@@ -200,7 +200,7 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
   }
 
   /**
-   * Org-scoped conversation search (D-010): fan the query out to at most the
+   * Org-scoped conversation search: fan the query out to at most the
    * `SEARCH_MAX_CHATS` most recent chats, each through its own Sessions FTS5
    * index (`OrgChat.searchMessages`), and merge into one newest-first list.
    * Every chat lives under this org's DO and the `/agents/org-agent/` route

@@ -58,7 +58,7 @@ This retires the `types` and `primitives` packages — `contract` (boundary zod)
 - **For:** rows and commands are genuinely different (a create command is not a
   row), so forcing one to derive the other leaks persistence concerns into the
   boundary and vice versa; `contract` stays a pure leaf usable by the client and
-  AI tools without pulling in Drizzle; packs author a `contract/<cap>/` slice with
+  AI tools without pulling in Drizzle; a capability's `contract/<cap>/` slice has
   no DB coupling; the boundary is explicit and readable.
 - **Against:** two definitions *can* drift — mitigated by required per-capability
   round-trip tests rather than the compiler.
@@ -70,7 +70,7 @@ This retires the `types` and `primitives` packages — `contract` (boundary zod)
   drags persistence structure); `contract` would depend on `db`, so the client /
   `ui` / AI-tool layers pull Drizzle into their graph; derived-then-`.omit()/.extend()`
   schemas are *less* legible than a hand-written boundary; fights the layer-sliced
-  pack model where a slice's `contract` should stand alone.
+  model where a slice's `contract` should stand alone.
 
 ### Full multi-package split (db + core + schemas + primitives) (rejected)
 
@@ -84,7 +84,7 @@ This retires the `types` and `primitives` packages — `contract` (boundary zod)
 - `contract` and `db` are independent leaves; clean one-way dep graph
   (`db`/`contract` → `core` → surfaces).
 - Each type answers "where is this defined?" by its import location.
-- Packs slice cleanly: a capability's `contract/` carries no DB dependency.
+- Slices stay clean: a capability's `contract/` carries no DB dependency.
 
 ### Negative
 

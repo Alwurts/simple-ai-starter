@@ -11,11 +11,11 @@ import {
 import { describe, expect, it } from "vitest";
 
 /**
- * ALW-411 — the provider decision (which provider, model, base URL, key, and
+ * The provider decision (which provider, model, base URL, key, and
  * whether Cloudflare AI Gateway fronts it) is a pure function, so we assert it
  * directly without touching the network or an SDK client.
  *
- * ALW-453 — model input capabilities + attachment gating are also pure.
+ * Model input capabilities + attachment gating are also pure.
  */
 
 const NEEDS_ACCOUNT_ID = /CF_ACCOUNT_ID/;
@@ -314,7 +314,7 @@ describe("getCompactionLimit", () => {
   });
 });
 
-describe("org chat model capabilities (ALW-453)", () => {
+describe("org chat model capabilities", () => {
   it("resolves modalities from the active catalog offering per provider", () => {
     expect(resolveOrgChatCapabilities(env())).toEqual({
       provider: "vercel-gateway",
@@ -357,7 +357,7 @@ describe("org chat model capabilities (ALW-453)", () => {
   });
 });
 
-describe("gateChatAttachments (ALW-453)", () => {
+describe("gateChatAttachments", () => {
   const textOnly: OrgChatModelCapabilities = {
     provider: "zai-coding-plan",
     entryId: "glm-5.2",

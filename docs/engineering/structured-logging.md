@@ -3,7 +3,7 @@
 One helper, one envelope, one `kind` vocabulary — the Workers Logs mirror is
 the real-time observability surface for this template. Every server-side log
 line should be a single JSON object emitted through `structuredLog` from
-`@workspace/log` (ALW-700).
+`@workspace/log`.
 
 `@workspace/log` is a **zero-dependency** package so any server runtime
 (`apps/web`, `@workspace/email`, `@workspace/agent`) can share it without
@@ -111,6 +111,6 @@ Deny-by-default everywhere Biome scans. Documented carve-outs in root
 
 ## Non-goals
 
-- D1 / activity UI persistence — [[ALW-699]]
-- Porting the platform's large kind registry or `request_log` middleware
+- D1 / activity UI persistence
+- A large kind registry or `request_log` middleware
 - Client-side structured logging

@@ -7,7 +7,7 @@ import { client } from "@/lib/client";
 export const chatCapabilitiesQueryKey = ["chat", "capabilities"] as const;
 
 /**
- * Active org-chat model input capabilities (ALW-453). Used to hide/disable
+ * Active org-chat model input capabilities. Used to hide/disable
  * the attach control for text-only models before send.
  */
 export function useChatCapabilities() {

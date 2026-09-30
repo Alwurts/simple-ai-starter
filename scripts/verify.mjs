@@ -6,9 +6,9 @@ import { readFileSync } from "node:fs";
 
 const STEPS = ["pnpm lint:check", "pnpm typecheck", "pnpm test", "pnpm build"];
 
-// CI-only steps that verify deliberately does not run (D-017: e2e needs a
+// CI-only steps that verify deliberately does not run: e2e needs a
 // browser and stays out of the pre-push hook; run it via
-// `pnpm --filter web test:e2e`). Listed so the CI/verify cross-check passes.
+// `pnpm --filter web test:e2e`. Listed so the CI/verify cross-check passes.
 const CI_ONLY_STEPS = new Set([
   "pnpm --filter web exec playwright install --with-deps chromium",
   "pnpm --filter web test:e2e",

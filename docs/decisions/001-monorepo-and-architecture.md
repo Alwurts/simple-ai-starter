@@ -14,7 +14,7 @@ by **both human developers and AI coding agents**. It needs a structure that:
 - Is **legible** — a reader can predict where a thing lives without searching.
 - Scales by repetition: adding a feature should mean repeating a known shape, not
   inventing a new one.
-- Lets a registry **pack** be authored as a vertical and installed as slices.
+- Lets a capability be authored as one vertical slice and adopted per layer.
 
 The project is committed to Cloudflare Workers as its only runtime, and runs as a
 **single Worker app** hosting many surfaces.
@@ -47,24 +47,25 @@ The layers and the full map are documented in
 
 A capability is a slice repeated across a fixed layer set.
 
-- **For:** one predictable shape; adding a feature is mechanical; packs map
-  cleanly onto layer targets; surfaces share a framework-agnostic `core`.
+- **For:** one predictable shape; adding a feature is mechanical; a capability
+  maps cleanly onto one directory per layer; surfaces share a
+  framework-agnostic `core`.
 - **Against:** a single feature is spread across several directories (mitigated by
   the identical `<cap>` key making the spread navigable).
 
-### Package-per-domain (rejected — midday-style)
+### Package-per-domain (rejected)
 
 Each domain gets its own package.
 
 - **Against:** package proliferation for a template with one app; heavy
   `package.json`/tsconfig overhead per feature; obscures the shared layer shape.
 
-### Fat single `core` bucket (rejected — sfab-today-style)
+### Fat single `core` bucket (rejected)
 
 All services in one flat `core` package.
 
 - **Against:** no cross-layer key; `core/*.ts` grows unstructured; can't slice a
-  capability in or out cleanly; packs have no clean target.
+  capability in or out cleanly.
 
 ## Consequences
 

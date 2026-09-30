@@ -14,7 +14,7 @@ RESEND_API_KEY=
 EMAIL_SENDER=noreply@example.com
 MOCK_SEND_EMAIL=true
 
-# ─── Org agent inference (ALW-411) ────────────────────────────────────────────
+# ─── Org agent inference ──────────────────────────────────────────────────────
 # Pick the underlying provider; unset = vercel-gateway (default). Then fill the
 # matching key below. ORG_CHAT_MODEL optionally overrides the model id.
 #   ORG_CHAT_PROVIDER=vercel-gateway | workers-ai | zai-coding-plan | openai-compatible
@@ -46,7 +46,7 @@ AI_GATEWAY_API_KEY=
 # CF_AIG_GATEWAY_ID=
 # CF_AIG_TOKEN=
 
-# ─── Agent fetch tool (D-010) ─────────────────────────────────────────────────
+# ─── Agent fetch tool ─────────────────────────────────────────────────────────
 # Comma-separated hostnames the chat agent's read-only fetch_url tool may GET
 # (e.g. developers.cloudflare.com,example.com). Empty/unset = no fetch tool.
 FETCH_ALLOWED_HOSTS=

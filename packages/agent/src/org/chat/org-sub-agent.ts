@@ -17,7 +17,7 @@ You do not see the parent conversation — work only from the task you are given
 Do the task thoroughly, then return a concise, self-contained result the parent assistant can relay to the user. Prefer a direct answer over narrating your steps.`;
 
 /**
- * A general-purpose delegation sub-agent (ALW-401). The main `OrgChat` exposes
+ * A general-purpose delegation sub-agent. The main `OrgChat` exposes
  * it as the `delegate` tool via `agentTool(OrgSubAgent, …)`; the model calls it
  * to run a self-contained research/analysis task in its OWN context window
  * (keeping heavy work out of the main chat's tokens) with read-only org reach.

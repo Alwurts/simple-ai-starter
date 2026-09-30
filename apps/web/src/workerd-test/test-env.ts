@@ -1,5 +1,5 @@
 /**
- * Typed accessor for the in-workerd test worker's bindings (ALW-305).
+ * Typed accessor for the in-workerd test worker's bindings.
  *
  * The test-only fixture (TestCounter DO) is declared in wrangler.test.jsonc —
  * NOT the production wrangler.jsonc / cf-typegen output — so it is intentionally
@@ -16,7 +16,7 @@ import type { TestCounter } from "./test-counter-do";
 
 export const env = runtimeEnv as typeof runtimeEnv & {
   TEST_COUNTER: DurableObjectNamespace<TestCounter>;
-  // ALW-398: OrgAgent is bound in wrangler.test.jsonc for the multi-session
+  // OrgAgent is bound in wrangler.test.jsonc for the multi-session
   // backend test; typed here so tests get RPC-method inference on the stub.
   OrgAgent: DurableObjectNamespace<OrgAgent>;
   // Compaction behaviour test: the plain-DO Sessions host.

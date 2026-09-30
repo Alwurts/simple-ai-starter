@@ -2,7 +2,7 @@ import { getOrgAgentTools } from "@workspace/agent";
 import { describe, expect, it } from "vitest";
 
 /**
- * ALW-348 / ALW-456 / ALW-524 / ALW-740 — human-approval-gated agent writes.
+ * Human-approval-gated agent writes.
  *
  * Product tools are top-level Think tools. `needsApproval: true` uses the AI SDK
  * approval pause (`approval-requested` → DefaultTool Approve/Reject via
@@ -19,7 +19,7 @@ const ctx = {
   waitUntil: () => undefined,
 };
 
-describe("top-level approval-gated writes (ALW-456 / ALW-740)", () => {
+describe("top-level approval-gated writes", () => {
   it("update_product and delete_product are gated with needsApproval", () => {
     const tools = getOrgAgentTools(ctx);
     for (const name of ["update_product", "delete_product"] as const) {

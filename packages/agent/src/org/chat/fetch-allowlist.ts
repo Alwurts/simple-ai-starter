@@ -2,8 +2,8 @@ import { createFetchTools } from "@cloudflare/think/tools/fetch";
 import type { ToolSet } from "ai";
 
 /**
- * The `FETCH_ALLOWED_HOSTS` allowlist for Think's read-only fetch tool
- * (D-010). The env var is a comma-separated list of hostnames; with it empty
+ * The `FETCH_ALLOWED_HOSTS` allowlist for Think's read-only fetch tool.
+ * The env var is a comma-separated list of hostnames; with it empty
  * or unset the fetch tool must not exist at all, so `getTools()` only calls
  * `createFetchTools` when this parses to at least one host.
  */

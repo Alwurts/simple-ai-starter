@@ -167,7 +167,7 @@ describe("assistant part grouping", () => {
   });
 });
 
-describe("codemode execute part (D-010)", () => {
+describe("codemode execute part", () => {
   const pausedPart = {
     type: "tool-execute",
     state: "output-available",

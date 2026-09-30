@@ -1,4 +1,4 @@
-// Custom on purpose (D-016): the chat runs inside the Worker, so in-process
+// Custom on purpose: the chat runs inside the Worker, so in-process
 // AI SDK mocks can't reach it — this speaks the OpenAI-compatible wire format
 // (`@ai-sdk/openai-compatible` POSTs `<baseURL>/chat/completions`, reads SSE
 // `data:` chunks, and stops at `data: [DONE]`).
