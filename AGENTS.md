@@ -58,13 +58,17 @@ Run from the **monorepo root** (not inside a package):
 - **Why a choice was made** → [`docs/decisions/`](docs/decisions/) — ADRs, under a
   strict significance bar ([template](docs/decisions/template.md)).
 - **How to do/extend something here** → [`docs/guides/`](docs/guides/).
+- **Think / Agents SDK APIs** → read the installed docs first —
+  `@cloudflare/think/docs/` and `agents/docs/` (under the depending package's
+  `node_modules`, e.g. `packages/agent/node_modules/`), plus the packages'
+  `dist/*.d.ts` — and prefer their helpers over hand-rolled code (D-016).
 - **Procedural domain knowledge, loaded on demand** → `.agents/skills/`
   (`wrangler`, `durable-objects`, `workers-best-practices`,
-  `agents-sdk`, `web-perf`, `ai-sdk`, `shadcn`,
+  `agents-sdk`, `ai-sdk`, `shadcn`,
   `template-architecture`, `components-composition`). Use the relevant skill
   when a task matches its domain.
 - **Cloudflare skills are hash-pinned in-repo** (`skills-lock.json`) so a
-  clone or fabricated tree works without `npx skills add --global`. That is a
+  fresh clone works without `npx skills add --global`. That is a
   template choice. Cloudflare's live [agent-setup
   prompt](https://developers.cloudflare.com/agent-setup/prompt.md) is for a
   personal machine (global skills + account MCP at
@@ -90,7 +94,7 @@ verify with `pnpm typecheck` and `pnpm lint:check`. Run from the root. Before
 you push, run `pnpm verify`: the same checks as CI, and the pre-push hook runs it too.
 
 - **Self-descriptive code first** — names and types should carry the *what*; comments
-  only for non-inherent *why* (invariants, races, platform quirks, ADR/ALW links).
+  only for non-inherent *why* (invariants, races, platform quirks, ADR links).
 - **No narration** — drop section banners, JSX region labels, name-echo JSDoc, and
   step labels that restate the next line.
 - **Prefer refactor over clarifying comments** when the code is unclear (rename /
