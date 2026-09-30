@@ -1,39 +1,9 @@
-import { auth } from "@workspace/auth";
 import type { Action } from "@workspace/auth/access-control";
 import { can } from "@workspace/auth/access-control";
 import { getActiveMemberRole } from "@workspace/core/auth";
 import type { Context, Next } from "hono";
-import type {
-  HonoContext,
-  HonoContextWithAuth,
-  HonoContextWithAuthAndOrg,
-} from "../types";
-
-export const extractAuth = async (c: Context<HonoContext>, next: Next) => {
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-  if (!session) {
-    c.set("user", null);
-    c.set("session", null);
-    await next();
-    return;
-  }
-
-  c.set("user", session.user);
-  c.set("session", session.session);
-  await next();
-};
-
-export const requireAuth = async (
-  c: Context<HonoContextWithAuth>,
-  next: Next
-) => {
-  const user = c.get("user");
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  await next();
-};
+import { HTTPException } from "hono/http-exception";
+import type { HonoContextWithAuthAndOrg } from "../types";
 
 /**
  * Org scope AND live membership: resolves the caller's `member` row for the
@@ -52,14 +22,16 @@ export const requireActiveOrg = async (
   const user = c.get("user");
   const session = c.get("session");
   if (!session?.activeOrganizationId) {
-    return c.json({ error: "No active organization" }, 403);
+    throw new HTTPException(403, { message: "No active organization" });
   }
   const role = await getActiveMemberRole({
     userId: user.id,
     organizationId: session.activeOrganizationId,
   });
   if (!role) {
-    return c.json({ error: "Forbidden" }, 403);
+    throw new HTTPException(403, {
+      message: "You are not a member of this organization",
+    });
   }
   c.set("memberRole", role);
   await next();
@@ -77,8 +49,11 @@ export const requireActiveOrg = async (
 export const requirePermission =
   (action: Action) =>
   async (c: Context<HonoContextWithAuthAndOrg>, next: Next) => {
-    if (!can(action, { role: c.get("memberRole") })) {
-      return c.json({ error: "Forbidden" }, 403);
+    const role = c.get("memberRole");
+    if (!(role && can(action, { role }))) {
+      throw new HTTPException(403, {
+        message: `Missing permission: ${action}`,
+      });
     }
     await next();
   };

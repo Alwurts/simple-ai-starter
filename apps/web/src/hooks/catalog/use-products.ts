@@ -22,7 +22,7 @@ import { retryUnlessNotFound } from "@/lib/query";
  * (ADR-004: reads are inferred from the implementation, never hand-mirrored).
  */
 export type Product = InferResponseType<
-  (typeof client.protected.catalog.products)["$get"],
+  (typeof client.catalog.products)["$get"],
   200
 >["data"][number];
 
@@ -38,7 +38,7 @@ export const useProducts = (params: PaginationQuery) =>
   useQuery({
     queryKey: getProductsListKey(params),
     queryFn: async () => {
-      const res = await client.protected.catalog.products.$get({
+      const res = await client.catalog.products.$get({
         query: {
           page: params.page.toString(),
           pageSize: params.pageSize.toString(),
@@ -47,6 +47,9 @@ export const useProducts = (params: PaginationQuery) =>
           ...(params.search && { search: params.search }),
         },
       });
+      if (!res.ok) {
+        throw new Error("Failed to load products");
+      }
       return res.json();
     },
     placeholderData: keepPreviousData,
@@ -56,14 +59,11 @@ export const useProduct = (id: string) =>
   useQuery({
     queryKey: getProductKey(id),
     queryFn: async () => {
-      const res = await client.protected.catalog.products[":id"].$get({
+      const res = await client.catalog.products[":id"].$get({
         param: { id },
       });
-      if (res.status === 404) {
-        throw new Error("Product not found");
-      }
       if (!res.ok) {
-        throw new Error("Failed to load product");
+        throw new Error("Product not found");
       }
       return res.json();
     },
@@ -75,9 +75,12 @@ export const useCreateProduct = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: z.infer<typeof createProductSchema>) => {
-      const res = await client.protected.catalog.products.$post({
+      const res = await client.catalog.products.$post({
         json: data,
       });
+      if (!res.ok) {
+        throw new Error("Failed to create product");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -97,7 +100,7 @@ export const useUpdateProduct = () => {
       id: string;
       data: z.infer<typeof updateProductSchema>;
     }) => {
-      const res = await client.protected.catalog.products[":id"].$put({
+      const res = await client.catalog.products[":id"].$patch({
         param: { id: params.id },
         json: params.data,
       });
@@ -128,13 +131,12 @@ export const useDeleteProduct = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await client.protected.catalog.products[":id"].$delete({
+      const res = await client.catalog.products[":id"].$delete({
         param: { id },
       });
       if (!res.ok) {
         throw new Error("Failed to delete product");
       }
-      return res.json();
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: getProductsKey() });

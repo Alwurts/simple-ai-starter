@@ -57,7 +57,7 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
     );
   }, [query]);
 
-  const products = canSearchRecords ? (catalogSearch.data?.results ?? []) : [];
+  const products = canSearchRecords ? (catalogSearch.data?.data ?? []) : [];
 
   const hasResults = pages.length > 0 || products.length > 0;
 
@@ -164,11 +164,11 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
               <PaletteItem
                 badge="Product"
                 icon={Package}
-                key={product.metadata.id}
-                onSelect={() => navigateTo(product.path)}
-                subtitle={product.metadata.description || product.snippet}
-                title={product.metadata.title}
-                value={`product:${product.metadata.id}`}
+                key={product.id}
+                onSelect={() => navigateTo(`/catalog/${product.id}`)}
+                subtitle={product.description || product.name}
+                title={product.name}
+                value={`product:${product.id}`}
               />
             ))}
           </CommandGroup>

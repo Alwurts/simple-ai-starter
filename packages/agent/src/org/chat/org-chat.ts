@@ -110,7 +110,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
    * Identify the connection for the transcript's sake (state stamp survives
    * hibernation) and close unauthenticated sockets. The security boundary is
    * the Worker gate (apps/web/src/agent-gate.ts) plus the per-turn/per-
-   * approval identity stamping below; onConnect is never the acting-user
+   * approval `getTools` binding below; onConnect is never the acting-user
    * source — every member's connection fires it.
    */
   override async onConnect(

@@ -15,8 +15,8 @@ export function useCatalogSearch(query: string, enabled: boolean) {
   return useQuery({
     queryKey: getCatalogSearchKey(trimmed),
     queryFn: async () => {
-      const res = await client.protected.catalog.search.$get({
-        query: { q: trimmed },
+      const res = await client.catalog.products.$get({
+        query: { search: trimmed },
       });
       if (!res.ok) {
         throw new Error("Catalog search failed");

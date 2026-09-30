@@ -39,7 +39,7 @@ A capability flows top-to-bottom; dependencies only ever point *down* this list.
 | **db** | `packages/db` | Drizzle schema (one file per capability) + the `db` client singleton. Leaf — no workspace deps. Row types via `$infer`. |
 | **contract** | `packages/contract` | Pure boundary Zod for inputs/commands, feature-keyed (`contract/<cap>/`). Leaf — no workspace deps. Input types via `z.infer`. |
 | **core** | `packages/core` | Queries + domain logic, feature-keyed (`core/<cap>/`). Framework-agnostic. Depends on `db` + `contract`. |
-| **surfaces** | `apps/web/src/...` | The ways `core` is exposed: Hono HTTP (`hono/<auth-scope>/<cap>/`), AI Durable Objects, jobs. |
+| **surfaces** | `apps/web/src/...` | The ways `core` is exposed: Hono HTTP (`api/<auth-scope>/<cap>/`), AI Durable Objects, jobs. |
 | **agent** | `packages/agent` | Binder-agnostic tool-parts (`tool-parts/<cap>/`) + in-app binder + DO classes (bound in `apps/web`). The one *packaged* surface. |
 | **ui** | `packages/ui` | Primitives / design-system only. Depends on `contract`, never on `core`/`db`. |
 | **components** | `apps/web/src/components/<cap>/` | Feature/composite components — built in-app from `ui` primitives. |
@@ -59,7 +59,7 @@ layer.** `db` keeps it to one file; the other layers give it a folder. So the
 packages/db/src/schema/catalog.ts            # one schema file
 packages/contract/catalog/                   # boundary zod for inputs
 packages/core/catalog/                       # queries + domain logic
-apps/web/src/hono/org-protected/catalog/     # HTTP surface (auth-scoped)
+apps/web/src/api/org-protected/catalog/      # HTTP surface (auth-scoped)
 packages/agent/src/tool-parts/catalog/products.ts  # AI tool-parts (in-app binder in `in-app/`)
 apps/web/src/components/catalog/             # feature components
 ```
@@ -77,7 +77,7 @@ dropping one `<cap>` slice into each layer.
 2. `core/catalog/createProduct(input)` takes `input: z.infer<typeof
    createProductSchema>` — no hand-synced param type — and writes via the `db`
    singleton.
-3. `apps/web/src/hono/org-protected/catalog/` validates the request body with
+3. `apps/web/src/api/org-protected/catalog/` validates the request body with
    `createProductSchema` and calls `core`. The same schema powers the React
    form and the `create_product` AI tool.
 
@@ -123,9 +123,46 @@ Durable Objects, and background jobs. A new app is justified only when the
 runtime genuinely differs, not when a new surface is added. This keeps one
 deploy, one binding set, one env. See **ADR-001**.
 
-The HTTP API is grouped by auth scope first, then capability:
-`hono/{public,protected,org-protected}/<cap>/`. Auth middleware enforces the
-scope; org-protected routes are organization-scoped.
+## The HTTP API
+
+`apps/web/src/api/` is a Hono app mounted at `/api` (`server.ts`). It is
+grouped by **auth scope first, then capability** — the scope is a folder, never
+a URL segment:
+
+```
+api/index.ts                       onError + error shape, /auth/*, then mounts
+                                   scopes in fixed order: public → protected → org-protected
+api/middleware/{session,organization,error-handler}.ts
+api/public/<resource>.ts           no session needed (extractAuth only)
+api/protected/<resource>.ts        a valid session (requireAuth)
+api/org-protected/<cap>/*.ts       a live membership in the active org
+                                   (requireAuth + requireActiveOrg)
+```
+
+Each scope's `index.ts` composes its resources through a guard wrapper —
+`withAuth(chatRoutes)`, `withOrgAccess(catalogRoutes)` — so the guard is
+`use("*")` on a sub-app that only exists at the resource prefix it is mounted
+under: anything a scope mounts is guarded by construction, no path string is
+repeated, and the `"*"` cannot leak to sibling scopes (mounting prefixes it).
+Route files never repeat guards. `extractAuth` is the one deliberate global
+(the public scope's first line): it only reads the session and gates nothing,
+so each API call resolves the session exactly once.
+
+**Resources live in the URLs; scopes don't.** Today's routes: `GET /api/health`,
+`GET /api/chat/capabilities`, and `/api/catalog/products` (`GET` list with
+`?search=&page=&pageSize=&sortBy=&sortOrder=`, `GET /:id`, `POST` → **201** with
+the created row, `PATCH /:id` partial update, `DELETE /:id` → **204** no body).
+`GET /:id` 404s when the row is missing or belongs to another org. A scope with
+more than one resource is a folder; a single-resource scope is one file.
+
+**Every non-2xx response has one shape** — `{ error: { code, message, issues? } }`
+— built in `api/middleware/error-handler.ts`: `HTTPException` (401/403),
+`DomainError` (`not_found` / `conflict` / `unprocessable` → 404/409/422),
+validation failures (`code: "validation"`, 400, readable message + zod issues),
+unknown routes (`notFound`), and the 500 fallback. The typed Hono RPC client
+(`hc<AppType>`) carries response types end-to-end: hooks call
+`client.catalog.products.$get()` and narrow with `res.ok` /
+`InferResponseType`.
 
 ## apps/web layout
 
@@ -163,7 +200,8 @@ apps/web/src/
   components/{chat,catalog,organization,auth,layout,search,common,providers}/
   hooks/{chat,catalog,organization}/…
   lib/{chat,catalog,organization}/…, lib/{client,query,locale}.ts
-  hono/                              HTTP surface (auth-scope → feature)
+  api/                               HTTP surface (auth-scope → feature; scope
+                                     = folder, resources = URLs)
   server.ts, router.tsx
 apps/web/test/{api,core,agent,e2e}/
 ```
@@ -171,7 +209,9 @@ apps/web/test/{api,core,agent,e2e}/
 Conventions: kebab-case files named after their main export
 (`chat-page.tsx` → `ChatPage`); **named exports only** (default only where a
 framework demands it — the Worker entries); one exported component per file
-(small private helpers OK); no barrel `index.ts` files inside `apps/web/src`.
+(small private helpers OK); no barrel `index.ts` files inside `apps/web/src` —
+each `api/<scope>/index.ts` is the exception that isn't one: it **composes**
+(the guard + `.route()` mounting), it never re-exports.
 
 ## Naming (role over technology)
 

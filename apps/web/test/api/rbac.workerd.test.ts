@@ -2,15 +2,14 @@ import { env, SELF } from "cloudflare:test";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import {
-  extractAuth,
   requireActiveOrg,
-  requireAuth,
   requirePermission,
-} from "../../src/hono/middleware/auth";
+} from "../../src/api/middleware/organization";
+import { extractAuth, requireAuth } from "../../src/api/middleware/session";
 import type {
   HonoContext,
   HonoContextWithAuthAndOrg,
-} from "../../src/hono/types";
+} from "../../src/api/types";
 import { createTestSessionWithOrg } from "../helpers/auth";
 
 // Mirror the real middleware composition (protected → org-protected → gate) so
@@ -69,18 +68,15 @@ describe("catalog:write gate on the real REST routes", () => {
     const operator = await createTestSessionWithOrg({ orgName: "Catalog Org" });
     await demoteToOperator(operator.userId);
 
-    const res = await SELF.fetch(
-      "http://localhost/api/protected/catalog/products",
-      {
-        method: "POST",
-        headers: {
-          Cookie: operator.cookie,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: "Operator Product" }),
-      }
-    );
+    const res = await SELF.fetch("http://localhost/api/catalog/products", {
+      method: "POST",
+      headers: {
+        Cookie: operator.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "Operator Product" }),
+    });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
   });
 });

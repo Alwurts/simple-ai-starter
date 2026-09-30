@@ -23,7 +23,7 @@ rather than restating it here.
 
 A capability uses the **same key in every layer**. The `catalog` capability is
 exactly: `packages/db/src/schema/catalog.ts` · `packages/contract/src/catalog/`
-· `packages/core/src/catalog/` · `apps/web/src/hono/org-protected/catalog/` ·
+· `packages/core/src/catalog/` · `apps/web/src/api/org-protected/catalog/` ·
 `packages/agent/src/tool-parts/catalog/` · `apps/web/src/components/catalog/`. Find
 one slice and you know where the other five live. See `docs/architecture.md`
 for the worked example.

@@ -10,11 +10,12 @@ import type { HonoContextWithAuth } from "../types";
  * gate attachments before send. Env-driven — same resolution as the
  * Durable Object model pick; no secrets returned.
  */
-const chatRoutes = new Hono<HonoContextWithAuth>().get("/capabilities", (c) => {
-  const capabilities = resolveOrgChatCapabilities(
-    c.env as unknown as OrgInferenceEnv
-  );
-  return c.json(capabilities);
-});
-
-export default chatRoutes;
+export const chatRoutes = new Hono<HonoContextWithAuth>().get(
+  "/capabilities",
+  (c) => {
+    const capabilities = resolveOrgChatCapabilities(
+      c.env as unknown as OrgInferenceEnv
+    );
+    return c.json(capabilities);
+  }
+);

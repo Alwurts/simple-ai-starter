@@ -21,7 +21,11 @@ export type HonoContextWithAuthAndOrg = HonoContext & {
     session: NonNullable<HonoContext["Variables"]["session"]> & {
       activeOrganizationId: string;
     };
-    /** The caller's stored `member.role`, resolved by requireActiveOrg. */
-    memberRole: string;
+    /**
+     * The caller's stored `member.role`, resolved by requireActiveOrg.
+     * Optional because it only exists after that middleware runs; consumers
+     * must fail closed on it being unset.
+     */
+    memberRole?: string;
   };
 };

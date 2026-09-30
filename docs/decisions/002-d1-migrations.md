@@ -78,7 +78,7 @@ backward-compatible (expand/contract) migrations; if a recreate is unavoidable,
 use `PRAGMA defer_foreign_keys=true`. Never rewrite an already-applied migration
 — fixes are forward-only. This is enforced by a CI guard — see
 [ADR-007](./007-d1-drizzle-table-recreate-fk-cascades.md) for the full rationale
-(`apps/web/test/migration-safety.workerd.test.ts`), and `docs/guides/` for the
+(`apps/web/test/core/migration-safety.workerd.test.ts`), and `docs/guides/` for the
 data-layer house style.
 
 ## Implementation Notes

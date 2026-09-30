@@ -37,9 +37,12 @@ Run from the **monorepo root** (not inside a package):
 - **`apps/web` code is by kind, then by feature:** thin routes
   (`routes/` config-only → one page component in
   `components/<feature>/<name>-page.tsx`), `components/<feature>/`,
-  `hooks/<feature>/`, `lib/<feature>/`; unit tests beside the file, binding
-  tests in `apps/web/test/{api,core,agent,e2e}/`. Kebab-case files named after
-  their main export; named exports only; no barrels inside `apps/web/src`.
+  `hooks/<feature>/`, `lib/<feature>/`; the Hono API in
+  `api/<auth-scope>/<feature>/` (scope = folder, never a URL segment;
+  resources-only URLs, one `{ error: { code, message } }` shape); unit tests
+  beside the file, binding tests in `apps/web/test/{api,core,agent,e2e}/`.
+  Kebab-case files named after their main export; named exports only; no
+  barrels inside `apps/web/src`.
   → [`docs/architecture.md › apps/web layout`](docs/architecture.md#appsweb-layout)
 - **Two schema sources, by direction.** Row types come from `db` (`$infer`); input
   types come from `contract` (hand-written Zod). **No `drizzle-zod` derivation.**

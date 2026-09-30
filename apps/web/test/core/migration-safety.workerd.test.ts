@@ -36,6 +36,9 @@ const GRANDFATHERED = new Set<string>([]);
 // Drizzle's emitted pragma, tolerant of spacing/case: `PRAGMA foreign_keys=OFF`.
 const INEFFECTIVE_FK_PRAGMA = /pragma\s+foreign_keys\s*=\s*off/i;
 
+// D1's foreign-key violation, proving the recreated table enforces the FK.
+const FK_CONSTRAINT = /FOREIGN KEY/;
+
 // `D1Migration = { name: string; queries: string[] }`. readD1Migrations already
 // sorts by filename; sort again so the offenders message is deterministic.
 const migrationFiles = [...env.TEST_MIGRATIONS].sort((a, b) =>
@@ -145,15 +148,17 @@ describe("0001 over a database with orphaned products", () => {
     }>();
     expect(results.map((row) => row.id)).toEqual(["p_keep"]);
 
-    // The FK is live after the recreate.
+    // The FK is live after the recreate: an orphan insert fails with the FK
+    // violation, not a NOT NULL miss (both timestamp columns are NOT NULL).
     const fkError = await env.DB.prepare(
-      "INSERT INTO products (id, organization_id, name) VALUES ('p_new', 'no-such-org', 'X')"
+      "INSERT INTO products (id, organization_id, name, created_at, updated_at) VALUES ('p_new', 'no-such-org', 'X', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
     )
       .run()
       .then(
         () => null,
         (error: unknown) => error
       );
-    expect(fkError).toBeDefined();
+    expect(fkError).toBeInstanceOf(Error);
+    expect((fkError as Error).message).toMatch(FK_CONSTRAINT);
   });
 });
