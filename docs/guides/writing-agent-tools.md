@@ -298,8 +298,10 @@ On `@cloudflare/think` + the AI SDK tool loop:
 2. First line in `execute`: `await assertCan("catalog:write", ctx)` (or the
    right action).
 3. Bind in `getOrgAgentTools` only (not the read-only compose).
-4. Add to `AGENT_WRITE_TOOL_NAMES` / web invalidation registry if it mutates
-   persisted state the UI should refresh.
+4. Add to `AGENT_WRITE_TOOL_NAMES` if it mutates persisted state the UI
+   should refresh — the web chat invalidates its products queries when a
+   settled tool part (or applied codemode call) names a write tool from that
+   constant.
 
 ### Approval-gated write
 
