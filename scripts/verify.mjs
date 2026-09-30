@@ -6,6 +6,14 @@ import { readFileSync } from "node:fs";
 
 const STEPS = ["pnpm lint:check", "pnpm typecheck", "pnpm test", "pnpm build"];
 
+// CI-only steps that verify deliberately does not run (D-017: e2e needs a
+// browser and stays out of the pre-push hook; run it via
+// `pnpm --filter web test:e2e`). Listed so the CI/verify cross-check passes.
+const CI_ONLY_STEPS = new Set([
+  "pnpm --filter web exec playwright install --with-deps chromium",
+  "pnpm --filter web test:e2e",
+]);
+
 const CI_FILE = ".github/workflows/ci.yml";
 const SETUP_STEPS = new Set(["pnpm install --frozen-lockfile"]);
 const RUN_LINE = /^\s*(?:- )?run:\s*(.*)$/;
@@ -25,7 +33,7 @@ function ciSteps() {
         `${CI_FILE} has a multi-line run step; list it in scripts/verify.mjs by hand.`
       );
     }
-    if (!SETUP_STEPS.has(command)) {
+    if (!(SETUP_STEPS.has(command) || CI_ONLY_STEPS.has(command))) {
       steps.push(command);
     }
   }
