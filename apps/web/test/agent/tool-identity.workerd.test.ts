@@ -216,8 +216,16 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
   });
 
   it("approveExecution rebuilds the tools under the approver's connection (rebinds this.codemode)", async () => {
-    const { viewerId, orgId } = await seedOrgWithRoles();
+    const { ownerId, viewerId, orgId } = await seedOrgWithRoles();
     const chat = await orgChatInFreshDo(orgId);
+
+    // Pre-bind a runtime under the OWNER (a previous turn's build), the way
+    // the fail-closed test does. Without the override, super would take this
+    // stale runtime as-is and never call getTools — so both the spy below and
+    // the runtime-swap assertion actually pin the override's rebuild.
+    await runAs(chat, connectionFor(ownerId), () => chat.getTools());
+    const ownerRuntime = (chat as unknown as { codemode?: unknown }).codemode;
+    expect(ownerRuntime).toBeDefined();
 
     // Spy on the instance's getTools: the override must call it (Think's
     // approveExecution then takes this.codemode synchronously for the
@@ -244,7 +252,10 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
     ).catch(() => undefined);
     expect(builtUnderConnectionless).toBe(false);
     expect(builtUnderUserId).toBe(viewerId);
-    expect((chat as unknown as { codemode?: unknown }).codemode).toBeDefined();
+    const approverRuntime = (chat as unknown as { codemode?: unknown })
+      .codemode;
+    expect(approverRuntime).toBeDefined();
+    expect(approverRuntime).not.toBe(ownerRuntime);
   });
 
   it("fails closed when the override's getTools throws — the stale runtime is cleared, not replayed", async () => {
