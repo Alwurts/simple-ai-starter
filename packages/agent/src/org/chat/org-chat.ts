@@ -422,8 +422,13 @@ export class OrgChat extends Think<Cloudflare.Env> {
     try {
       this.getTools();
     } catch {
-      // The approval must still settle (Think returns a status error for a
-      // missing runtime); identity binding is best-effort here.
+      // Fail closed: a leftover runtime is bound to whoever built the tools
+      // last. Clearing it makes Think's approveExecution return its "no
+      // codemode runtime" status error — its `_codemodeRuntime()` retries
+      // `getTools()` once and, when that throws too, leaves the runtime
+      // unset — so the approval settles without ever replaying under a
+      // stale identity.
+      this.codemode = undefined;
     }
     return super.approveExecution(executionId);
   }

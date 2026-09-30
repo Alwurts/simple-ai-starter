@@ -2,8 +2,7 @@ import { runInDurableObject } from "cloudflare:test";
 import { getOrgAgentTools } from "@workspace/agent";
 import { PERMISSION_DENIED_MESSAGE } from "@workspace/agent/constants";
 import { OrgChat } from "@workspace/agent/org/chat";
-import { db } from "@workspace/db";
-import { member, organization, user } from "@workspace/db/schema";
+import { db, eq, member, organization, products, user } from "@workspace/db";
 import {
   __DO_NOT_USE_WILL_BREAK__agentContext as agentContext,
   type Connection,
@@ -246,6 +245,43 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
     expect(builtUnderConnectionless).toBe(false);
     expect(builtUnderUserId).toBe(viewerId);
     expect((chat as unknown as { codemode?: unknown }).codemode).toBeDefined();
+  });
+
+  it("fails closed when the override's getTools throws — the stale runtime is cleared, not replayed", async () => {
+    const { ownerId, viewerId, orgId } = await seedOrgWithRoles();
+    const chat = await orgChatInFreshDo(orgId);
+
+    // Bind the runtime to the OWNER first (a previous turn's build).
+    await runAs(chat, connectionFor(ownerId), () => chat.getTools());
+    expect((chat as unknown as { codemode?: unknown }).codemode).toBeDefined();
+
+    // Now getTools throws during the viewer's approval (spy).
+    Object.defineProperty(chat, "getTools", {
+      value: () => {
+        throw new Error("build exploded");
+      },
+      configurable: true,
+    });
+    const outcome = await runAs(chat, connectionFor(viewerId), () =>
+      chat.approveExecution("no-such-execution")
+    );
+
+    // Think's own status error — the stale (owner-bound) runtime was
+    // cleared, so the approval settled without replaying anything.
+    expect(outcome).toMatchObject({
+      status: "error",
+      executionId: "no-such-execution",
+      error: expect.stringContaining("No codemode runtime"),
+    });
+    expect(
+      (chat as unknown as { codemode?: unknown }).codemode
+    ).toBeUndefined();
+    // And no write ran under the previously bound (owner) identity.
+    const rows = await db
+      .select({ name: products.name })
+      .from(products)
+      .where(eq(products.organizationId, orgId));
+    expect(rows).toEqual([]);
   });
 });
 
