@@ -23,7 +23,7 @@ import { toast } from "@workspace/ui/components/shadcn/sonner";
 import type { ChatStatus, FileUIPart } from "ai";
 import { FileIcon, PaperclipIcon, XIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { useChatCapabilities } from "@/hooks/use-chat-capabilities";
+import { useChatCapabilities } from "@/hooks/chat/use-chat-capabilities";
 
 export interface PromptMessage {
   text: string;

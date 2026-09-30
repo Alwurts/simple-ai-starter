@@ -4,12 +4,12 @@ import type { ToolLogEntry } from "@cloudflare/codemode";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { getToolName, isToolUIPart } from "ai";
 import { useEffect, useRef } from "react";
-import type { OrgChatMessage } from "@/features/assistant/lib/ai-types";
 import {
   AGENT_TOOL_INVALIDATION_REGISTRY,
   type AgentAppliedWrite,
   invalidateForAgentWrite,
-} from "@/lib/agent-tool-invalidation-registry";
+} from "@/lib/chat/agent-tool-invalidation-registry";
+import type { OrgChatMessage } from "@/lib/chat/ai-types";
 
 function isRegisteredWrite(method: string | undefined): method is string {
   return Boolean(method && method in AGENT_TOOL_INVALIDATION_REGISTRY);

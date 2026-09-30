@@ -29,13 +29,13 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { AppSidebarFooter } from "@/components/layout/app-sidebar-footer";
 import {
   getPlatformNavigationItems,
   isPlatformNavActive,
 } from "@/components/layout/platform-navigation";
 import { SearchCommand } from "@/components/search/search-command";
-import { useOrgConnection } from "@/features/assistant/connection/org-connection";
 
 export function AppSidebar() {
   const [searchOpen, setSearchOpen] = useState(false);

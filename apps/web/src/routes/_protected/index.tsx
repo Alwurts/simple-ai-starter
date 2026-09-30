@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 import { useEffect } from "react";
-import { useOrgConnection } from "@/features/assistant/connection/org-connection";
-import { homeRedirectChatId } from "@/features/assistant/lib/home-redirect";
+import { useOrgConnection } from "@/components/chat/connection/org-connection";
+import { homeRedirectChatId } from "@/lib/chat/home-redirect";
 
 export const Route = createFileRoute("/_protected/")({
   component: ChatHomeRedirect,

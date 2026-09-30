@@ -3,7 +3,7 @@
 import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { memo } from "react";
-import { useProduct } from "@/hooks/use-products";
+import { useProduct } from "@/hooks/catalog/use-products";
 
 interface DisplayProductListOutput {
   productIds?: string[];

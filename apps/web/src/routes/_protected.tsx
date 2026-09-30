@@ -13,8 +13,8 @@ import { db } from "@workspace/db";
 import { Shell, ShellInset } from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import { AlertCircle } from "lucide-react";
-import { OrgConnection } from "@/features/assistant/connection/org-connection";
-import { useActiveOrganizationId } from "@/hooks/use-organization";
+import { OrgConnection } from "@/components/chat/connection/org-connection";
+import { useActiveOrganizationId } from "@/hooks/organization/use-organization";
 import { AppSidebar } from "../components/layout/app-sidebar";
 
 const ensureOrg = createServerFn({ method: "GET" }).handler(async () => {

@@ -53,7 +53,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
-import type { OrgChatMessage } from "../lib/ai-types";
+import type { OrgChatMessage } from "@/lib/chat/ai-types";
 import { ProductListCard } from "./product-list-card";
 
 function MarkdownBody({

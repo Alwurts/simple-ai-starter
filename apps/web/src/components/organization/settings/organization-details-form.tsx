@@ -15,7 +15,7 @@ import { Input } from "@workspace/ui/components/shadcn/input";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { useUpdateOrganization } from "@/hooks/use-organization";
+import { useUpdateOrganization } from "@/hooks/organization/use-organization";
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 

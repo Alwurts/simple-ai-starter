@@ -8,7 +8,7 @@ import {
   FolderIcon,
   Loader2Icon,
 } from "lucide-react";
-import type { WorkspaceTree } from "../hooks/use-workspace-tree";
+import type { WorkspaceTree } from "@/hooks/chat/use-workspace-tree";
 
 /**
  * Read-only org workspace file tree. Directories load their children lazily on

@@ -71,7 +71,7 @@
       // Browser-reachable web UI — not yet on structuredLog.
       "includes": [
         "apps/web/src/components/**",
-        "apps/web/src/features/**",
+        
         "apps/web/src/routes/**",
         "apps/web/src/hooks/**"
       ],

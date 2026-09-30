@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FullScreenChat } from "@/features/assistant/components/full-screen-chat";
+import { FullScreenChat } from "@/components/chat/full-screen-chat";
 
 export const Route = createFileRoute("/_protected/chat/$chatId")({
   component: ChatRoute,

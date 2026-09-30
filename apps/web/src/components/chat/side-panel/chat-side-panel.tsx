@@ -8,7 +8,10 @@ import {
   PanelRightCloseIcon,
   XIcon,
 } from "lucide-react";
-import { isTextFile, type WorkspaceTree } from "../hooks/use-workspace-tree";
+import {
+  isTextFile,
+  type WorkspaceTree,
+} from "@/hooks/chat/use-workspace-tree";
 import { FileExplorerTree } from "./file-explorer-tree";
 
 /**

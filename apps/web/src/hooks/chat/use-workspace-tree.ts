@@ -2,7 +2,7 @@
 
 import type { WorkspaceFileInfo } from "@workspace/agent/types";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useOrgConnection } from "../connection/org-connection";
+import { useOrgConnection } from "@/components/chat/connection/org-connection";
 
 const ROOT = "/";
 

@@ -60,21 +60,21 @@ import {
   useRef,
   useState,
 } from "react";
-import { useAgentToolMutationInvalidation } from "@/hooks/use-agent-tool-mutation-invalidation";
-import { useOrgConnection } from "../connection/org-connection";
-import { useChatSidePanel } from "../hooks/use-chat-side-panel";
-import { useWorkspaceTree } from "../hooks/use-workspace-tree";
+import { useOrgConnection } from "@/components/chat/connection/org-connection";
+import { useAgentToolMutationInvalidation } from "@/hooks/chat/use-agent-tool-mutation-invalidation";
+import { useChatSidePanel } from "@/hooks/chat/use-chat-side-panel";
+import { useWorkspaceTree } from "@/hooks/chat/use-workspace-tree";
 import {
   type OrgChatMessage,
   type OutgoingUserMessage,
   toSendableMessage,
-} from "../lib/ai-types";
-import { chatRouteState } from "../lib/chat-route";
-import { defaultNewChatTitle } from "../lib/chat-titles";
-import { firstSendPlan } from "../lib/first-send";
-import { ChatComposer, type PromptMessage } from "./chat-input";
-import { ChatMessageRow } from "./chat-message-parts";
-import { ChatSidePanel } from "./chat-side-panel";
+} from "@/lib/chat/ai-types";
+import { chatRouteState } from "@/lib/chat/chat-route";
+import { defaultNewChatTitle } from "@/lib/chat/chat-titles";
+import { firstSendPlan } from "@/lib/chat/first-send";
+import { ChatComposer, type PromptMessage } from "./input/chat-input";
+import { ChatMessageRow } from "./messages/chat-message-parts";
+import { ChatSidePanel } from "./side-panel/chat-side-panel";
 
 function EmptyConversation() {
   return (

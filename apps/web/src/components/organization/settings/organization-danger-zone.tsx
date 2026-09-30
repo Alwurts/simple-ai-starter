@@ -13,8 +13,8 @@ import {
 } from "@workspace/ui/components/shadcn/card";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { useState } from "react";
-import { TypeNameConfirmDialog } from "@/components/confirm/type-name-confirm-dialog";
-import { useDeleteOrganization } from "@/hooks/use-organization";
+import { TypeNameConfirmDialog } from "@/components/common/type-name-confirm-dialog";
+import { useDeleteOrganization } from "@/hooks/organization/use-organization";
 
 interface OrganizationDangerZoneProps {
   organization: {

@@ -1,11 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import type { OrgChatMessage } from "@/features/assistant/lib/ai-types";
 import {
   applyWriteToolCompletionInvalidations,
   collectWriteToolCompletionEvents,
-} from "@/hooks/use-agent-tool-mutation-invalidation";
-import { invalidateForAgentWrite } from "@/lib/agent-tool-invalidation-registry";
+} from "@/hooks/chat/use-agent-tool-mutation-invalidation";
+import { invalidateForAgentWrite } from "@/lib/chat/agent-tool-invalidation-registry";
+import type { OrgChatMessage } from "@/lib/chat/ai-types";
 
 function assistantWithWriteTool(
   toolName: string,

@@ -16,8 +16,8 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { OutgoingUserMessage } from "../lib/ai-types";
-import { deriveChatsLoadState } from "../lib/chats-load-state";
+import type { OutgoingUserMessage } from "@/lib/chat/ai-types";
+import { deriveChatsLoadState } from "@/lib/chat/chats-load-state";
 
 interface OrgAgentState {
   chats: ChatSummary[];

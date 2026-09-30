@@ -16,7 +16,7 @@ import {
   useAcceptInvitation,
   useInvitation,
   useRejectInvitation,
-} from "@/hooks/use-organization";
+} from "@/hooks/organization/use-organization";
 import { InvitationError } from "./invitation-error-card";
 
 export default function AcceptInvitation({

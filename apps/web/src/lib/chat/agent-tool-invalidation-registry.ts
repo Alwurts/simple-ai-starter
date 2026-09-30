@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { AGENT_WRITE_TOOL_NAMES } from "@workspace/agent/constants";
-import { getProductKey, getProductsKey } from "@/hooks/use-products";
+import { getProductKey, getProductsKey } from "@/hooks/catalog/use-products";
 
 export interface AgentAppliedWrite {
   method: string;

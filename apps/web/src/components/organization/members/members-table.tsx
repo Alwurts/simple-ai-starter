@@ -29,9 +29,12 @@ import {
 } from "@workspace/ui/components/shadcn/table";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useCancelInvitation, useRemoveMember } from "@/hooks/use-organization";
+import {
+  useCancelInvitation,
+  useRemoveMember,
+} from "@/hooks/organization/use-organization";
 import { INTL_LOCALE } from "@/lib/locale";
-import { roleMessage } from "@/lib/role-label";
+import { roleMessage } from "@/lib/organization/role-label";
 
 interface Member {
   id: string;

@@ -24,12 +24,12 @@ import {
 import { useCallback, useMemo } from "react";
 import { CreateProductDialog } from "@/components/catalog/create-product-dialog";
 import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
-import { type Product, useProducts } from "@/hooks/use-products";
-import { INTL_LOCALE } from "@/lib/locale";
+import { type Product, useProducts } from "@/hooks/catalog/use-products";
 import {
   sortableHeaderAriaLabel,
   tableToolbarLabels,
-} from "@/lib/table-toolbar-labels";
+} from "@/lib/catalog/table-toolbar-labels";
+import { INTL_LOCALE } from "@/lib/locale";
 
 export const Route = createFileRoute("/_protected/catalog/")({
   component: CatalogPage,

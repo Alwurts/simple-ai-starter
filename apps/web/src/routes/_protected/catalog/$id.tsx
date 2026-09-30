@@ -41,7 +41,7 @@ import {
   useDeleteProduct,
   useProduct,
   useUpdateProduct,
-} from "@/hooks/use-products";
+} from "@/hooks/catalog/use-products";
 import { INTL_LOCALE } from "@/lib/locale";
 export const Route = createFileRoute("/_protected/catalog/$id")({
   component: ProductPage,
