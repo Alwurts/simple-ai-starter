@@ -10,7 +10,7 @@ import {
  * A member removed by an admin keeps their session's
  * `activeOrganizationId` (better-auth only clears it on self-removal), so
  * org access must come from the live `member` row — not the session stamp.
- * After `remove-member`, every org-scoped surface must 403.
+ * After `remove-member`, every org-scoped surface (REST + agent gate) 403s.
  */
 
 const PRODUCTS_API = "http://localhost/api/protected/catalog/products";
@@ -80,5 +80,12 @@ describe("removed members lose org access", () => {
       headers: { Cookie: invitee.cookie },
     });
     expect(byId.status).toBe(403);
+
+    // The org agent's DO is org-scoped by the same membership check.
+    const orgRes = await SELF.fetch(
+      `http://localhost/agents/org-agent/${owner.orgId}`,
+      { headers: { Cookie: invitee.cookie } }
+    );
+    expect(orgRes.status).toBe(403);
   });
 });
