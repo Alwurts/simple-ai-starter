@@ -41,3 +41,11 @@ the code (as a code block) plus its result, logs, or error. One execution can
 pause more than once (a loop that hits both gated tools): the card remounts
 per pause (keyed by `executionId` + pending `seq`) so a second pause never
 shows the first pause's args.
+
+Identity note: a tool runs as the user of the connection that sent the turn or
+the approval frame — `OrgChat.getTools()` binds it per invocation. An approval's
+auto-continuation runs under the approving connection (`_fireAutoContinuation`
+re-enters with it), so follow-up writes run as the approver; only
+connectionless continuations (an approval from a surface with no open socket)
+and recovery continuations have no connection and fail closed with the
+permission-denied result rather than guessing "some live connection".

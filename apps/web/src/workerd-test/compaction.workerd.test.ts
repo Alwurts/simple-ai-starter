@@ -62,7 +62,10 @@ const MOCK_MODEL = new MockLanguageModelV3({
 /**
  * A bare OrgChat prototype instance whose storage-facing seams are stubbed —
  * same technique as org-chat-context.workerd.test.ts. `session` points at the
- * REAL SessionHost-backed handle; `resolveModel` returns the mock.
+ * REAL SessionHost-backed handle; `resolveModel` returns the mock. The model
+ * resolution is NOT pre-set: it goes through OrgChat's lazy getter against the
+ * stub env, i.e. the real startup order (configureSession runs before
+ * onStart, so the budget must resolve at configureSession time).
  */
 function orgChatOverSession(
   session: Session,
@@ -72,7 +75,6 @@ function orgChatOverSession(
   const mutable = chat as unknown as Record<string, unknown>;
   mutable.session = session;
   mutable.env = { AI_GATEWAY_API_KEY: "test-key" };
-  mutable.resolvedContextWindow = 200_000;
   mutable.resolveModel = () => MOCK_MODEL;
   // onStart derives the org id from the parent path (a prototype getter on
   // Agent, so it is shadowed with an own property).
@@ -88,9 +90,13 @@ function orgChatOverSession(
  * `onCompaction`/`compactAfter` but not Think's `onCompactionError`, so the
  * adapter delegates the first two to the real session and no-ops the handler.
  * (The handler is one structuredLog line — uncovered here, exercised by the
- * auto-compaction failure paths in dev.)
+ * auto-compaction failure paths in dev.) `onCompactAfter` captures the budget
+ * OrgChat derived, so tests can assert it.
  */
-function thinkSessionAdapter(raw: Session) {
+function thinkSessionAdapter(
+  raw: Session,
+  onCompactAfter?: (threshold: number) => void
+) {
   const adapter = {
     onCompaction: (fn: Parameters<Session["onCompaction"]>[0]) => {
       raw.onCompaction(fn);
@@ -98,6 +104,7 @@ function thinkSessionAdapter(raw: Session) {
     },
     onCompactionError: () => adapter,
     compactAfter: (threshold: number) => {
+      onCompactAfter?.(threshold);
       raw.compactAfter(threshold);
       return adapter;
     },
@@ -130,13 +137,15 @@ async function seedHistory(
 }
 
 describe("OrgChat compaction wiring", () => {
+  const STUB_ENV = {
+    AI_GATEWAY_API_KEY: "test-key",
+  } as unknown as Cloudflare.Env;
+
   it("configures Think's built-in overflow triggers on the model's window", () => {
     // Reactive backstop + proactive guard at the resolved model's window
     // (Think compacts proactively at maxInputTokens * 90% headroom). The
     // config itself is a pure function — onStart assigns it verbatim.
-    const { contextWindow } = resolveOrgChatModel({
-      AI_GATEWAY_API_KEY: "test-key",
-    } as unknown as Cloudflare.Env);
+    const { contextWindow } = resolveOrgChatModel(STUB_ENV);
     expect(orgChatContextOverflow(contextWindow)).toEqual({
       reactive: true,
       proactive: { maxInputTokens: contextWindow },
@@ -146,10 +155,68 @@ describe("OrgChat compaction wiring", () => {
     );
   });
 
-  it("pairs the reactive backstop with the documented default classifier", async () => {
-    const envStub = {
+  it("compactAfter budget is finite and the intended fraction of the window, through the real startup order", async () => {
+    // Regression (B1): configureSession runs before onStart, so a budget
+    // derived from an onStart-assigned field was NaN — and Sessions'
+    // `estimate <= NaN` gate is always false, auto-compacting on EVERY
+    // append. No field is pre-set here: configureSession itself must resolve.
+    const stub = env.SESSION_HOST.get(
+      env.SESSION_HOST.idFromName("compact-budget")
+    );
+    const budgets = await runInDurableObject(stub, (host) => {
+      const rawSession = host.session;
+      const chat = orgChatOverSession(rawSession);
+      const captured: number[] = [];
+      chat.configureSession(
+        thinkSessionAdapter(rawSession, (t) => captured.push(t)) as never
+      );
+      return captured;
+    });
+
+    const { contextWindow } = resolveOrgChatModel(STUB_ENV);
+    expect(budgets).toHaveLength(1);
+    const budget = budgets[0] as number;
+    expect(Number.isFinite(budget)).toBe(true);
+    expect(budget).toBe(getCompactionLimit(contextWindow));
+    expect(budget).toBe(Math.floor(contextWindow * 0.75));
+  });
+
+  it("stamps the same finite budget on OrgSubAgent", async () => {
+    const { OrgSubAgent } = await import("@workspace/agent/org/chat");
+    const stub = env.SESSION_HOST.get(
+      env.SESSION_HOST.idFromName("compact-budget-sub")
+    );
+    const budgets = await runInDurableObject(stub, (host) => {
+      const subAgent = Object.create(OrgSubAgent.prototype) as InstanceType<
+        typeof OrgSubAgent
+      >;
+      const mutable = subAgent as unknown as Record<string, unknown>;
+      mutable.env = { AI_GATEWAY_API_KEY: "test-key" };
+      mutable.resolveModel = () => MOCK_MODEL;
+      Object.defineProperty(subAgent, "parentPath", {
+        value: [
+          { className: "OrgAgent", name: "org_test" },
+          { className: "OrgChat", name: "chat_test" },
+        ],
+        configurable: true,
+      });
+      const rawSession = host.session;
+      const captured: number[] = [];
+      subAgent.configureSession(
+        thinkSessionAdapter(rawSession, (t) => captured.push(t)) as never
+      );
+      return captured;
+    });
+
+    const { contextWindow } = resolveOrgChatModel({
       AI_GATEWAY_API_KEY: "test-key",
-    } as unknown as Cloudflare.Env;
+    } as unknown as Cloudflare.Env);
+    expect(budgets).toHaveLength(1);
+    expect(Number.isFinite(budgets[0])).toBe(true);
+    expect(budgets[0]).toBe(getCompactionLimit(contextWindow));
+  });
+
+  it("pairs the reactive backstop with the documented default classifier", async () => {
     // Class-field initializers (the classifier override) run at
     // construction — no deferral, unlike the auto-wrapped onStart.
     const wiring = await runInDurableObject(
@@ -157,7 +224,7 @@ describe("OrgChat compaction wiring", () => {
       (_host, state) => {
         const instance = new OrgChat(
           state as unknown as DurableObjectState,
-          envStub
+          STUB_ENV
         );
         return {
           overflowClassified: instance.classifyChatError(

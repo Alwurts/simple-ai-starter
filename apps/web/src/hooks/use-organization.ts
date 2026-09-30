@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@workspace/auth/client";
-import { client } from "@/lib/client";
 
 export const getInvitationKey = (id: string) => ["invitation", id];
 
@@ -15,13 +14,17 @@ export const useInvitation = (id: string) =>
   useQuery({
     queryKey: getInvitationKey(id),
     queryFn: async () => {
-      const res = await client.protected.organization.invitation[":id"].$get({
-        param: { id },
+      // Server-side checks (recipient, pending, expiry) come from
+      // better-auth's endpoint — no app-side invitation lookup.
+      const res = await authClient.organization.getInvitation({
+        query: { id },
       });
-      if (!res.ok) {
-        throw new Error("Invitation not found");
+      if (res.error) {
+        throw new Error(
+          res.error.message ?? "Invitation not found or not yours"
+        );
       }
-      return res.json();
+      return res.data;
     },
     enabled: !!id,
   });

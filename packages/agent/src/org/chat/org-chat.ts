@@ -28,6 +28,7 @@ import {
   type ToolSet,
 } from "ai";
 import { z } from "zod";
+import { PERMISSION_DENIED_MESSAGE } from "../../constants";
 import { buildOrgContext } from "../../context/assemble";
 import {
   getOrgAgentDisplayTools,
@@ -36,8 +37,8 @@ import {
 import {
   gateChatAttachments,
   getCompactionLimit,
-  type OrgChatModelCapabilities,
   orgChatContextOverflow,
+  type ResolvedOrgChatModel,
   resolveOrgChatModel,
 } from "../../inference/chat-models";
 import type { ChatMessageHit } from "../../types";
@@ -54,35 +55,43 @@ type OrgAgentParent = Pick<
   "readOrgMemory" | "writeOrgMemory" | "touchChat"
 >;
 
+/**
+ * Retained agent-tool runs (the `delegate` child facets and their run rows)
+ * older than this are swept. Matches the agents docs' example retention.
+ */
+const AGENT_TOOL_RUN_RETENTION_MS = 7 * 24 * 60 * 60_000;
+
 export class OrgChat extends Think<Cloudflare.Env> {
   override maxSteps = 50;
 
   override workspace: WorkspaceFsLike = new SharedWorkspace(this);
 
-  private organizationId!: string;
-  private resolvedChatModel!: LanguageModel;
-  private resolvedModelId!: string;
-  private resolvedContextWindow!: number;
-  private resolvedCapabilities!: OrgChatModelCapabilities;
+  private resolvedModel: ResolvedOrgChatModel | undefined;
   private lastTurnUsage: LanguageModelUsage | undefined;
-  /** Acting user for tool execute / approve-resume (WebSocket ALS is often unset). */
-  private turnUserId: string | undefined;
+
+  /**
+   * Env-driven model resolution (id, window, capabilities), memoised. Lazy —
+   * not an onStart-assigned field — because Think runs `configureSession`
+   * during its own startup, *before* the subclass `onStart`
+   * (think lifecycle-hooks.md: configureSession fires "once during onStart";
+   * the wrapped startup awaits it ahead of `_onStart`), so a field set in
+   * onStart is undefined exactly when `compactAfter` reads it — the NaN
+   * budget that made Sessions auto-compact on every append.
+   */
+  private get resolved(): ResolvedOrgChatModel {
+    this.resolvedModel ??= resolveOrgChatModel(this.env);
+    return this.resolvedModel;
+  }
+
+  private get organizationId(): string {
+    return this.requireOrganizationId();
+  }
 
   override onStart(): void {
-    this.organizationId = this.requireOrganizationId();
-    // The chat model is a constant env-driven resolution — resolve it once here
-    // rather than re-resolving every turn.
-    const resolved = resolveOrgChatModel(this.env);
-    this.resolvedChatModel = resolved.model;
-    this.resolvedModelId = resolved.modelId;
-    this.resolvedContextWindow = resolved.contextWindow;
-    this.resolvedCapabilities = resolved.capabilities;
-    // Context-window overflow recovery (a Think built-in) — the reactive
-    // backstop compacts and retries a turn a provider rejected as too long,
-    // and the proactive guard compacts mid-turn once real step usage crosses
-    // 90% of the model's window. `compactAfter` (below) keeps the cheaper
-    // pre-turn estimate heuristic as the first line of defence.
-    this.contextOverflow = orgChatContextOverflow(this.resolvedContextWindow);
+    // Warm the resolution here (same fail-fast on a missing provider key as
+    // before) and set the turn-time overflow config — contextOverflow is only
+    // read during turns, so onStart assignment is fine for it.
+    this.contextOverflow = orgChatContextOverflow(this.resolved.contextWindow);
   }
 
   private getParent(): Promise<OrgAgentParent> {
@@ -98,10 +107,11 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   /**
-   * Capture the acting user id for tool execute / approve-resume. The
-   * security boundary is the Worker gate in `apps/web/src/server.ts` (session
-   * + active-org check before any `/agents/` route) — Think may stream the
-   * transcript before this runs, so onConnect is identification, not a gate.
+   * Identify the connection for the transcript's sake (state stamp survives
+   * hibernation) and close unauthenticated sockets. The security boundary is
+   * the Worker gate (apps/web/src/agent-gate.ts) plus the per-turn/per-
+   * approval identity stamping below; onConnect is never the acting-user
+   * source — every member's connection fires it.
    */
   override async onConnect(
     connection: Connection,
@@ -117,12 +127,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
     }
     // Survive DO hibernation (onConnect does not re-run on wake).
     connection.setState({ userId });
-    // In-memory copy for tool closures: getTools often lacks WebSocket ALS.
-    this.turnUserId = userId;
   }
 
   override getModel(): LanguageModel {
-    return this.resolvedChatModel;
+    return this.resolved.model;
   }
 
   /**
@@ -205,7 +213,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
         // Mid-turn growth is `contextOverflow`'s job (see onStart): the
         // proactive guard compacts on real step usage and the reactive
         // backstop compacts + retries an overflow-rejected turn.
-        .compactAfter(getCompactionLimit(this.resolvedContextWindow))
+        .compactAfter(getCompactionLimit(this.resolved.contextWindow))
     );
   }
 
@@ -236,7 +244,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
     await super.onChatResponse(result);
 
     const usage = this.lastTurnUsage;
-    const modelId = this.resolvedModelId;
+    const modelId = this.resolved.modelId;
     this.lastTurnUsage = undefined;
 
     if (result.status !== "completed" || !usage?.inputTokens || !modelId) {
@@ -323,18 +331,11 @@ export class OrgChat extends Think<Cloudflare.Env> {
       }));
       const gate = gateChatAttachments(
         attachmentParts,
-        this.resolvedCapabilities
+        this.resolved.capabilities
       );
       if (!gate.ok) {
         throw new Error(gate.reason);
       }
-    }
-
-    // Refresh after hibernation (onConnect does not re-run).
-    try {
-      this.turnUserId = this.requireConnectedUserId();
-    } catch {
-      // Keep onConnect value when ALS is unset (approve/resume paths).
     }
 
     const organizationId = this.requireOrganizationId();
@@ -352,50 +353,107 @@ export class OrgChat extends Think<Cloudflare.Env> {
         })
     );
 
+    // Retention for retained agent-tool runs (agents agent-tools.md › Clear
+    // retained runs): delegate child facets and their run rows are kept for
+    // refresh/drill-in by default and otherwise accumulate forever. Sweeping
+    // off this chat's own activity piggybacks on the one wake that already
+    // happens per turn — no alarms, and a stale run can't be mid-drill-in
+    // when its chat hasn't been active for a week.
+    this.ctx.waitUntil(
+      this.clearAgentToolRuns({
+        olderThan: Date.now() - AGENT_TOOL_RUN_RETENTION_MS,
+      }).catch((err: unknown) => {
+        structuredLog({
+          kind: "org_agent_tool_run_cleanup_failed",
+          severity: "error",
+          organizationId,
+          chatName: this.name,
+          error: errorMessage(err),
+        });
+      })
+    );
+
     // No instructions/model overrides: the system prompt is the context
     // blocks (org header + org_memory) and the model is `getModel()`.
   }
 
-  private requireConnectedUserId(): string {
+  /**
+   * Agent-tool runs (the `delegate` children) are sub-agents of this chat.
+   * Without this gate a guessed `/agents/org-agent/<org>/<chat>/sub/
+   * org-sub-agent/<id>` URL spawns a fresh facet; the run registry is the
+   * authority — only ids this chat actually launched resolve (agents
+   * agent-tools.md › Drill in and gate access). Existence-check only: this
+   * hook never creates.
+   */
+  override onBeforeSubAgent(
+    _request: Request,
+    child: { className: string; name: string }
+  ): Promise<Response | undefined> {
+    if (!this.hasAgentToolRun(child.className, child.name)) {
+      return Promise.resolve(
+        new Response(`Agent-tool run "${child.name}" not found`, {
+          status: 404,
+        })
+      );
+    }
+    return Promise.resolve(undefined);
+  }
+
+  /** The ALS connection's stamped user, or undefined when unresolvable. */
+  private tryResolveTurnUserId(): string | undefined {
     const { connection } = getCurrentAgent();
-    const orgId = this.parentPath.at(-1)?.name ?? "?";
-    return resolveTurnUserId(connection, `${orgId}/${this.name}`);
+    return resolveTurnUserId(connection);
   }
 
   /**
-   * Acting user for tool execute / approve-resume: turnUserId, then ALS
-   * connection, then any live connection attachment (resume often has no ALS).
+   * Approvals run as the user who approved: rebuilding the tools here — under
+   * the callable's own ALS connection (the socket that sent the approval
+   * frame) — rebinds `this.codemode` to a runtime whose tool closures carry
+   * the approver's identity. Think's `approveExecution` takes
+   * `_codemodeRuntime()` (= `this.codemode`, assigned by `createExecuteTool`
+   * inside `getTools()`) synchronously before the replay, so the paused
+   * sandbox writes — which have no ALS connection at execute time — authorize
+   * against the approver, and a concurrent turn's `getTools()` cannot swap
+   * the runtime mid-replay. `@callable()` keeps the Think built-in
+   * registered after the override (nearest decorated declaration wins).
    */
-  private requireTurnUserId(): string {
-    if (this.turnUserId) {
-      return this.turnUserId;
-    }
+  @callable()
+  override approveExecution(executionId: string): Promise<unknown> {
     try {
-      const userId = this.requireConnectedUserId();
-      this.turnUserId = userId;
-      return userId;
+      this.getTools();
     } catch {
-      // fall through to connection scan
+      // Fail closed: a leftover runtime is bound to whoever built the tools
+      // last. Clearing it makes Think's approveExecution return its "no
+      // codemode runtime" status error — its `_codemodeRuntime()` retries
+      // `getTools()` once and, when that throws too, leaves the runtime
+      // unset — so the approval settles without ever replaying under a
+      // stale identity.
+      this.codemode = undefined;
     }
-    for (const connection of this.getConnections<{ userId?: string }>()) {
-      const userId = connection.state?.userId;
-      if (userId) {
-        this.turnUserId = userId;
-        return userId;
-      }
-    }
-    const orgId = this.parentPath.at(-1)?.name ?? "?";
-    throw new Error(
-      `OrgAgent ${orgId}/${this.name}: no active connection for this turn`
-    );
+    return super.approveExecution(executionId);
   }
 
   override getTools(): ToolSet {
     const self = this;
-    // Lazy: getTools runs before beforeTurn; tool execute often has no ALS.
+    // Identity is captured per invocation: getTools runs at turn start inside
+    // the turn's ALS (think.js builds tools before beforeTurn), so the bound
+    // user is the connection that started this turn / sent this approval.
+    // Sandbox tool callbacks have no ALS of their own, so they read the bound
+    // user; a live ALS connection at execute time (direct tool calls, the
+    // approval continuation) still wins; neither → fail closed
+    // (PERMISSION_DENIED_MESSAGE). No shared mutable field: any member's
+    // approve/reject callable runs outside the turn queue and could
+    // otherwise re-stamp another turn's identity mid-flight.
+    const boundUserId = self.tryResolveTurnUserId();
     const toolsCtx = {
       get userId() {
-        return self.requireTurnUserId();
+        return (
+          self.tryResolveTurnUserId() ??
+          boundUserId ??
+          (() => {
+            throw new Error(PERMISSION_DENIED_MESSAGE);
+          })()
+        );
       },
       organizationId: this.organizationId,
       waitUntil: (promise: Promise<unknown>) => this.ctx.waitUntil(promise),

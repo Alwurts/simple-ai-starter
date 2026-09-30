@@ -108,6 +108,13 @@ Deploying needs Cloudflare resources first:
 4. Migrate the remote database: `pnpm db:migrate:prod`.
 5. Build and deploy: `pnpm --filter web deploy`.
 
+**Rate limiting.** Better Auth's built-in limiter counts in per-isolate
+memory, which on Workers means every isolate has its own counters — effective
+limits end up multiplied across isolates. Before exposing sign-up publicly,
+add a Cloudflare [rate-limiting rule](https://developers.cloudflare.com/waf/rate-limiting-rules/)
+on `/api/auth/*` (for example 10 requests / 10 minutes per IP on the
+sign-up, sign-in and reset-password endpoints); no application code involved.
+
 Deploys can also run from GitHub Actions —
 `.github/workflows/deploy.yml` is manual (`workflow_dispatch`) and never runs
 on push.

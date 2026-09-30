@@ -7,6 +7,7 @@ import { buildOrgContext } from "../../context/assemble";
 import { getOrgAgentReadOnlyTools } from "../../in-app/compose-org-tools";
 import {
   getCompactionLimit,
+  type ResolvedOrgChatModel,
   resolveOrgChatModel,
 } from "../../inference/chat-models";
 
@@ -32,20 +33,27 @@ Do the task thoroughly, then return a concise, self-contained result the parent 
 export class OrgSubAgent extends Think<Cloudflare.Env> {
   override maxSteps = 30;
 
-  private organizationId!: string;
-  private resolvedChatModel!: LanguageModel;
-  private resolvedContextWindow!: number;
+  private resolvedModel: ResolvedOrgChatModel | undefined;
 
-  override onStart(): void {
-    this.organizationId = this.resolveOrganizationId();
-    const resolved = resolveOrgChatModel(this.env);
-    this.resolvedChatModel = resolved.model;
-    this.resolvedContextWindow = resolved.contextWindow;
+  /**
+   * Env-driven model resolution, memoised. Lazy — not an onStart field — for
+   * the same startup-order reason as OrgChat: Think runs `configureSession`
+   * ahead of the subclass `onStart`, so `compactAfter` reads it first.
+   */
+  private get resolved(): ResolvedOrgChatModel {
+    this.resolvedModel ??= resolveOrgChatModel(this.env);
+    return this.resolvedModel;
   }
 
   // `parentPath` is root-first: [{ OrgAgent, org }, { OrgChat, chatId }]. The
   // organization is the OrgAgent ancestor at the root — the trusted source of
-  // scope for this dynamic agent (the model cannot forge it).
+  // scope for this dynamic agent (the model cannot forge it). A getter, not an
+  // onStart field: `configureContext` runs before onStart, and the org header
+  // block reads it during startup.
+  private get organizationId(): string {
+    return this.resolveOrganizationId();
+  }
+
   private resolveOrganizationId(): string {
     const organizationId = this.parentPath[0]?.name;
     if (!organizationId) {
@@ -57,7 +65,7 @@ export class OrgSubAgent extends Think<Cloudflare.Env> {
   }
 
   override getModel(): LanguageModel {
-    return this.resolvedChatModel;
+    return this.resolved.model;
   }
 
   override configureSession(session: Session): Session {
@@ -74,12 +82,12 @@ export class OrgSubAgent extends Think<Cloudflare.Env> {
         structuredLog({
           kind: "org_sub_agent_auto_compaction_failed",
           severity: "error",
-          organizationId: this.organizationId,
+          organizationId: this.resolveOrganizationId(),
           chatName: this.name,
           error: errorMessage(error),
         });
       })
-      .compactAfter(getCompactionLimit(this.resolvedContextWindow));
+      .compactAfter(getCompactionLimit(this.resolved.contextWindow));
   }
 
   override getTools(): ToolSet {

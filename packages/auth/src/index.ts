@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env, waitUntil } from "cloudflare:workers";
 import { db, member } from "@workspace/db";
 import { sendMail } from "@workspace/email";
 import { betterAuth } from "better-auth";
@@ -22,6 +22,16 @@ function createAuth() {
       provider: "sqlite",
     }),
     secret: env.BETTER_AUTH_SECRET,
+    // Email sends (reset-password, invitations) go through the Workers
+    // lifecycle instead of being awaited in the request, so a slow/broken
+    // mail provider can't stall or fail auth responses (and leak existence
+    // through timing). better-auth routes these through
+    // advanced.backgroundTasks.handler when set.
+    advanced: {
+      backgroundTasks: {
+        handler: waitUntil,
+      },
+    },
     emailAndPassword: {
       enabled: true,
       sendResetPassword: ({ user, url }) =>

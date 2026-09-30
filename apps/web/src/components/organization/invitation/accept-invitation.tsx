@@ -73,7 +73,7 @@ export default function AcceptInvitation({
           {invitationStatus === "pending" && (
             <div className="space-y-4">
               <p>
-                {`${invitation.inviter?.email ?? ""} has invited you to join ${invitation.organization?.name ?? ""}.`}
+                {`${invitation.inviterEmail} has invited you to join ${invitation.organizationName}.`}
               </p>
               <p>{`This invitation was sent to ${invitation.email}.`}</p>
             </div>
@@ -84,7 +84,7 @@ export default function AcceptInvitation({
                 <CheckIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <h2 className="text-center font-bold text-2xl">
-                {`Welcome to ${invitation.organization?.name ?? ""}!`}
+                {`Welcome to ${invitation.organizationName}!`}
               </h2>
               <p className="text-center">
                 You've successfully joined the organization. We're excited to
@@ -101,7 +101,7 @@ export default function AcceptInvitation({
                 Invitation Declined
               </h2>
               <p className="text-center">
-                {`You've declined the invitation to join ${invitation.organization?.name ?? ""}.`}
+                {`You've declined the invitation to join ${invitation.organizationName}.`}
               </p>
             </div>
           )}
