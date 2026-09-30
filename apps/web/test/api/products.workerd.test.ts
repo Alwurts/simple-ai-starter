@@ -106,11 +106,17 @@ describe("GET /api/catalog/products", () => {
     expect(descData.data[0].name).toBe("Beta Gadget");
   });
 
-  it("rejects an invalid query with 400", async () => {
+  it("rejects an invalid query with the validation error shape", async () => {
     const res = await SELF.fetch(`${API}?pageSize=0`, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      error: { code: string; message: string; issues: unknown[] };
+    };
+    expect(body.error.code).toBe("validation");
+    expect(body.error.message).toContain("pageSize");
+    expect(body.error.issues.length).toBeGreaterThan(0);
   });
 });
 
@@ -135,13 +141,18 @@ describe("POST /api/catalog/products", () => {
     expect(data.id).toBeTruthy();
   });
 
-  it("rejects invalid payload with 400", async () => {
+  it("rejects invalid payload with the validation error shape", async () => {
     const res = await SELF.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
       body: JSON.stringify({ name: "X" }), // Name too short
     });
     expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      error: { code: string; message: string; issues: { path: string }[] };
+    };
+    expect(body.error.code).toBe("validation");
+    expect(body.error.issues[0].path).toBe("name");
   });
 });
 
@@ -157,11 +168,15 @@ describe("GET /api/catalog/products/:id", () => {
     expect(data.name).toBe("Find Me");
   });
 
-  it("returns 404 for a non-existent product", async () => {
+  it("returns 404 with the error shape for a non-existent product", async () => {
     const res = await SELF.fetch(`${API}/non-existent`, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(404);
+    const body = (await res.json()) as {
+      error: { code: string; message: string };
+    };
+    expect(body.error.code).toBe("not_found");
   });
 });
 

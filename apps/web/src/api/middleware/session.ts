@@ -1,5 +1,6 @@
 import { auth } from "@workspace/auth";
 import type { Context, Next } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type { HonoContext, HonoContextWithAuth } from "../types";
 
 export const extractAuth = async (c: Context<HonoContext>, next: Next) => {
@@ -23,7 +24,7 @@ export const requireAuth = async (
 ) => {
   const user = c.get("user");
   if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
+    throw new HTTPException(401, { message: "Authentication required" });
   }
   await next();
 };

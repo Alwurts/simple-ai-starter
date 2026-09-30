@@ -2,6 +2,7 @@ import type { Action } from "@workspace/auth/access-control";
 import { can } from "@workspace/auth/access-control";
 import { getActiveMemberRole } from "@workspace/core/auth";
 import type { Context, Next } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type { HonoContextWithAuthAndOrg } from "../types";
 
 /**
@@ -21,14 +22,16 @@ export const requireActiveOrg = async (
   const user = c.get("user");
   const session = c.get("session");
   if (!session?.activeOrganizationId) {
-    return c.json({ error: "No active organization" }, 403);
+    throw new HTTPException(403, { message: "No active organization" });
   }
   const role = await getActiveMemberRole({
     userId: user.id,
     organizationId: session.activeOrganizationId,
   });
   if (!role) {
-    return c.json({ error: "Forbidden" }, 403);
+    throw new HTTPException(403, {
+      message: "You are not a member of this organization",
+    });
   }
   c.set("memberRole", role);
   await next();
@@ -47,7 +50,9 @@ export const requirePermission =
   (action: Action) =>
   async (c: Context<HonoContextWithAuthAndOrg>, next: Next) => {
     if (!can(action, { role: c.get("memberRole") })) {
-      return c.json({ error: "Forbidden" }, 403);
+      throw new HTTPException(403, {
+        message: `Missing permission: ${action}`,
+      });
     }
     await next();
   };

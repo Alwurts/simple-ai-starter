@@ -11,8 +11,10 @@ import {
   getProduct,
   updateProduct,
 } from "@workspace/core/catalog";
+import { DomainError } from "@workspace/core/errors";
 import { Hono } from "hono";
 import { z } from "zod";
+import { validationErrorHook } from "../../middleware/error-handler";
 import { requirePermission } from "../../middleware/organization";
 import type { HonoContextWithAuthAndOrg } from "../../types";
 
@@ -21,25 +23,33 @@ const productIdSchema = z.object({
 });
 
 export const productsRoutes = new Hono<HonoContextWithAuthAndOrg>()
-  .get("/", zValidator("query", paginationQuerySchema), async (c) => {
-    const orgId = c.get("session").activeOrganizationId;
-    const params = c.req.valid("query");
-    const data = await getPaginatedProducts(orgId, params);
-    return c.json(data);
-  })
-  .get("/:id", zValidator("param", productIdSchema), async (c) => {
-    const orgId = c.get("session").activeOrganizationId;
-    const { id } = c.req.valid("param");
-    const data = await getProduct(id, orgId);
-    if (!data) {
-      return c.json({ error: "Product not found" }, 404);
+  .get(
+    "/",
+    zValidator("query", paginationQuerySchema, validationErrorHook),
+    async (c) => {
+      const orgId = c.get("session").activeOrganizationId;
+      const params = c.req.valid("query");
+      const data = await getPaginatedProducts(orgId, params);
+      return c.json(data);
     }
-    return c.json(data);
-  })
+  )
+  .get(
+    "/:id",
+    zValidator("param", productIdSchema, validationErrorHook),
+    async (c) => {
+      const orgId = c.get("session").activeOrganizationId;
+      const { id } = c.req.valid("param");
+      const data = await getProduct(id, orgId);
+      if (!data) {
+        throw new DomainError(`Product not found: ${id}`, "not_found");
+      }
+      return c.json(data);
+    }
+  )
   .post(
     "/",
     requirePermission("catalog:write"),
-    zValidator("json", createProductSchema),
+    zValidator("json", createProductSchema, validationErrorHook),
     async (c) => {
       const orgId = c.get("session").activeOrganizationId;
       const body = c.req.valid("json");
@@ -50,8 +60,8 @@ export const productsRoutes = new Hono<HonoContextWithAuthAndOrg>()
   .patch(
     "/:id",
     requirePermission("catalog:write"),
-    zValidator("param", productIdSchema),
-    zValidator("json", updateProductSchema),
+    zValidator("param", productIdSchema, validationErrorHook),
+    zValidator("json", updateProductSchema, validationErrorHook),
     async (c) => {
       const orgId = c.get("session").activeOrganizationId;
       const { id } = c.req.valid("param");
@@ -63,7 +73,7 @@ export const productsRoutes = new Hono<HonoContextWithAuthAndOrg>()
   .delete(
     "/:id",
     requirePermission("catalog:write"),
-    zValidator("param", productIdSchema),
+    zValidator("param", productIdSchema, validationErrorHook),
     async (c) => {
       const orgId = c.get("session").activeOrganizationId;
       const { id } = c.req.valid("param");
