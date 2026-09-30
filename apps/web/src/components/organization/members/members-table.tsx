@@ -1,6 +1,6 @@
 "use client";
 
-import { can, type RoleName } from "@workspace/auth/access-control";
+import { can } from "@workspace/auth/access-control";
 import { authClient } from "@workspace/auth/client";
 import {
   AlertDialog,
@@ -29,12 +29,8 @@ import {
 } from "@workspace/ui/components/shadcn/table";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import {
-  useCancelInvitation,
-  useRemoveMember,
-} from "@/hooks/organization/use-organization";
-import { INTL_LOCALE } from "@/lib/locale";
-import { roleMessage } from "@/lib/organization/role-label";
+import { useRemoveMember } from "@/hooks/organization/use-organization";
+import { roleLabel } from "@/lib/organization/role-label";
 
 interface Member {
   id: string;
@@ -52,12 +48,6 @@ interface Member {
 interface MembersTableProps {
   members: Member[];
 }
-
-// "operator" = better-auth `member` renamed in UI copy only (no schema change).
-const roleLabel = (role: string) =>
-  role in { owner: 1, admin: 1, member: 1 }
-    ? roleMessage(role as RoleName)
-    : role;
 
 export function MembersTable({ members }: MembersTableProps) {
   const { data: session } = authClient.useSession();
@@ -205,135 +195,6 @@ export function MembersTable({ members }: MembersTableProps) {
               onClick={onConfirmRemove}
             >
               {removeConfirmLabel}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-}
-
-interface Invitation {
-  id: string;
-  email: string;
-  role: string;
-  status: string;
-  expiresAt: Date | string;
-}
-
-interface InvitationsTableProps {
-  invitations: Invitation[];
-}
-
-export function InvitationsTable({ invitations }: InvitationsTableProps) {
-  const { data: activeMember } = authClient.useActiveMember();
-  const canManageMembers = can("member:manage", {
-    role: activeMember?.role ?? null,
-  });
-  const cancelInvitation = useCancelInvitation();
-  const [invitationPendingCancel, setInvitationPendingCancel] = useState<
-    Invitation | undefined
-  >();
-
-  const formatDate = (dateString: Date | string) => {
-    const date =
-      typeof dateString === "string" ? new Date(dateString) : dateString;
-    return date.toLocaleDateString(INTL_LOCALE, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const handleCancelInvitation = async (invitation: Invitation) => {
-    try {
-      await cancelInvitation.mutateAsync(invitation.id);
-      toast.success("Invitation cancelled");
-      setInvitationPendingCancel(undefined);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to cancel invitation"
-      );
-    }
-  };
-
-  const onConfirmCancel = () => {
-    if (invitationPendingCancel) {
-      handleCancelInvitation(invitationPendingCancel);
-    }
-  };
-
-  if (invitations.length === 0) {
-    return (
-      <p className="py-8 text-center text-muted-foreground text-sm">
-        No pending invitations
-      </p>
-    );
-  }
-
-  return (
-    <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Expires</TableHead>
-            {canManageMembers && (
-              <TableHead className="text-right">Actions</TableHead>
-            )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {invitations.map((invitation) => (
-            <TableRow key={invitation.id}>
-              <TableCell>{invitation.email}</TableCell>
-              <TableCell>{roleLabel(invitation.role)}</TableCell>
-              <TableCell className="capitalize">{invitation.status}</TableCell>
-              <TableCell>{formatDate(invitation.expiresAt)}</TableCell>
-              {canManageMembers && (
-                <TableCell className="text-right">
-                  <Button
-                    className="h-auto px-2 py-1 text-destructive text-xs underline hover:no-underline"
-                    disabled={cancelInvitation.isPending}
-                    onClick={() => setInvitationPendingCancel(invitation)}
-                    variant="ghost"
-                  >
-                    Cancel
-                  </Button>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <AlertDialog
-        onOpenChange={(open) => {
-          if (!open) {
-            setInvitationPendingCancel(undefined);
-          }
-        }}
-        open={!!invitationPendingCancel}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel invitation?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {`This will revoke the pending invitation for ${invitationPendingCancel?.email ?? ""}.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelInvitation.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={cancelInvitation.isPending}
-              onClick={onConfirmCancel}
-            >
-              {cancelInvitation.isPending ? "Cancelling..." : "Cancel"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

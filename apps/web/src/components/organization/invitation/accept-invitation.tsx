@@ -17,7 +17,7 @@ import {
   useInvitation,
   useRejectInvitation,
 } from "@/hooks/organization/use-organization";
-import { InvitationError } from "./invitation-error-card";
+import { InvitationError } from "./invitation-error";
 
 export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   const navigate = useNavigate();

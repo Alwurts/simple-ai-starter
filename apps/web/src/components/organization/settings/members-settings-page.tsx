@@ -8,11 +8,9 @@ import {
 } from "@workspace/ui/components/shadcn/card";
 import { Separator } from "@workspace/ui/components/shadcn/separator";
 import { UserPlus } from "lucide-react";
+import { InvitationsTable } from "@/components/organization/members/invitations-table";
 import { InviteMemberForm } from "@/components/organization/members/invite-member-form";
-import {
-  InvitationsTable,
-  MembersTable,
-} from "@/components/organization/members/members-table";
+import { MembersTable } from "@/components/organization/members/members-table";
 
 export function MembersSettingsPage() {
   const { data: activeOrganization } = authClient.useActiveOrganization();

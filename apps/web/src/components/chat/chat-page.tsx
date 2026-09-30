@@ -72,8 +72,8 @@ import {
 import { chatRouteState } from "@/lib/chat/chat-route";
 import { defaultNewChatTitle } from "@/lib/chat/chat-titles";
 import { firstSendPlan } from "@/lib/chat/first-send";
-import { ChatComposer, type PromptMessage } from "./input/chat-input";
-import { ChatMessageRow } from "./messages/chat-message-parts";
+import { ChatComposer, type PromptMessage } from "./input/chat-composer";
+import { ChatMessageRow } from "./messages/chat-message-row";
 import { ChatSidePanel } from "./side-panel/chat-side-panel";
 
 function EmptyConversation() {

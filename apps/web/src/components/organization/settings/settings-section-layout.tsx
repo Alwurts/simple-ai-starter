@@ -29,13 +29,13 @@ export interface SettingsNavSection {
   /** Omitted for top-level nouns that aren't grouped under a heading. */
   label?: string;
 }
-export function isSettingsItemActive(
+function isSettingsItemActive(
   pathname: string,
   item: SettingsNavItem
 ): boolean {
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
-export function findActiveSettingsItem(
+function findActiveSettingsItem(
   pathname: string,
   sections: SettingsNavSection[]
 ): SettingsNavItem | null {
@@ -48,7 +48,7 @@ export function findActiveSettingsItem(
   }
   return null;
 }
-export function SettingsNav({
+function SettingsNav({
   onNavigate,
   sections,
 }: {
@@ -87,7 +87,7 @@ export function SettingsNav({
     </>
   );
 }
-export function SettingsMobileSectionTrigger({
+function SettingsMobileSectionTrigger({
   mobileTitle = "Settings",
   sections,
 }: {

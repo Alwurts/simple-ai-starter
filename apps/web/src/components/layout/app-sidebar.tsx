@@ -112,7 +112,7 @@ function useCloseMobileSidebarOnNavigate() {
     }
   };
 }
-export function AppSidebarMainNavigation() {
+function AppSidebarMainNavigation() {
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
   const pathname = useRouterState({
     select: (s) => s.location.pathname,
@@ -143,7 +143,7 @@ export function AppSidebarMainNavigation() {
 }
 
 /** Org thread list (`OrgAgent.listChats`, newest first) with New chat + delete. */
-export function AppSidebarChats() {
+function AppSidebarChats() {
   const { chats, chatsLoadState, deleteChat, reloadChats, searchChats } =
     useOrgConnection();
   const navigate = useNavigate();

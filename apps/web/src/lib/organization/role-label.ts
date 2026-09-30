@@ -15,3 +15,14 @@ export function roleMessage(role: RoleName): string {
     }
   }
 }
+
+/**
+ * Label for a role string from better-auth data. "operator" = better-auth
+ * `member` renamed in UI copy only (no schema change); unknown keys render
+ * as-is.
+ */
+export function roleLabel(role: string): string {
+  return role in { owner: 1, admin: 1, member: 1 }
+    ? roleMessage(role as RoleName)
+    : role;
+}

@@ -13,7 +13,7 @@ import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-side
 import {
   type SettingsNavSection,
   SettingsSectionLayout,
-} from "@/components/organization/settings/settings-nav";
+} from "@/components/organization/settings/settings-section-layout";
 
 function settingsSections(): SettingsNavSection[] {
   return [

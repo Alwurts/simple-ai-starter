@@ -5,7 +5,7 @@ import {
   isCollapsedWorkedPart,
   isPausedExecutionPart,
   isProductListCardPart,
-} from "./chat-message-parts";
+} from "./chat-message-row";
 
 function toolPart(overrides: Partial<Record<string, unknown>> = {}) {
   return {
