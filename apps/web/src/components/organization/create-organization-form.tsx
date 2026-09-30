@@ -71,7 +71,7 @@ export function CreateOrganizationForm({
 
   async function onSubmit(values: CreateOrganizationData) {
     try {
-      const response = await client.protected.organization["check-slug"].$post({
+      const response = await client.organization["check-slug"].$post({
         json: { slug: values.slug },
       });
       const { available } = await response.json();

@@ -13,7 +13,7 @@ import {
  * After `remove-member`, every org-scoped surface (REST + agent gate) 403s.
  */
 
-const PRODUCTS_API = "http://localhost/api/protected/catalog/products";
+const PRODUCTS_API = "http://localhost/api/catalog/products";
 
 function authPost(url: string, body: object, cookie?: string) {
   return SELF.fetch(url, {

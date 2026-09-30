@@ -44,10 +44,10 @@ export const productsRoutes = new Hono<HonoContextWithAuthAndOrg>()
       const orgId = c.get("session").activeOrganizationId;
       const body = c.req.valid("json");
       const result = await createProduct({ ...body, orgId });
-      return c.json(result[0]);
+      return c.json(result[0], 201);
     }
   )
-  .put(
+  .patch(
     "/:id",
     requirePermission("catalog:write"),
     zValidator("param", productIdSchema),
@@ -67,7 +67,7 @@ export const productsRoutes = new Hono<HonoContextWithAuthAndOrg>()
     async (c) => {
       const orgId = c.get("session").activeOrganizationId;
       const { id } = c.req.valid("param");
-      const result = await deleteProduct(id, orgId);
-      return c.json(result);
+      await deleteProduct(id, orgId);
+      return c.body(null, 204);
     }
   );

@@ -14,7 +14,7 @@ export function useChatCapabilities() {
   return useQuery({
     queryKey: chatCapabilitiesQueryKey,
     queryFn: async (): Promise<OrgChatModelCapabilities> => {
-      const res = await client.protected.chat.capabilities.$get();
+      const res = await client.chat.capabilities.$get();
       if (!res.ok) {
         throw new Error("Failed to load chat capabilities");
       }

@@ -2,8 +2,7 @@ import { SELF } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestSessionWithOrg } from "../helpers/auth";
 
-const PRODUCTS_API = "http://localhost/api/protected/catalog/products";
-const SEARCH_API = "http://localhost/api/protected/catalog/search";
+const PRODUCTS_API = "http://localhost/api/catalog/products";
 
 let orgA: { cookie: string };
 let orgB: { cookie: string };
@@ -25,9 +24,9 @@ function get(url: string, cookie: string) {
   return SELF.fetch(url, { headers: { Cookie: cookie } });
 }
 
-function put(url: string, cookie: string, body: object) {
+function patch(url: string, cookie: string, body: object) {
   return SELF.fetch(url, {
-    method: "PUT",
+    method: "PATCH",
     headers: { Cookie: cookie, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -67,10 +66,10 @@ describe("Product org isolation", () => {
     });
     const created = (await createRes.json()) as { id: string };
 
-    const putRes = await put(`${PRODUCTS_API}/${created.id}`, orgB.cookie, {
+    const patchRes = await patch(`${PRODUCTS_API}/${created.id}`, orgB.cookie, {
       name: "Hacked",
     });
-    expect(putRes.status).toBe(404);
+    expect(patchRes.status).toBe(404);
 
     const res = await get(`${PRODUCTS_API}/${created.id}`, orgA.cookie);
     const data = (await res.json()) as { name: string };
@@ -89,16 +88,14 @@ describe("Product org isolation", () => {
     const res = await get(`${PRODUCTS_API}/${created.id}`, orgA.cookie);
     expect(res.status).toBe(200);
   });
-});
 
-describe("Search org isolation", () => {
-  it("Org B cannot find Org A's products via search", async () => {
+  it("Org B cannot find Org A's products via ?search=", async () => {
     await post(PRODUCTS_API, orgA.cookie, {
       name: "Searchable Widget",
     });
 
-    const res = await get(`${SEARCH_API}?q=Searchable`, orgB.cookie);
-    const data = (await res.json()) as { results: unknown[] };
-    expect(data.results).toHaveLength(0);
+    const res = await get(`${PRODUCTS_API}?search=Searchable`, orgB.cookie);
+    const data = (await res.json()) as { data: { name: string }[] };
+    expect(data.data).toHaveLength(0);
   });
 });

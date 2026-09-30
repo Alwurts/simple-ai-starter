@@ -68,18 +68,15 @@ describe("catalog:write gate on the real REST routes", () => {
     const operator = await createTestSessionWithOrg({ orgName: "Catalog Org" });
     await demoteToOperator(operator.userId);
 
-    const res = await SELF.fetch(
-      "http://localhost/api/protected/catalog/products",
-      {
-        method: "POST",
-        headers: {
-          Cookie: operator.cookie,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: "Operator Product" }),
-      }
-    );
+    const res = await SELF.fetch("http://localhost/api/catalog/products", {
+      method: "POST",
+      headers: {
+        Cookie: operator.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "Operator Product" }),
+    });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
   });
 });
