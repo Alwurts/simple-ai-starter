@@ -25,20 +25,6 @@ const organizationRoutes = new Hono<HonoContextWithAuth>()
       where: (org, { eq }) => eq(org.slug, slug),
     });
     return c.json({ available: !existingOrg });
-  })
-  .get("/invitation/:id", async (c) => {
-    const invitationId = c.req.param("id");
-    const invitation = await db.query.invitation.findFirst({
-      where: (inv, { eq }) => eq(inv.id, invitationId),
-      with: {
-        organization: true,
-        inviter: true,
-      },
-    });
-    if (!invitation) {
-      return c.json({ error: "Invitation not found" }, 404);
-    }
-    return c.json(invitation);
   });
 
 export default organizationRoutes;
