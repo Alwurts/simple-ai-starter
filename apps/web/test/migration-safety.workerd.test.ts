@@ -1,4 +1,4 @@
-import { env } from "cloudflare:test";
+import { applyD1Migrations, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 // Guard for ADR-007: Cloudflare D1 + Drizzle table-recreate migrations & FK cascades.
@@ -87,5 +87,73 @@ describe("D1 migration safety (ADR-007)", () => {
         `${f} no longer contains \`foreign_keys=OFF\` — drop it from GRANDFATHERED`
       ).toBe(true);
     }
+  });
+});
+
+describe("0001 over a database with orphaned products", () => {
+  const m0 = migrationFiles.find((f) => f.name.startsWith("0000"));
+  const m1 = migrationFiles.find((f) => f.name.startsWith("0001"));
+
+  function sqlFor(m: { queries: string[] } | undefined) {
+    if (!m) {
+      throw new Error("migration missing from TEST_MIGRATIONS");
+    }
+    return m;
+  }
+
+  it("drops products of deleted organizations and keeps the rest (no COMMIT rollback)", async () => {
+    // The setup file applied every migration; rebuild the pre-0001 state:
+    // empty database → 0000 → data as an org-deleting app could have left it.
+    for (const table of [
+      "products",
+      "verification",
+      "session",
+      "member",
+      "invitation",
+      "account",
+      "organization",
+      "user",
+      "d1_migrations",
+    ]) {
+      await env.DB.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+    }
+    await applyD1Migrations(env.DB, [sqlFor(m0)]);
+
+    const orgId = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO organization (id, name, slug) VALUES (?, 'Keep Org', ?)"
+    )
+      .bind(orgId, `keep-${orgId.slice(0, 8)}`)
+      .run();
+    await env.DB.prepare(
+      "INSERT INTO products (id, organization_id, name, created_at, updated_at) VALUES ('p_keep', ?, 'Kept', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+    )
+      .bind(orgId)
+      .run();
+    // The org was deleted before products had an FK — the row is unreachable
+    // through the app but still present.
+    await env.DB.prepare(
+      "INSERT INTO products (id, organization_id, name, created_at, updated_at) VALUES ('p_orphan', 'deleted-org', 'Orphan', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+    ).run();
+
+    // Must succeed: without the orphan cleanup the deferred FK check fails at
+    // COMMIT and the whole migration rolls back, blocking deploys.
+    await applyD1Migrations(env.DB, [sqlFor(m1)]);
+
+    const { results } = await env.DB.prepare("SELECT id FROM products").all<{
+      id: string;
+    }>();
+    expect(results.map((row) => row.id)).toEqual(["p_keep"]);
+
+    // The FK is live after the recreate.
+    const fkError = await env.DB.prepare(
+      "INSERT INTO products (id, organization_id, name) VALUES ('p_new', 'no-such-org', 'X')"
+    )
+      .run()
+      .then(
+        () => null,
+        (error: unknown) => error
+      );
+    expect(fkError).toBeDefined();
   });
 });
