@@ -14,7 +14,7 @@ import {
   sortFn_text,
   tableFeatures,
 } from "@tanstack/react-table";
-import { arrIncludesExact } from "@workspace/ui/lib/table-filter-types";
+import { arrIncludesExact } from "./table-filter-types";
 
 export const dataTableFeatures = tableFeatures({
   columnFilteringFeature,

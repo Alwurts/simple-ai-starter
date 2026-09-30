@@ -5,11 +5,9 @@ import {
   getProductDescription,
   getProductExecute,
   getProductInputSchema,
-  getProductName,
   updateProductDescription,
   updateProductExecute,
   updateProductInputSchema,
-  updateProductName,
 } from "../tool-parts/catalog/products";
 import { inAppTool } from "./in-app-tool";
 
@@ -69,7 +67,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(readOnlyCtx);
     const getProductTool = bind({
-      name: getProductName,
       description: getProductDescription,
       inputSchema: getProductInputSchema,
       execute: getProductExecute,
@@ -84,7 +81,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(readOnlyCtx);
     const getProductTool = bind({
-      name: getProductName,
       description: getProductDescription,
       inputSchema: getProductInputSchema,
       execute: getProductExecute,
@@ -106,7 +102,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(ctx);
     const updateProductTool = bind({
-      name: updateProductName,
       description: updateProductDescription,
       inputSchema: updateProductInputSchema,
       execute: updateProductExecute,
@@ -129,7 +124,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(ctx);
     const updateProductTool = bind({
-      name: updateProductName,
       description: updateProductDescription,
       inputSchema: updateProductInputSchema,
       execute: updateProductExecute,
@@ -153,7 +147,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(ctx);
     const updateProductTool = bind({
-      name: updateProductName,
       description: updateProductDescription,
       inputSchema: updateProductInputSchema,
       execute: updateProductExecute,

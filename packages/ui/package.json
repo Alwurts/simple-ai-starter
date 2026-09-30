@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -51,7 +52,8 @@
     "next": "16.1.2",
     "shadcn": "4.20.1",
     "tailwindcss": "^4.3.2",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
   },
   "peerDependencies": {
     "next": ">=14.0.0"
@@ -60,6 +62,8 @@
     "./globals.css": "./src/styles/globals.css",
     "./postcss.config": "./postcss.config.mjs",
     "./lib/*": "./src/lib/*.ts",
+    "./components/data-table/data-table-features": "./src/components/data-table/data-table-features.ts",
+    "./components/data-table/table-filter-types": "./src/components/data-table/table-filter-types.ts",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   }

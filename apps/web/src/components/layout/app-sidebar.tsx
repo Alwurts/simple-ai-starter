@@ -3,7 +3,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ChatSearchHit } from "@workspace/agent/types";
 import { authClient } from "@workspace/auth/client";
-import { LogoMark } from "@workspace/ui/components/icons/logo-monochrome";
+import { LogoMark } from "@workspace/ui/components/brand/logo-monochrome";
 import { Input } from "@workspace/ui/components/shadcn/input";
 import {
   Sidebar,
@@ -69,17 +69,14 @@ export function AppSidebar() {
                 <span className="sr-only">Search</span>
               </SidebarMenuButton>
 
-              <SidebarTrigger
-                className="hidden h-8 w-8 md:flex"
-                toggleLabel="Toggle Sidebar"
-              />
+              <SidebarTrigger className="hidden h-8 w-8 md:flex" />
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
 
         <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
           <SidebarMenuItem>
-            <SidebarTrigger className="h-8 w-8" toggleLabel="Toggle Sidebar" />
+            <SidebarTrigger className="h-8 w-8" />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton

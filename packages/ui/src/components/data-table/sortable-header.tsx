@@ -1,8 +1,8 @@
 "use client";
 
 import type { Column, RowData, TableFeatures } from "@tanstack/react-table";
+import type { DataTableFeatures } from "@workspace/ui/components/data-table/data-table-features";
 import { Button } from "@workspace/ui/components/shadcn/button";
-import type { DataTableFeatures } from "@workspace/ui/lib/data-table-features";
 import { cn } from "@workspace/ui/lib/utils";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
@@ -12,16 +12,14 @@ declare module "@tanstack/react-table" {
     TData extends RowData,
     TValue,
   > {
-    /** Human-readable column label, shared by SortableHeader and the sort popover. */
+    /** Human-readable column label, used by SortableHeader. */
     label?: string;
   }
 }
 
 export type SortDirection = false | "asc" | "desc";
 
-export type SortAriaLabelFn = (label: string, sorted: SortDirection) => string;
-
-export function sortAriaLabel(label: string, sorted: SortDirection): string {
+function sortAriaLabel(label: string, sorted: SortDirection): string {
   if (sorted === "asc") {
     return `Sorted by ${label}, ascending. Click to sort descending.`;
   }
@@ -64,18 +62,15 @@ export function SortIcon({
 
 export function SortableHeader<TData extends RowData>({
   column,
-  getAriaLabel = sortAriaLabel,
 }: {
   column: Column<DataTableFeatures, TData, unknown>;
-  /** Locale-aware aria label; defaults to English `sortAriaLabel`. */
-  getAriaLabel?: SortAriaLabelFn;
 }) {
   const sorted = column.getIsSorted();
   const label = column.columnDef.meta?.label ?? column.id;
 
   return (
     <Button
-      aria-label={getAriaLabel(label, sorted)}
+      aria-label={sortAriaLabel(label, sorted)}
       className={cn("h-8 px-0 font-medium", sorted && "text-foreground")}
       onClick={() => column.toggleSorting(sorted === "asc")}
       tabIndex={-1}

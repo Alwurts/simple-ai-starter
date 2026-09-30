@@ -91,10 +91,8 @@ export function ShellPage({
 /** Sidebar expand control in page headers — mobile always; desktop when collapsed. */
 export function ShellHeaderSidebarTrigger({
   className,
-  toggleLabel = "Toggle Sidebar",
 }: {
   className?: string;
-  toggleLabel?: string;
 }) {
   const { state } = useSidebar();
 
@@ -103,13 +101,11 @@ export function ShellHeaderSidebarTrigger({
       <SidebarTrigger
         className={cn("shrink-0 md:hidden", className)}
         data-slot="shell-header-sidebar-trigger"
-        toggleLabel={toggleLabel}
       />
       {state === "collapsed" ? (
         <SidebarTrigger
           className={cn("hidden shrink-0 md:inline-flex", className)}
           data-slot="shell-header-sidebar-trigger"
-          toggleLabel={toggleLabel}
         />
       ) : null}
     </>

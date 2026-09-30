@@ -1,5 +1,4 @@
-"use client";
-
+import { Link } from "@tanstack/react-router";
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -24,8 +23,6 @@ export interface AppBreadcrumbItem {
 export interface AppBreadcrumbsProps {
   items?: AppBreadcrumbItem[];
   showHome?: boolean;
-  homeLabel?: string;
-  ellipsisAriaLabel?: string;
   /**
    * Max visible crumb slots before collapsing the middle into a "…" dropdown.
    * The ellipsis counts as a slot; the first item and the last item(s) stay
@@ -33,10 +30,6 @@ export interface AppBreadcrumbsProps {
    * (Home › … › current) and 4 on `sm+` (first + last 2).
    */
   maxItems?: number;
-  linkComponent?: React.ComponentType<{
-    href: string;
-    children?: React.ReactNode;
-  }>;
   className?: string;
 }
 const MOBILE_MAX_ITEMS = 2;
@@ -63,24 +56,17 @@ function useResponsiveMaxItems(explicit?: number) {
   }
   return smUp ? DESKTOP_MAX_ITEMS : MOBILE_MAX_ITEMS;
 }
-const DEFAULT_HOME_LABEL = "Home";
-const DEFAULT_ELLIPSIS_ARIA_LABEL = "Show hidden breadcrumb segments";
-
 export function AppBreadcrumbs({
   items = [],
   showHome = true,
-  homeLabel = DEFAULT_HOME_LABEL,
-  ellipsisAriaLabel = DEFAULT_ELLIPSIS_ARIA_LABEL,
   maxItems: maxItemsProp,
-  linkComponent: LinkComponent,
   className,
 }: AppBreadcrumbsProps) {
-  const Link = LinkComponent || "a";
   const maxItems = useResponsiveMaxItems(maxItemsProp);
   const all: AppBreadcrumbItem[] = showHome
     ? [
         {
-          title: homeLabel,
+          title: "Home",
           href: "/",
         },
         ...items,
@@ -89,7 +75,7 @@ export function AppBreadcrumbs({
   const renderCrumb = (item: AppBreadcrumbItem, isLast: boolean) => {
     if (item.href && !isLast) {
       return (
-        <BreadcrumbLink render={<Link href={item.href} />}>
+        <BreadcrumbLink render={<Link to={item.href} />}>
           {item.title}
         </BreadcrumbLink>
       );
@@ -103,7 +89,7 @@ export function AppBreadcrumbs({
   const renderFirstCrumb = (item: AppBreadcrumbItem) => {
     if (item.href) {
       return (
-        <BreadcrumbLink render={<Link href={item.href} />}>
+        <BreadcrumbLink render={<Link to={item.href} />}>
           {item.title}
         </BreadcrumbLink>
       );
@@ -114,7 +100,7 @@ export function AppBreadcrumbs({
     const key = `${index}-${item.href ?? item.title}`;
     if (item.href) {
       return (
-        <DropdownMenuItem key={key} render={<Link href={item.href} />}>
+        <DropdownMenuItem key={key} render={<Link to={item.href} />}>
           {item.title}
         </DropdownMenuItem>
       );
@@ -145,7 +131,7 @@ export function AppBreadcrumbs({
             <BreadcrumbItem className="shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  aria-label={ellipsisAriaLabel}
+                  aria-label="Show hidden breadcrumb segments"
                   className="flex items-center rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <BreadcrumbEllipsis className="size-4" />

@@ -7,8 +7,9 @@ import type {
   RowData,
   SortingState,
 } from "@tanstack/react-table";
-import { DataTable } from "@workspace/ui/components/brand/data-table";
-import type { TableFilterToolbarLabels } from "@workspace/ui/components/brand/table-filter-toolbar";
+import { DataTable } from "@workspace/ui/components/data-table/data-table";
+import type { DataTableColumnDef } from "@workspace/ui/components/data-table/data-table-features";
+import type { TableFilterDefinition } from "@workspace/ui/components/data-table/table-filter-types";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
   DropdownMenu,
@@ -16,8 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/shadcn/dropdown-menu";
-import type { DataTableColumnDef } from "@workspace/ui/lib/data-table-features";
-import type { TableFilterDefinition } from "@workspace/ui/lib/table-filter-types";
 import { cn } from "@workspace/ui/lib/utils";
 import { MoreHorizontal } from "lucide-react";
 export interface ResourceTableRowAction<TData extends RowData> {
@@ -52,7 +51,6 @@ export interface ResourceTableProps<TData extends RowData> {
   className?: string;
   /** Rich empty UI — keeps the filter toolbar visible on server-driven lists. */
   collectionEmpty?: React.ReactNode;
-  toolbarLabels?: TableFilterToolbarLabels;
 }
 export function ResourceTable<TData extends RowData>({
   columns,
@@ -77,7 +75,6 @@ export function ResourceTable<TData extends RowData>({
   embedded = false,
   className,
   collectionEmpty,
-  toolbarLabels,
 }: ResourceTableProps<TData>) {
   const hasActions = rowPrimaryAction || rowMenuActions;
   const actionColumn: DataTableColumnDef<TData> = {
@@ -166,7 +163,6 @@ export function ResourceTable<TData extends RowData>({
         pagination={pagination}
         showColumnVisibility={false}
         sorting={sorting}
-        toolbarLabels={toolbarLabels}
         totalCount={totalCount}
       />
     </div>

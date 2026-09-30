@@ -2,10 +2,13 @@
 
 import type { ColumnFiltersState } from "@tanstack/react-table";
 import {
-  type TableSort,
-  TableSortControl,
-  type TableSortLabels,
-} from "@workspace/ui/components/brand/table-sort-control";
+  countActiveFilters,
+  formatFilterChipValue,
+  getColumnFilterValue,
+  isFilterValueActive,
+  setColumnFilterValue,
+  type TableFilterDefinition,
+} from "@workspace/ui/components/data-table/table-filter-types";
 import { Badge } from "@workspace/ui/components/shadcn/badge";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import { Checkbox } from "@workspace/ui/components/shadcn/checkbox";
@@ -17,49 +20,9 @@ import {
   PopoverTrigger,
 } from "@workspace/ui/components/shadcn/popover";
 import { Separator } from "@workspace/ui/components/shadcn/separator";
-import {
-  countActiveFilters,
-  formatFilterChipValue,
-  getColumnFilterValue,
-  isFilterValueActive,
-  setColumnFilterValue,
-  type TableFilterDefinition,
-} from "@workspace/ui/lib/table-filter-types";
 import { cn } from "@workspace/ui/lib/utils";
 import { ListFilter, X } from "lucide-react";
 import { useMemo } from "react";
-
-export interface TableFilterToolbarLabels {
-  filters?: string;
-  filtersActive?: (count: number) => string;
-  clearAll?: string;
-  removeFilter?: (label: string) => string;
-  row?: string;
-  rows?: string;
-  rowsOf?: (filtered: number, total: number) => string;
-  /** Server-side pagination footer, e.g. "Page 1 of 3". */
-  pageOf?: (page: number, total: number) => string;
-  sort?: TableSortLabels;
-}
-
-const DEFAULT_TOOLBAR_LABELS: Required<
-  Omit<
-    TableFilterToolbarLabels,
-    "filtersActive" | "removeFilter" | "rowsOf" | "pageOf" | "sort"
-  >
-> & {
-  filtersActive: (count: number) => string;
-  removeFilter: (label: string) => string;
-  rowsOf: (filtered: number, total: number) => string;
-} = {
-  filters: "Filters",
-  filtersActive: (count) => `Filters (${count} active)`,
-  clearAll: "Clear all",
-  removeFilter: (label) => `Remove ${label} filter`,
-  row: "row",
-  rows: "rows",
-  rowsOf: (filtered, total) => `${filtered} of ${total}`,
-};
 
 interface TableFilterToolbarProps {
   className?: string;
@@ -67,27 +30,23 @@ interface TableFilterToolbarProps {
   definitions: TableFilterDefinition[];
   filteredCount: number;
   onColumnFiltersChange: (filters: ColumnFiltersState) => void;
-  sort?: TableSort;
   totalCount: number;
-  labels?: TableFilterToolbarLabels;
 }
 function FilterChip({
   label,
   value,
   onRemove,
-  removeFilterAria,
 }: {
   label: string;
   value: string;
   onRemove: () => void;
-  removeFilterAria: (label: string) => string;
 }) {
   return (
     <Badge className="h-7 max-w-xs gap-1 pr-1 font-normal" variant="secondary">
       <span className="shrink-0 text-muted-foreground">{label}</span>
       <span className="truncate">{value}</span>
       <button
-        aria-label={removeFilterAria(label)}
+        aria-label={`Remove ${label} filter`}
         className="ml-0.5 shrink-0 rounded-sm p-0.5 hover:bg-background/80"
         onClick={onRemove}
         type="button"
@@ -180,12 +139,7 @@ export function TableFilterToolbar({
   filteredCount,
   totalCount,
   className,
-  sort,
-  labels: labelsProp,
 }: TableFilterToolbarProps) {
-  const labels = { ...DEFAULT_TOOLBAR_LABELS, ...labelsProp };
-  const removeFilterAria =
-    labelsProp?.removeFilter ?? DEFAULT_TOOLBAR_LABELS.removeFilter;
   const activeCount = countActiveFilters(columnFilters, definitions);
   const activeChips = useMemo(
     () =>
@@ -210,7 +164,6 @@ export function TableFilterToolbar({
   const clearAll = () => {
     onColumnFiltersChange([]);
   };
-  const showSortControl = sort !== undefined && sort.columns.length > 0;
   return (
     <div
       className={cn(
@@ -219,18 +172,12 @@ export function TableFilterToolbar({
       )}
       data-slot="table-filter-toolbar"
     >
-      {showSortControl ? (
-        <TableSortControl labels={labels.sort} sort={sort} />
-      ) : null}
-
       <Popover>
         <PopoverTrigger
           render={
             <Button
               aria-label={
-                activeCount > 0
-                  ? labels.filtersActive(activeCount)
-                  : labels.filters
+                activeCount > 0 ? `Filters (${activeCount} active)` : "Filters"
               }
               className="relative shrink-0"
               size="icon-xs"
@@ -250,7 +197,7 @@ export function TableFilterToolbar({
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 gap-0 p-0">
           <div className="px-4 py-3">
-            <p className="font-medium text-sm">{labels.filters}</p>
+            <p className="font-medium text-sm">Filters</p>
           </div>
           <Separator />
           <div className="max-h-[min(24rem,60vh)] space-y-4 overflow-y-auto p-4">
@@ -295,7 +242,6 @@ export function TableFilterToolbar({
           key={chip.columnId}
           label={chip.label}
           onRemove={() => updateFilter(chip.columnId, undefined)}
-          removeFilterAria={removeFilterAria}
           value={chip.displayValue}
         />
       ))}
@@ -308,14 +254,14 @@ export function TableFilterToolbar({
           type="button"
           variant="ghost"
         >
-          {labels.clearAll}
+          Clear all
         </Button>
       ) : null}
 
       <span className="ml-auto text-muted-foreground text-xs tabular-nums">
         {filteredCount === totalCount
-          ? `${totalCount} ${totalCount === 1 ? labels.row : labels.rows}`
-          : labels.rowsOf(filteredCount, totalCount)}
+          ? `${totalCount} ${totalCount === 1 ? "row" : "rows"}`
+          : `${filteredCount} of ${totalCount}`}
       </span>
     </div>
   );
