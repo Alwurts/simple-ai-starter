@@ -1,4 +1,3 @@
-import { relations } from "drizzle-orm";
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { id, moneyMinor, timestamps } from "../utils";
 import { organization } from "./auth";
@@ -17,13 +16,6 @@ export const products = sqliteTable(
   },
   (table) => [index("products_organizationId_idx").on(table.organizationId)]
 );
-
-export const productsRelations = relations(products, ({ one }) => ({
-  organization: one(organization, {
-    fields: [products.organizationId],
-    references: [organization.id],
-  }),
-}));
 
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
