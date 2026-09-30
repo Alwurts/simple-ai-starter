@@ -12,7 +12,7 @@ Common smells in this repo:
 | Remove | Keep |
 |--------|------|
 | Section / JSX banners (`// --- Helpers ---`, `{/* Logo Area */}`) | Why / invariants / races / platform quirks |
-| Name-echo JSDoc / inline narration | ADR / ALW / § / issue links |
+| Name-echo JSDoc / inline narration | ADR / issue links |
 | Lettered substeps that only label the next insert | Invariants / RBAC / security |
 | Numbered pipeline labels (`// 1. READ`) when order is obvious | `biome-ignore` / `@ts-expect-error` **with** reason |
 | Duplicate boilerplate (dedupe to one copy with real why) | Empty-catch markers Biome needs |
@@ -69,5 +69,4 @@ Linter directives stay, but **always with a reason** on the same line:
 - `packages/agent/src/tools/guard.ts` — RBAC / mutation boundary (always keep)
 - `packages/agent/src/org/chat/org-chat.ts` — hibernation / WebSocket-ALS platform quirks (keep)
 - `apps/web/test/migration-safety.workerd.test.ts` — D1 FK-pragma invariant (ADR-007; always keep)
-- `apps/web/src/features/assistant/components/full-screen-chat.tsx` — ticket-linked framework rationale (keep)
-- Prior art: sfab ALW-338 / PR #362; starter ALW-334 / PRs #10–#11
+- `apps/web/src/features/assistant/components/full-screen-chat.tsx` — framework rationale on the non-obvious hook options (keep)

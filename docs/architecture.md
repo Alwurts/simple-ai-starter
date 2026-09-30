@@ -159,7 +159,7 @@ Workers-runtime code, tested with the workerd test pool. Migrations live in
 `packages/db/drizzle/`. See **ADR-002** (migrations) and **ADR-003** (env +
 singleton).
 
-Tests split by where they must run (ALW-305): a plain `*.test.ts` is a pure unit
+Tests split by where they must run: a plain `*.test.ts` is a pure unit
 test run in the fast `node` Vitest project, while anything that needs a binding —
 `env.DB`/`SELF`, or a Durable Object — is named `*.workerd.test.ts` and runs
 in-workerd via `@cloudflare/vitest-pool-workers` against `wrangler.test.jsonc`.
