@@ -49,7 +49,8 @@ export const requireActiveOrg = async (
 export const requirePermission =
   (action: Action) =>
   async (c: Context<HonoContextWithAuthAndOrg>, next: Next) => {
-    if (!can(action, { role: c.get("memberRole") })) {
+    const role = c.get("memberRole");
+    if (!(role && can(action, { role }))) {
       throw new HTTPException(403, {
         message: `Missing permission: ${action}`,
       });

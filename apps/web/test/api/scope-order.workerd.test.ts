@@ -1,5 +1,9 @@
 import { SELF } from "cloudflare:test";
+import { Hono } from "hono";
 import { beforeAll, describe, expect, it } from "vitest";
+import { extractAuth } from "../../src/api/middleware/session";
+import { withAuth } from "../../src/api/protected";
+import type { HonoContext, HonoContextWithAuth } from "../../src/api/types";
 import { createTestSession, createTestSessionWithOrg } from "../helpers/auth";
 
 /**
@@ -68,5 +72,41 @@ describe("scope order: org-protected", () => {
   it("GET /api/catalog/products 401s an anonymous caller (auth runs before the org check)", async () => {
     const res = await SELF.fetch("http://localhost/api/catalog/products");
     expect(res.status).toBe(401);
+  });
+});
+
+describe("scope guard pattern (guard without a path string)", () => {
+  // A resource mounted through the scope helper — no `use("/x/*", …)` path
+  // anywhere — must be fully guarded, and the guard must not leak onto a
+  // sibling mounted next to it.
+  const probeApp = new Hono<HonoContext>()
+    .use("*", extractAuth)
+    .route(
+      "/probe",
+      withAuth(
+        new Hono<HonoContextWithAuth>().get("/", (c) => c.json({ ok: true }))
+      )
+    )
+    .route(
+      "/sibling",
+      new Hono<HonoContext>().get("/", (c) => c.json({ ok: true }))
+    );
+
+  it("401s an anonymous caller on the helper-mounted resource", async () => {
+    const res = await probeApp.request("/probe");
+    expect(res.status).toBe(401);
+  });
+
+  it("200s a signed-in caller on the same mount", async () => {
+    const { cookie } = await createTestSession();
+    const res = await probeApp.request("/probe", {
+      headers: { Cookie: cookie },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("does not leak the guard onto a sibling mounted next to it", async () => {
+    const res = await probeApp.request("/sibling");
+    expect(res.status).toBe(200);
   });
 });

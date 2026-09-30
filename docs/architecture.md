@@ -139,11 +139,14 @@ api/org-protected/<cap>/*.ts       a live membership in the active org
                                    (requireAuth + requireActiveOrg)
 ```
 
-Each scope's `index.ts` applies its guard **once**, scoped to the resource
-paths it owns (`.use("/chat/*", requireAuth)`); route files never repeat it.
-Since sibling scopes mount at `/`, a scopeless `use("*")` in one scope would
-leak onto every route — `extractAuth` is the one deliberate global (the public
-scope's first line), so each API call resolves the session exactly once.
+Each scope's `index.ts` composes its resources through a guard wrapper —
+`withAuth(chatRoutes)`, `withOrgAccess(catalogRoutes)` — so the guard is
+`use("*")` on a sub-app that only exists at the resource prefix it is mounted
+under: anything a scope mounts is guarded by construction, no path string is
+repeated, and the `"*"` cannot leak to sibling scopes (mounting prefixes it).
+Route files never repeat guards. `extractAuth` is the one deliberate global
+(the public scope's first line): it only reads the session and gates nothing,
+so each API call resolves the session exactly once.
 
 **Resources live in the URLs; scopes don't.** Today's routes: `GET /api/health`,
 `GET /api/chat/capabilities`, and `/api/catalog/products` (`GET` list with
