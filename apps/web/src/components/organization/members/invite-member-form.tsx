@@ -1,12 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  can,
-  hasRoleRank,
-  ROLE_RANK,
-  type RoleName,
-} from "@workspace/auth/access-control";
+import { can, type RoleName } from "@workspace/auth/access-control";
 import { authClient } from "@workspace/auth/client";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
@@ -51,8 +46,8 @@ export function InviteMemberForm({
   // RBAC seam: member management is admin+. Operators see an honest, explained
   // disabled state rather than a control that silently 403s on submit.
   const canManageMembers = can("member:manage", { role: currentRole });
-  // Owners may invite owners; everyone else can only invite at or below their rank.
-  const canInviteOwner = hasRoleRank(currentRole, "owner");
+  // Handing out the owner role is owner-only; admins invite admin/member.
+  const canInviteOwner = can("member:invite-owner", { role: currentRole });
 
   const formSchema = z.object({
     email: z.string().email({ message: "Invalid email address" }),
@@ -82,13 +77,9 @@ export function InviteMemberForm({
 
   async function onSubmit(values: InviteMemberData) {
     // Defense in depth: the server enforces this too; this keeps the UI honest.
-    if (
-      currentRole &&
-      currentRole !== "owner" &&
-      ROLE_RANK[currentRole as RoleName] < ROLE_RANK[values.role]
-    ) {
+    if (values.role === "owner" && !canInviteOwner) {
       toast.error(
-        `As ${roleMessage(currentRole as RoleName)}, you can't invite a ${roleMessage(values.role)}`
+        `As ${roleMessage(currentRole as RoleName)}, you can't invite an ${roleMessage("owner")}`
       );
       return;
     }

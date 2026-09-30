@@ -2,13 +2,12 @@
  * Role-based access control (RBAC) spine — the single `can(action, ctx)` seam.
  *
  * Design:
- * - **Role-rank, not a fine-grained matrix.** `owner > admin > operator`. The
- *   rank is expressed by *which actions each role's statement list contains*, so
- *   there is no parallel hand-rolled engine — we configure better-auth's
- *   access-control instead.
+ * - **Statements, not a rank engine.** Who may do what is expressed by *which
+ *   actions each role's statement list contains*, so there is no parallel
+ *   hand-rolled engine — we configure better-auth's access-control instead.
  * - **Three fixed tiers.** We reuse better-auth's built-in trio. "operator" is
  *   better-auth's `member` role renamed in **UI copy only** — the stored
- *   `member.role` value stays `"member"` (no migration). See {@link ROLE_LABELS}.
+ *   `member.role` value stays `"member"` (no migration).
  * - **`dynamicAccessControl` stays OFF** (the plugin default). Orgs assign people
  *   to these fixed roles; they cannot invent roles at runtime.
  * - **Single seam.** Every gate routes through {@link can} so call sites read
@@ -27,12 +26,14 @@ import {
 /**
  * The access-control statements: better-auth's org defaults
  * (`organization`/`member`/`invitation`/`team`/`ac`) plus this app's
- * business-domain resources.
+ * business-domain resources. `invitation` gains one extra verb: handing out
+ * the owner role is owner-only (admins may invite admin/member).
  */
 export const statement = {
   ...defaultStatements,
   /** Catalog writes (create, update, delete products). Low-stakes. */
   catalog: ["write"],
+  invitation: [...defaultStatements.invitation, "create-owner"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -53,9 +54,10 @@ export const admin = ac.newRole({
   catalog: ["write"],
 });
 
-/** **owner** — everything admin can do, plus org deletion (from `ownerAc`). */
+/** **owner** — everything admin can do, plus org deletion and owner invitations. */
 export const owner = ac.newRole({
   ...ownerAc.statements,
+  invitation: [...ownerAc.statements.invitation, "create-owner"],
   catalog: ["write"],
 });
 
@@ -77,8 +79,12 @@ export const ACTION_PERMISSIONS = {
   "catalog:write": { catalog: ["write"] },
   /** Invite / remove / change a member's role. Admin+. */
   "member:manage": { member: ["create", "update", "delete"] },
+  /** Invite someone as owner. Owner-only. */
+  "member:invite-owner": { invitation: ["create-owner"] },
   /** Change organization settings. Admin+. */
   "org:settings": { organization: ["update"] },
+  /** Delete the organization. Owner-only (better-auth reserves `delete` for owner). */
+  "org:delete": { organization: ["delete"] },
 } as const satisfies Record<
   string,
   Partial<Record<keyof typeof statement, readonly string[]>>
@@ -107,35 +113,3 @@ export function can(
   }
   return role.authorize(ACTION_PERMISSIONS[action]).success;
 }
-
-/**
- * Role rank for ordering decisions that are *not* a permission check — e.g.
- * "which roles may this member invite". Higher outranks lower. For yes/no
- * authorization, use {@link can} instead.
- */
-export const ROLE_RANK: Record<RoleName, number> = {
-  owner: 3,
-  admin: 2,
-  member: 1,
-};
-
-/** Returns whether `role` ranks at least as high as `atLeast`. */
-export function hasRoleRank(
-  role: string | null | undefined,
-  atLeast: RoleName
-): boolean {
-  if (!(role && role in ROLE_RANK)) {
-    return false;
-  }
-  return ROLE_RANK[role as RoleName] >= ROLE_RANK[atLeast];
-}
-
-/**
- * English role labels for non-UI / server strings. `member` surfaces as
- * "Operator" — copy-only rename; the stored value remains `member`.
- */
-export const ROLE_LABELS: Record<RoleName, string> = {
-  owner: "Owner",
-  admin: "Administrator",
-  member: "Operator",
-};

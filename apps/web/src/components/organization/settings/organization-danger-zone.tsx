@@ -1,7 +1,7 @@
 "use client";
 
 import { useNavigate } from "@tanstack/react-router";
-import { hasRoleRank } from "@workspace/auth/access-control";
+import { can } from "@workspace/auth/access-control";
 import { authClient } from "@workspace/auth/client";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
@@ -32,7 +32,9 @@ export function OrganizationDangerZone({
   const deleteOrganization = useDeleteOrganization();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const isOwner = hasRoleRank(activeMember?.role, "owner");
+  // Deleting the organization is owner-only (better-auth reserves
+  // `organization: delete` for the owner role).
+  const isOwner = can("org:delete", { role: activeMember?.role });
 
   if (!isOwner) {
     return null;
