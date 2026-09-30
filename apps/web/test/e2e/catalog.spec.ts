@@ -20,8 +20,11 @@ test.describe("catalog products", () => {
     await page.locator("input#price").fill("29.99");
     await page.locator("textarea#description").fill("An e2e product");
 
-    // Submit
-    await page.getByRole("button", { name: "Save Product" }).click();
+    // Submit — the dialog's submit shares the toolbar button's name
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Add Product" })
+      .click();
 
     // Verify the product appears in the table
     await expect(page.getByText(productName)).toBeVisible({
@@ -43,7 +46,10 @@ test.describe("catalog products", () => {
 
     await page.locator("input#name").fill(detailProductName);
     await page.locator("input#price").fill("15.00");
-    await page.getByRole("button", { name: "Save Product" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Add Product" })
+      .click();
 
     // Wait for the product to appear, then click its name
     await expect(page.getByText(detailProductName)).toBeVisible({

@@ -60,7 +60,7 @@ test.describe("login flow", () => {
     // Log in with the credentials
     await page.locator("input#email").fill(loginEmail);
     await page.locator("input#password").fill(loginPassword);
-    await page.getByRole("button", { name: "Login" }).click();
+    await page.getByRole("button", { name: "Log in" }).click();
 
     await expect(page).toHaveURL(HOME_URL_PATTERN, { timeout: 10_000 });
   });
