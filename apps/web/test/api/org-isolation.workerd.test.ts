@@ -67,9 +67,10 @@ describe("Product org isolation", () => {
     });
     const created = (await createRes.json()) as { id: string };
 
-    await put(`${PRODUCTS_API}/${created.id}`, orgB.cookie, {
+    const putRes = await put(`${PRODUCTS_API}/${created.id}`, orgB.cookie, {
       name: "Hacked",
     });
+    expect(putRes.status).toBe(404);
 
     const res = await get(`${PRODUCTS_API}/${created.id}`, orgA.cookie);
     const data = (await res.json()) as { name: string };
@@ -82,7 +83,8 @@ describe("Product org isolation", () => {
     });
     const created = (await createRes.json()) as { id: string };
 
-    await del(`${PRODUCTS_API}/${created.id}`, orgB.cookie);
+    const delRes = await del(`${PRODUCTS_API}/${created.id}`, orgB.cookie);
+    expect(delRes.status).toBe(404);
 
     const res = await get(`${PRODUCTS_API}/${created.id}`, orgA.cookie);
     expect(res.status).toBe(200);
