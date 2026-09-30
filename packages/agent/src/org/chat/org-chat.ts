@@ -28,6 +28,7 @@ import {
   type ToolSet,
 } from "ai";
 import { z } from "zod";
+import { PERMISSION_DENIED_MESSAGE } from "../../constants";
 import { buildOrgContext } from "../../context/assemble";
 import {
   getOrgAgentDisplayTools,
@@ -65,7 +66,13 @@ export class OrgChat extends Think<Cloudflare.Env> {
   private resolvedContextWindow!: number;
   private resolvedCapabilities!: OrgChatModelCapabilities;
   private lastTurnUsage: LanguageModelUsage | undefined;
-  /** Acting user for tool execute / approve-resume (WebSocket ALS is often unset). */
+  /**
+   * Acting user for this turn's / this approval's tool executes. Stamped from
+   * the connection that started the turn (beforeTurn) or sent the approval
+   * frame (approveExecution / rejectExecution) — never from onConnect, which
+   * every connection in the org triggers. Unresolvable ⇒ undefined ⇒ write
+   * tools fail closed (permission-denied result).
+   */
   private turnUserId: string | undefined;
 
   override onStart(): void {
@@ -98,10 +105,11 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   /**
-   * Capture the acting user id for tool execute / approve-resume. The
-   * security boundary is the Worker gate in `apps/web/src/server.ts` (session
-   * + active-org check before any `/agents/` route) — Think may stream the
-   * transcript before this runs, so onConnect is identification, not a gate.
+   * Identify the connection for the transcript's sake (state stamp survives
+   * hibernation) and close unauthenticated sockets. The security boundary is
+   * the Worker gate (apps/web/src/agent-gate.ts) plus the per-turn/per-
+   * approval identity stamping below; onConnect is never the acting-user
+   * source — every member's connection fires it.
    */
   override async onConnect(
     connection: Connection,
@@ -117,8 +125,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
     }
     // Survive DO hibernation (onConnect does not re-run on wake).
     connection.setState({ userId });
-    // In-memory copy for tool closures: getTools often lacks WebSocket ALS.
-    this.turnUserId = userId;
   }
 
   override getModel(): LanguageModel {
@@ -330,12 +336,13 @@ export class OrgChat extends Think<Cloudflare.Env> {
       }
     }
 
-    // Refresh after hibernation (onConnect does not re-run).
-    try {
-      this.turnUserId = this.requireConnectedUserId();
-    } catch {
-      // Keep onConnect value when ALS is unset (approve/resume paths).
-    }
+    // Acting-user identity for this turn: the connection whose call tree is
+    // running it (agents get-current-agent.md — the framework resolves
+    // `connection` inside the wrapped method that received the frame). The
+    // user id was persisted on the connection in onConnect, so it survives
+    // hibernation wakes. Unresolvable clears any stale stamp: write tools
+    // then fail closed.
+    this.turnUserId = this.tryResolveTurnUserId();
 
     const organizationId = this.requireOrganizationId();
     this.ctx.waitUntil(
@@ -356,38 +363,53 @@ export class OrgChat extends Think<Cloudflare.Env> {
     // blocks (org header + org_memory) and the model is `getModel()`.
   }
 
-  private requireConnectedUserId(): string {
+  /** The ALS connection's stamped user, or undefined when unresolvable. */
+  private tryResolveTurnUserId(): string | undefined {
     const { connection } = getCurrentAgent();
-    const orgId = this.parentPath.at(-1)?.name ?? "?";
-    return resolveTurnUserId(connection, `${orgId}/${this.name}`);
+    return resolveTurnUserId(connection);
   }
 
   /**
-   * Acting user for tool execute / approve-resume: turnUserId, then ALS
-   * connection, then any live connection attachment (resume often has no ALS).
+   * Acting user for tool execute / approve-resume: the identity stamped for
+   * this turn or approval, else the ALS connection of the exact call tree.
+   * No "any live connection" fallback — another member's open socket must
+   * never lend its identity. Unresolvable fails closed with the
+   * permission-denied result (`asToolResult` maps this exact message to
+   * `code: "forbidden"`).
    */
   private requireTurnUserId(): string {
     if (this.turnUserId) {
       return this.turnUserId;
     }
-    try {
-      const userId = this.requireConnectedUserId();
+    const userId = this.tryResolveTurnUserId();
+    if (userId) {
       this.turnUserId = userId;
       return userId;
-    } catch {
-      // fall through to connection scan
     }
-    for (const connection of this.getConnections<{ userId?: string }>()) {
-      const userId = connection.state?.userId;
-      if (userId) {
-        this.turnUserId = userId;
-        return userId;
-      }
-    }
-    const orgId = this.parentPath.at(-1)?.name ?? "?";
-    throw new Error(
-      `OrgAgent ${orgId}/${this.name}: no active connection for this turn`
-    );
+    throw new Error(PERMISSION_DENIED_MESSAGE);
+  }
+
+  /**
+   * Approvals run as the user who approved: the callable's own ALS
+   * connection is the socket that sent the approval frame, so the resumed
+   * run's gated tools (including codemode sandbox callbacks, where ALS is
+   * unavailable) authorize against the approver — not whoever started the
+   * last turn. `@callable()` keeps the Think built-in registered after the
+   * override (nearest decorated declaration wins).
+   */
+  @callable()
+  override approveExecution(executionId: string): Promise<unknown> {
+    this.turnUserId = this.tryResolveTurnUserId();
+    return super.approveExecution(executionId);
+  }
+
+  @callable()
+  override rejectExecution(
+    executionId: string,
+    reason?: string
+  ): Promise<unknown> {
+    this.turnUserId = this.tryResolveTurnUserId();
+    return super.rejectExecution(executionId, reason);
   }
 
   override getTools(): ToolSet {

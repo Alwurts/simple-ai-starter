@@ -28,4 +28,15 @@ describe("OrgChat client callables", () => {
     expect(callables.has("compactNow")).toBe(true);
     expect(callables.has("searchMessages")).toBe(false);
   });
+
+  it("keeps the Think approval callables registered after the identity overrides", () => {
+    // OrgChat overrides approveExecution/rejectExecution to stamp the
+    // approver's identity; `@callable()` on the overrides keeps them
+    // reachable from the client (nearest decorated declaration wins).
+    const instance = Object.create(OrgChat.prototype) as OrgChat;
+    const callables = instance.getCallableMethods();
+    expect(callables.has("approveExecution")).toBe(true);
+    expect(callables.has("rejectExecution")).toBe(true);
+    expect(callables.has("pendingExecutions")).toBe(true);
+  });
 });
