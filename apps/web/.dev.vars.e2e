@@ -1,0 +1,18 @@
+# Committed e2e-only vars (all fake values) — selected when CLOUDFLARE_ENV=e2e.
+# Wrangler then loads `.dev.vars.e2e` instead of a developer's `.dev.vars`, so a
+# real provider key can never reach an e2e run. Never put a real key here.
+BETTER_AUTH_SECRET=e2e-only-not-a-secret-0123456789abcdef
+BETTER_AUTH_URL=http://localhost:4012
+
+RESEND_API_KEY=
+EMAIL_SENDER=noreply@example.com
+MOCK_SEND_EMAIL=true
+
+# Point the existing openai-compatible provider at the local fake model server
+# (test/e2e/fake-model-server.mjs, started by Playwright).
+ORG_CHAT_PROVIDER=openai-compatible
+OPENAI_COMPATIBLE_BASE_URL=http://127.0.0.1:8799/v1
+OPENAI_COMPATIBLE_API_KEY=e2e-only-not-a-real-key
+ORG_CHAT_MODEL=e2e-fake-model
+
+FETCH_ALLOWED_HOSTS=

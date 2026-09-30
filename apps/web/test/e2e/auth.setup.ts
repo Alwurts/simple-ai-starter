@@ -1,30 +1,36 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test as setup } from "@playwright/test";
+import { fillValue, waitForRouteSettled, waitHydrated } from "./helpers";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const authFile = join(__dirname, "../.auth/user.json");
 const ONBOARDING_URL_PATTERN = /onboarding/;
 
 setup("create authenticated user", async ({ page }) => {
-  // Sign up a new user — wait for hydration before interacting
+  // Unique per attempt: a retry after a failed attempt must not collide with
+  // the user the failed attempt already created.
+  const email = `e2e-${Date.now()}@example.com`;
+
   await page.goto("/signup");
-  await page.waitForLoadState("networkidle");
-  await page.locator("input#name").fill("E2E Test User");
-  await page.locator("input#email").fill("e2e-test@example.com");
-  await page.locator("input#password").fill("TestPassword123!");
+  await waitHydrated(page);
+  await fillValue(page.locator("input#name"), "E2E Test User");
+  await fillValue(page.locator("input#email"), email);
+  await fillValue(page.locator("input#password"), "TestPassword123!");
   await page.getByRole("button", { name: "Sign up" }).click();
 
   // Should redirect to onboarding
-  await expect(page).toHaveURL(ONBOARDING_URL_PATTERN, { timeout: 10_000 });
+  await expect(page).toHaveURL(ONBOARDING_URL_PATTERN, { timeout: 15_000 });
 
-  // Create an organization (name auto-fills the slug) — wait for hydration
-  await page.waitForLoadState("networkidle");
-  await page.locator("input#name").fill("E2E Test Org");
+  // The org route mounts lazily after the URL changes: let its chunk cascade
+  // settle, then fill — otherwise the lazy swap remounts the form and wipes
+  // the value between fill and submit.
+  await waitForRouteSettled(page);
+  await fillValue(page.locator("input#name"), "E2E Test Org");
   await page.getByRole("button", { name: "Create Organization" }).click();
 
   // Should redirect to the dashboard
-  await expect(page).toHaveURL("/", { timeout: 10_000 });
+  await expect(page).toHaveURL("/", { timeout: 15_000 });
 
   // Save the authenticated state
   await page.context().storageState({ path: authFile });

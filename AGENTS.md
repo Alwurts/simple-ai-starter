@@ -19,6 +19,7 @@ Run from the **monorepo root** (not inside a package):
 | Format + lint (fix) | `pnpm lint:fix` |
 | Lint (check only) | `pnpm lint:check` |
 | Tests | `pnpm test` |
+| E2E tests | `pnpm --filter web test:e2e` — own port + state, fake model server; runs in CI, not in `pnpm verify` |
 | Build | `pnpm build` |
 | Everything CI runs (before you push) | `pnpm verify` |
 | Generate a migration | `pnpm db:generate` |

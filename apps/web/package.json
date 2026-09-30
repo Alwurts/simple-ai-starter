@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "vite dev --port 4011",
+    "dev:e2e": "vite dev --port 4012 --strictPort",
     "build": "vite build",
     "preview": "pnpm run build && vite preview",
     "test": "vitest run --project node --project workers",
@@ -22,6 +23,7 @@
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote",
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "rm -rf .wrangler/state/v3/d1 && pnpm db:migrate",
+    "db:reset:e2e": "rm -rf test/e2e/.wrangler && wrangler d1 migrations apply DB --local --persist-to test/e2e/.wrangler/state",
     "db:list": "wrangler d1 migrations list DB --local",
     "db:studio": "pnpm --filter @workspace/db db:studio"
   },

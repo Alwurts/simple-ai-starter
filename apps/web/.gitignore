@@ -16,4 +16,6 @@ todos.json
 
 .dev.vars*
 !.dev.vars.example
+# The committed, secret-free e2e vars file (selected by CLOUDFLARE_ENV=e2e).
+!.dev.vars.e2e
 !.env.example
