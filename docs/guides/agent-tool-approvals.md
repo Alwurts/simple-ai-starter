@@ -45,7 +45,7 @@ shows the first pause's args.
 Identity note: a tool runs as the user of the connection that sent the turn or
 the approval frame — `OrgChat.getTools()` binds it per invocation. An approval's
 auto-continuation runs under the approving connection (`_fireAutoContinuation`
-re-enters with it), so follow-up writes run as the approver; only
-connectionless continuations (an approval from a surface with no open socket)
-and recovery continuations have no connection and fail closed with the
+re-enters with it), so follow-up writes run as the approver. An approval with
+no calling connection continues on any open socket (framework behaviour); its
+replayed writes — like recovery continuations — still fail closed with the
 permission-denied result rather than guessing "some live connection".
