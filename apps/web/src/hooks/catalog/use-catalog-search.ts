@@ -1,29 +1,20 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { client } from "@/lib/client";
+import { useActiveOrganizationId } from "@/hooks/organization/use-organization";
+import { catalogSearchQueryOptions } from "@/lib/catalog/product-queries";
 
-export const getCatalogSearchKey = (query: string) => [
-  "catalog",
-  "search",
-  query,
-];
+/** Below this the ⌘K query is noise. */
+export const CATALOG_SEARCH_MIN_QUERY = 2;
 
 export function useCatalogSearch(query: string, enabled: boolean) {
+  const organizationId = useActiveOrganizationId();
   const trimmed = query.trim();
 
   return useQuery({
-    queryKey: getCatalogSearchKey(trimmed),
-    queryFn: async () => {
-      const res = await client.catalog.products.$get({
-        query: { search: trimmed },
-      });
-      if (!res.ok) {
-        throw new Error("Catalog search failed");
-      }
-      return res.json();
-    },
-    enabled: enabled && trimmed.length >= 2,
+    ...catalogSearchQueryOptions(organizationId ?? "", trimmed),
+    enabled:
+      enabled && !!organizationId && trimmed.length >= CATALOG_SEARCH_MIN_QUERY,
     placeholderData: keepPreviousData,
   });
 }

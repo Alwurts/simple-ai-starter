@@ -1,9 +1,10 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { authClient } from "@workspace/auth/client";
 
 export const getInvitationKey = (id: string) => ["invitation", id];
+export const getUserInvitationsKey = () => ["user-invitations"] as const;
 
 export const useActiveOrganizationId = () => {
   const { data: session } = authClient.useSession();
@@ -29,9 +30,29 @@ export const useInvitation = (id: string) =>
     enabled: !!id,
   });
 
-export const useAcceptInvitation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
+/**
+ * The signed-in user's pending invitations (better-auth
+ * `list-user-invitations`); onboarding offers them above "create an
+ * organization". Not org data — user-scoped key.
+ */
+export const useUserInvitations = () =>
+  useQuery({
+    queryKey: getUserInvitationsKey(),
+    queryFn: async () => {
+      const res = await authClient.organization.listUserInvitations();
+      if (res.error) {
+        throw new Error(res.error.message ?? "Failed to load invitations");
+      }
+      return res.data ?? [];
+    },
+  });
+
+// Mutations touch Better Auth state only: its nanostore hooks
+// (useSession/useListOrganizations/useActiveOrganization/…) refresh
+// themselves, so there is nothing to invalidate in React Query here.
+
+export const useAcceptInvitation = () =>
+  useMutation({
     mutationFn: async (invitationId: string) => {
       const res = await authClient.organization.acceptInvitation({
         invitationId,
@@ -41,12 +62,7 @@ export const useAcceptInvitation = () => {
       }
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
-      queryClient.invalidateQueries({ queryKey: ["activeOrganization"] });
-    },
   });
-};
 
 export const useRejectInvitation = () =>
   useMutation({
@@ -61,10 +77,8 @@ export const useRejectInvitation = () =>
     },
   });
 
-export const useInviteMember = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+export const useInviteMember = () =>
+  useMutation({
     mutationFn: async ({
       email,
       role,
@@ -81,18 +95,10 @@ export const useInviteMember = () => {
       }
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["activeOrganization"],
-      });
-    },
   });
-};
 
-export const useRemoveMember = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+export const useRemoveMember = () =>
+  useMutation({
     mutationFn: async ({ memberIdOrEmail }: { memberIdOrEmail: string }) => {
       const res = await authClient.organization.removeMember({
         memberIdOrEmail,
@@ -102,18 +108,10 @@ export const useRemoveMember = () => {
       }
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["activeOrganization"],
-      });
-    },
   });
-};
 
-export const useCancelInvitation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+export const useCancelInvitation = () =>
+  useMutation({
     mutationFn: async (invitationId: string) => {
       const res = await authClient.organization.cancelInvitation({
         invitationId,
@@ -123,18 +121,10 @@ export const useCancelInvitation = () => {
       }
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["activeOrganization"],
-      });
-    },
   });
-};
 
-export const useDeleteOrganization = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+export const useDeleteOrganization = () =>
+  useMutation({
     mutationFn: async (organizationId: string) => {
       const res = await authClient.organization.delete({
         organizationId,
@@ -144,21 +134,10 @@ export const useDeleteOrganization = () => {
       }
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["activeOrganization"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["organizations"],
-      });
-    },
   });
-};
 
-export const useUpdateOrganization = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+export const useUpdateOrganization = () =>
+  useMutation({
     mutationFn: async ({
       name,
       slug,
@@ -176,13 +155,4 @@ export const useUpdateOrganization = () => {
       }
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["activeOrganization"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["organizations"],
-      });
-    },
   });
-};

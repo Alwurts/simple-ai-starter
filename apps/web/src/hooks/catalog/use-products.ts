@@ -1,100 +1,69 @@
 "use client";
 
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   createProductSchema,
   updateProductSchema,
 } from "@workspace/contract/catalog";
 import type { PaginationQuery } from "@workspace/contract/pagination";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
-import type { InferResponseType } from "hono/client";
 import type { z } from "zod";
-import { client } from "@/lib/client";
-import { retryUnlessNotFound } from "@/lib/query";
+import { useActiveOrganizationId } from "@/hooks/organization/use-organization";
+import {
+  type Product,
+  productQueryKey,
+  productQueryOptions,
+  productsQueryKey,
+  productsQueryOptions,
+} from "@/lib/catalog/product-queries";
+import { apiErrorMessage, client } from "@/lib/client";
 
-/**
- * The outbound product row, inferred from the list endpoint's typed response
- * (ADR-004: reads are inferred from the implementation, never hand-mirrored).
- */
-export type Product = InferResponseType<
-  (typeof client.catalog.products)["$get"],
-  200
->["data"][number];
+export type { Product } from "@/lib/catalog/product-queries";
 
-export const getProductsKey = () => ["products"];
-export const getProductsListKey = (params: PaginationQuery) => [
-  "products",
-  "list",
-  params,
-];
-export const getProductKey = (id: string) => ["products", id];
-
-export const useProducts = (params: PaginationQuery) =>
-  useQuery({
-    queryKey: getProductsListKey(params),
-    queryFn: async () => {
-      const res = await client.catalog.products.$get({
-        query: {
-          page: params.page.toString(),
-          pageSize: params.pageSize.toString(),
-          ...(params.sortBy && { sortBy: params.sortBy }),
-          sortOrder: params.sortOrder,
-          ...(params.search && { search: params.search }),
-        },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load products");
-      }
-      return res.json();
-    },
-    placeholderData: keepPreviousData,
+export const useProducts = (params: PaginationQuery) => {
+  const organizationId = useActiveOrganizationId();
+  return useQuery({
+    ...productsQueryOptions(organizationId ?? "", params),
+    enabled: !!organizationId,
   });
+};
 
-export const useProduct = (id: string) =>
-  useQuery({
-    queryKey: getProductKey(id),
-    queryFn: async () => {
-      const res = await client.catalog.products[":id"].$get({
-        param: { id },
-      });
-      if (!res.ok) {
-        throw new Error("Product not found");
-      }
-      return res.json();
-    },
-    enabled: !!id,
-    retry: retryUnlessNotFound,
+export const useProduct = (id: string) => {
+  const organizationId = useActiveOrganizationId();
+  return useQuery({
+    ...productQueryOptions(organizationId ?? "", id),
+    enabled: !!id && !!organizationId,
   });
+};
 
 export const useCreateProduct = () => {
   const queryClient = useQueryClient();
+  const organizationId = useActiveOrganizationId();
   return useMutation({
     mutationFn: async (data: z.infer<typeof createProductSchema>) => {
       const res = await client.catalog.products.$post({
         json: data,
       });
       if (!res.ok) {
-        throw new Error("Failed to create product");
+        throw new Error(await apiErrorMessage(res, "Failed to create product"));
       }
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: getProductsKey() });
+      queryClient.invalidateQueries({
+        queryKey: productsQueryKey(organizationId ?? ""),
+      });
       toast.success("Product created");
     },
-    onError: () => {
-      toast.error("Failed to create product");
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 };
 
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient();
+  const organizationId = useActiveOrganizationId();
   return useMutation({
     mutationFn: async (params: {
       id: string;
@@ -105,17 +74,21 @@ export const useUpdateProduct = () => {
         json: params.data,
       });
       if (!res.ok) {
-        throw new Error("Failed to update product");
+        throw new Error(await apiErrorMessage(res, "Failed to update product"));
       }
       return res.json();
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: getProductsKey() });
-      queryClient.invalidateQueries({ queryKey: getProductKey(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: productsQueryKey(organizationId ?? ""),
+      });
+      queryClient.invalidateQueries({
+        queryKey: productQueryKey(organizationId ?? "", variables.id),
+      });
       toast.success("Product updated");
     },
-    onError: () => {
-      toast.error("Failed to update product");
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 };
@@ -129,24 +102,27 @@ interface PaginatedProducts {
 
 export const useDeleteProduct = () => {
   const queryClient = useQueryClient();
+  const organizationId = useActiveOrganizationId();
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await client.catalog.products[":id"].$delete({
         param: { id },
       });
       if (!res.ok) {
-        throw new Error("Failed to delete product");
+        throw new Error(await apiErrorMessage(res, "Failed to delete product"));
       }
     },
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: getProductsKey() });
+      await queryClient.cancelQueries({
+        queryKey: productsQueryKey(organizationId ?? ""),
+      });
 
       const previousLists = queryClient.getQueriesData<PaginatedProducts>({
-        queryKey: ["products", "list"],
+        queryKey: [...productsQueryKey(organizationId ?? ""), "list"],
       });
 
       queryClient.setQueriesData<PaginatedProducts>(
-        { queryKey: ["products", "list"] },
+        { queryKey: [...productsQueryKey(organizationId ?? ""), "list"] },
         (old) => {
           if (!old) {
             return old;
@@ -161,19 +137,21 @@ export const useDeleteProduct = () => {
 
       return { previousLists };
     },
-    onError: (_err, _id, context) => {
+    onError: (error, _id, context) => {
       if (context?.previousLists) {
         for (const [queryKey, data] of context.previousLists) {
           queryClient.setQueryData(queryKey, data);
         }
       }
-      toast.error("Failed to delete product");
+      toast.error(error.message);
     },
     onSuccess: () => {
       toast.success("Product deleted");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: getProductsKey() });
+      queryClient.invalidateQueries({
+        queryKey: productsQueryKey(organizationId ?? ""),
+      });
     },
   });
 };

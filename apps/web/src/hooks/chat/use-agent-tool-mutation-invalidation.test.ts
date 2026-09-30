@@ -151,7 +151,7 @@ describe("collectWriteToolCompletionIds — codemode execute calls", () => {
 });
 
 describe("applyWriteToolInvalidations", () => {
-  it("invalidates the products prefix once for new completion ids", () => {
+  it("invalidates the org's products prefix once for new completion ids", () => {
     const invalidateQueries = vi.fn();
     const queryClient = { invalidateQueries } as unknown as QueryClient;
     const handled = new Set<string>();
@@ -159,17 +159,19 @@ describe("applyWriteToolInvalidations", () => {
     applyWriteToolInvalidations({
       ids: ["tc_create"],
       handled,
+      organizationId: "org-1",
       queryClient,
     });
     applyWriteToolInvalidations({
       ids: ["tc_create"],
       handled,
+      organizationId: "org-1",
       queryClient,
     });
 
     expect(invalidateQueries).toHaveBeenCalledTimes(1);
     expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ["products"],
+      queryKey: ["org-1", "products"],
     });
   });
 
@@ -180,6 +182,7 @@ describe("applyWriteToolInvalidations", () => {
     applyWriteToolInvalidations({
       ids: [],
       handled: new Set(),
+      organizationId: "org-1",
       queryClient,
     });
 

@@ -27,6 +27,7 @@ import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { AlertCircle, ChevronsUpDown, LogOut, Plus } from "lucide-react";
 import { ThemeMenuItem } from "@/components/common/theme-toggle";
+import { isOrgDataQueryKey } from "@/lib/query";
 
 function orgInitials(name: string | undefined) {
   return name?.slice(0, 2).toUpperCase() ?? "??";
@@ -95,47 +96,30 @@ export function AppSidebarFooter() {
     null;
   const isPending = isSessionPending || (isOrgPending && !displayOrganization);
   const { mutate: setActiveOrganization } = useMutation({
-    mutationFn: async (organizationId: string) => {
-      await authClient.organization.setActive({
+    mutationFn: (organizationId: string) =>
+      authClient.organization.setActive({
         organizationId,
-      });
-      return {
-        organizationId,
-      };
-    },
-    onSuccess: ({ organizationId }) => {
+      }),
+    onSuccess: () => {
       toast.success("Organization set as active");
       navigate({
         to: "/",
       });
       refetchActiveOrganization();
+      // Org data keys carry the org id (`lib/<feature>/*-queries.ts`); a
+      // switch invalidates all of it — the old org's cache must not linger
+      // and the new org's stale entries refetch. Better Auth's nanostores
+      // (session/orgs/active-org) refresh themselves.
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          const queryKey = query.queryKey;
-          return (
-            Array.isArray(queryKey) &&
-            queryKey.length > 0 &&
-            queryKey[0] === organizationId
-          );
-        },
-      });
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const queryKey = query.queryKey;
-          return (
-            Array.isArray(queryKey) &&
-            (queryKey.includes("files") ||
-              queryKey.includes("chats") ||
-              queryKey.includes("projects") ||
-              queryKey.includes("agents") ||
-              queryKey.includes("members"))
-          );
-        },
+        predicate: (query) => isOrgDataQueryKey(query.queryKey),
       });
     },
   });
   const handleSignOut = async () => {
     await authClient.signOut();
+    // The next session may be a different user/org — never serve this
+    // session's cache (B5).
+    queryClient.clear();
     navigate({
       to: "/login",
     });
