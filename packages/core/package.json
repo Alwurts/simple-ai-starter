@@ -4,7 +4,9 @@
   "private": true,
   "exports": {
     "./catalog": "./src/catalog/index.ts",
-    "./*": "./src/*.ts"
+    "./organization": "./src/organization/index.ts",
+    "./errors": "./src/errors.ts",
+    "./pagination": "./src/pagination.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -1,28 +1,23 @@
 import type { RoleName } from "@workspace/auth/access-control";
 
-/** Display label for a stored role key. */
+/**
+ * English role labels — the one role-label map. `member` surfaces as
+ * "Operator", a copy-only rename; the stored value remains `member`.
+ */
+export const ROLE_LABELS: Record<RoleName, string> = {
+  owner: "Owner",
+  admin: "Administrator",
+  member: "Operator",
+};
+
+/** Label for a known role key. */
 export function roleMessage(role: RoleName): string {
-  switch (role) {
-    case "owner":
-      return "Owner";
-    case "admin":
-      return "Administrator";
-    case "member":
-      return "Operator";
-    default: {
-      const _exhaustive: never = role;
-      return _exhaustive;
-    }
-  }
+  return ROLE_LABELS[role];
 }
 
 /**
- * Label for a role string from better-auth data. "operator" = better-auth
- * `member` renamed in UI copy only (no schema change); unknown keys render
- * as-is.
+ * Label for a role string from better-auth data. Unknown keys render as-is.
  */
 export function roleLabel(role: string): string {
-  return role in { owner: 1, admin: 1, member: 1 }
-    ? roleMessage(role as RoleName)
-    : role;
+  return role in ROLE_LABELS ? ROLE_LABELS[role as RoleName] : role;
 }

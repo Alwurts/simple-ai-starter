@@ -60,7 +60,6 @@ describe("OrgSubAgent read-only tool composition", () => {
     const full = getOrgAgentTools({
       organizationId: "org_test",
       userId: "user_test",
-      waitUntil: () => undefined,
     });
     const readOnly = getOrgAgentReadOnlyTools(ctx);
     for (const name of Object.keys(readOnly)) {

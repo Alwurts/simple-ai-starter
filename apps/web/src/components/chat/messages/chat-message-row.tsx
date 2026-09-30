@@ -2,14 +2,8 @@
 
 import type { PendingAction, ProxyToolOutput } from "@cloudflare/codemode";
 import { PERMISSION_DENIED_MESSAGE } from "@workspace/agent/constants";
-import type { AIDataPart } from "@workspace/contract/ai";
 import { Bubble, BubbleContent } from "@workspace/ui/components/shadcn/bubble";
 import { Button } from "@workspace/ui/components/shadcn/button";
-import {
-  Marker,
-  MarkerContent,
-  MarkerIcon,
-} from "@workspace/ui/components/shadcn/marker";
 import {
   Message,
   MessageContent,
@@ -40,12 +34,8 @@ import {
   isTextUIPart,
   isToolUIPart,
   type ToolUIPart,
-  type UIMessagePart,
-  type UITools,
 } from "ai";
 import {
-  CheckIcon,
-  CircleIcon,
   CopyIcon,
   PlayIcon,
   RefreshCwIcon,
@@ -72,42 +62,6 @@ function MarkdownBody({
     >
       {children}
     </Streamdown>
-  );
-}
-
-function PlanPart({
-  entries,
-  messageId,
-  partIndex,
-}: {
-  entries: AIDataPart["plan"]["entries"];
-  messageId: string;
-  partIndex: number;
-}) {
-  if (entries.length === 0) {
-    return null;
-  }
-
-  return (
-    <div
-      className="my-2 flex flex-col gap-1"
-      key={`${messageId}-plan-${partIndex}`}
-    >
-      {entries.map((entry, index) => {
-        const done = entry.status === "completed";
-        return (
-          <Marker
-            // biome-ignore lint/suspicious/noArrayIndexKey: plan entries have no stable id
-            key={`${messageId}-plan-${partIndex}-${index}`}
-          >
-            <MarkerIcon>{done ? <CheckIcon /> : <CircleIcon />}</MarkerIcon>
-            <MarkerContent className={cn(done && "line-through")}>
-              {entry.content}
-            </MarkerContent>
-          </Marker>
-        );
-      })}
-    </div>
   );
 }
 
@@ -560,7 +514,7 @@ function OrgMessagePart({
   onLoadPendingExecution,
   resolvingExecutions,
 }: {
-  part: UIMessagePart<AIDataPart, UITools>;
+  part: OrgChatMessage["parts"][number];
   messageId: string;
   partIndex: number;
   isLastPart: boolean;
@@ -615,17 +569,6 @@ function OrgMessagePart({
         part={part}
         partIndex={partIndex}
         resolvingExecutions={resolvingExecutions}
-      />
-    );
-  }
-
-  if (part.type === "data-plan") {
-    return (
-      <PlanPart
-        entries={part.data.entries}
-        key={`${messageId}-plan-${partIndex}`}
-        messageId={messageId}
-        partIndex={partIndex}
       />
     );
   }

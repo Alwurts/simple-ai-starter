@@ -79,6 +79,36 @@ describe("getPaginatedProducts", () => {
     expect(result.total).toBe(1);
   });
 
+  it("search matches the description too", async () => {
+    await seedProduct(orgId, {
+      name: "Some Product",
+      description: "UNIQUE-DESC phrase",
+    });
+
+    const { getPaginatedProducts } = await import("@workspace/core/catalog");
+    const result = await getPaginatedProducts(orgId, {
+      page: 1,
+      pageSize: 10,
+      search: "UNIQUE-DESC",
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.data[0].name).toBe("Some Product");
+  });
+
+  it("search is case-insensitive", async () => {
+    await seedProduct(orgId, { name: "UPPERCASE WIDGET" });
+
+    const { getPaginatedProducts } = await import("@workspace/core/catalog");
+    const result = await getPaginatedProducts(orgId, {
+      page: 1,
+      pageSize: 10,
+      search: "uppercase",
+    });
+
+    expect(result.total).toBe(1);
+  });
+
   it("sorts by name ascending", async () => {
     await seedProduct(orgId, { name: "Zebra" });
     await seedProduct(orgId, { name: "Apple" });

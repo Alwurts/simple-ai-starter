@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { auth } from "@workspace/auth";
-import { AuthPage } from "@/components/common/auth-page";
+import { AuthPage } from "@workspace/ui/components/brand/auth-page";
 
 const isSignedIn = createServerFn({ method: "GET" }).handler(async () => {
   const headers = getRequestHeaders();

@@ -30,10 +30,6 @@ export function requireFound<T>(
   return data;
 }
 
-function mapDomainErrorCode(code: DomainError["code"]): ToolErrorCode {
-  return code;
-}
-
 export async function asToolResult<T>(
   fn: () => T | Promise<T>
 ): Promise<ToolResult<T>> {
@@ -45,7 +41,7 @@ export async function asToolResult<T>(
       return {
         ok: false,
         error: error.message,
-        code: mapDomainErrorCode(error.code),
+        code: error.code,
       };
     }
     if (error instanceof Error) {

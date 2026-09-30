@@ -8,9 +8,5 @@ export type ToolContext = AgentToolsContext;
  * registered on that binder, so `userId` is never read.
  */
 export function readOnlyToolContext(organizationId: string): ToolContext {
-  return {
-    organizationId,
-    userId: "",
-    waitUntil: () => undefined,
-  };
+  return { organizationId, userId: "" };
 }

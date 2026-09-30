@@ -1,17 +1,15 @@
 import { DomainError } from "@workspace/core/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PERMISSION_DENIED_MESSAGE } from "../../constants";
+import { PERMISSION_DENIED_MESSAGE } from "../constants";
 import {
   getProductDescription,
   getProductExecute,
   getProductInputSchema,
-  getProductName,
   updateProductDescription,
   updateProductExecute,
   updateProductInputSchema,
-  updateProductName,
-} from "../../tool-parts/catalog/products";
-import { inAppTool } from "../in-app-tool";
+} from "../tool-parts/catalog/products";
+import { inAppTool } from "./in-app-tool";
 
 vi.mock("@workspace/core/catalog", () => ({
   getProduct: vi.fn(),
@@ -22,7 +20,7 @@ vi.mock("@workspace/core/catalog", () => ({
   resolveProductRef: vi.fn(),
 }));
 
-vi.mock("../../tools/guard", () => ({
+vi.mock("../tools/guard", () => ({
   assertCan: vi.fn(),
 }));
 
@@ -31,18 +29,16 @@ import {
   resolveProductRef,
   updateProduct,
 } from "@workspace/core/catalog";
-import { assertCan } from "../../tools/guard";
+import { assertCan } from "../tools/guard";
 
 const ctx = {
   organizationId: "org_test",
   userId: "user_test",
-  waitUntil: () => undefined,
 };
 
 const readOnlyCtx = {
   organizationId: "org_test",
   userId: "",
-  waitUntil: () => undefined,
 };
 
 interface ExecutableTool {
@@ -71,7 +67,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(readOnlyCtx);
     const getProductTool = bind({
-      name: getProductName,
       description: getProductDescription,
       inputSchema: getProductInputSchema,
       execute: getProductExecute,
@@ -86,7 +81,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(readOnlyCtx);
     const getProductTool = bind({
-      name: getProductName,
       description: getProductDescription,
       inputSchema: getProductInputSchema,
       execute: getProductExecute,
@@ -108,7 +102,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(ctx);
     const updateProductTool = bind({
-      name: updateProductName,
       description: updateProductDescription,
       inputSchema: updateProductInputSchema,
       execute: updateProductExecute,
@@ -131,7 +124,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(ctx);
     const updateProductTool = bind({
-      name: updateProductName,
       description: updateProductDescription,
       inputSchema: updateProductInputSchema,
       execute: updateProductExecute,
@@ -155,7 +147,6 @@ describe("product tools — ToolResult contract", () => {
 
     const bind = inAppTool(ctx);
     const updateProductTool = bind({
-      name: updateProductName,
       description: updateProductDescription,
       inputSchema: updateProductInputSchema,
       execute: updateProductExecute,

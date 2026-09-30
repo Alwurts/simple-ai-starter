@@ -141,7 +141,6 @@ function orgChatInFreshDo(organizationId: string) {
             },
           }),
         },
-        waitUntil: () => undefined,
       },
       configurable: true,
     });
@@ -307,7 +306,6 @@ describe("getOrgAgentTools composition", () => {
         getOrgAgentTools({
           organizationId: "org_test",
           userId: "user_test",
-          waitUntil: () => undefined,
         })
       ).sort()
     ).toEqual([

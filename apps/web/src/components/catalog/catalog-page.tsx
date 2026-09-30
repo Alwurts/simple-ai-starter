@@ -5,29 +5,25 @@ import type {
   SortingState,
   Updater,
 } from "@tanstack/react-table";
-import { AppBreadcrumbs } from "@workspace/ui/components/brand/app-breadcrumbs";
-import { ResourceTable } from "@workspace/ui/components/brand/resource-table";
 import {
   ShellContent,
   ShellHeader,
   ShellHeaderActions,
+  ShellHeaderSidebarTrigger,
   ShellPage,
 } from "@workspace/ui/components/brand/shell";
-import { SortableHeader } from "@workspace/ui/components/brand/sortable-header";
-import type { DataTableColumnDef } from "@workspace/ui/lib/data-table-features";
-import { DEFAULT_CURRENCY, formatMoneyMinor } from "@workspace/ui/lib/money";
+import type { DataTableColumnDef } from "@workspace/ui/components/data-table/data-table-features";
+import { ResourceTable } from "@workspace/ui/components/data-table/resource-table";
+import { SortableHeader } from "@workspace/ui/components/data-table/sortable-header";
 import {
   getColumnFilterValue,
   type TableFilterDefinition,
-} from "@workspace/ui/lib/table-filter-types";
+} from "@workspace/ui/components/data-table/table-filter-types";
+import { DEFAULT_CURRENCY, formatMoneyMinor } from "@workspace/ui/lib/money";
 import { useCallback, useMemo } from "react";
 import { CreateProductDialog } from "@/components/catalog/create-product-dialog";
-import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
+import { AppBreadcrumbs } from "@/components/layout/app-breadcrumbs";
 import { type Product, useProducts } from "@/hooks/catalog/use-products";
-import {
-  sortableHeaderAriaLabel,
-  tableToolbarLabels,
-} from "@/lib/catalog/table-toolbar-labels";
 import { INTL_LOCALE } from "@/lib/locale";
 
 function productFilterDefinitions(): TableFilterDefinition[] {
@@ -169,12 +165,7 @@ export function CatalogPage() {
       id: "name",
       meta: { label: "Name" },
       accessorKey: "name",
-      header: ({ column }) => (
-        <SortableHeader
-          column={column}
-          getAriaLabel={sortableHeaderAriaLabel}
-        />
-      ),
+      header: ({ column }) => <SortableHeader column={column} />,
       cell: ({ row }) => {
         const product = row.original;
         return (
@@ -192,12 +183,7 @@ export function CatalogPage() {
       id: "price",
       meta: { label: "Price" },
       accessorKey: "price",
-      header: ({ column }) => (
-        <SortableHeader
-          column={column}
-          getAriaLabel={sortableHeaderAriaLabel}
-        />
-      ),
+      header: ({ column }) => <SortableHeader column={column} />,
       cell: ({ row }) => {
         const price = (row.getValue("price") as number | null) ?? 0;
         return (
@@ -215,11 +201,7 @@ export function CatalogPage() {
     <ShellPage>
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
-        <AppBreadcrumbs
-          ellipsisAriaLabel="Show hidden breadcrumb segments"
-          homeLabel="Today"
-          items={[{ title: "Catalog" }]}
-        />
+        <AppBreadcrumbs items={[{ title: "Catalog" }]} />
         <ShellHeaderActions>
           <CreateProductDialog />
         </ShellHeaderActions>
@@ -245,7 +227,6 @@ export function CatalogPage() {
             pageCount={pageCount}
             pagination={pagination}
             sorting={sorting}
-            toolbarLabels={tableToolbarLabels()}
           />
         )}
       </ShellContent>

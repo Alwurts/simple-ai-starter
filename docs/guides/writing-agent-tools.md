@@ -10,22 +10,24 @@ Design principles below are adapted from Korra's `platform-tool-design`
 methodology (agent-facing contract, composability, shape matching); the
 implementation details are specific to this starter + Think stack.
 
-## Layout: tool-parts + in-app binder
+## Layout: tool-parts + per-surface binders
 
 Tools are **named pieces** (`name` / `description` / `inputSchema` /
-`execute(ctx, input)`). Binders stamp identity and wrap the surface. Do not
-close over org id inside the catalog, and do not loop a catalog array to
-register tools.
+`execute(ctx, input)`) in `tool-parts/<cap>/`. Each surface composes the pieces
+itself and may wrap `execute` differently — `in-app/` today; `mcp/` is
+reserved for the MCP binder + composition (own unit). Do not close over org id
+inside the catalog, and do not loop a catalog array to register tools.
 
 ```
 packages/agent/src/
 ├── tool-parts/
 │   ├── context.ts              # ToolContext (= AgentToolsContext)
 │   └── catalog/products.ts     # the five product pieces
-├── in-app/
+├── in-app/                     # the in-app binder + composition
 │   ├── in-app-tool.ts          # binder: asToolResult + needsApproval
-│   ├── compose-org-tools.ts    # getOrgAgentTools / ReadOnly / Display
+│   ├── compose-org-tools.ts    # getOrgAgentTools / getOrgAgentReadOnlyTools
 │   └── display.ts              # display_* (UI echoes — not tool-parts)
+├── (mcp/)                      # reserved — MCP binder + composition, own unit
 └── tools/
     ├── tool-result.ts          # ToolResult + requireFound + asToolResult
     └── guard.ts                # assertCan RBAC (called from write execute)
@@ -35,7 +37,7 @@ packages/agent/src/
 |---------------|-----------------|---------------|
 | `getOrgAgentTools(ctx)` | The five product tools (`list/get/create/update/delete_product`) | Top-level Think tools on `OrgChat` — **also** the `tools.*` surface inside the codemode sandbox |
 | `getOrgAgentReadOnlyTools(ctx)` | `list_products`, `get_product` only | Delegated sub-agent (`OrgSubAgent`) |
-| `getOrgAgentDisplayTools(ctx)` | `display_product_list`, `display_memory` | Top-level peers of the product tools + `delegate` |
+| `createDisplayTools(ctx)` (`in-app/display.ts`) | `display_product_list`, `display_memory` | Composed in `org-chat.getTools()` as top-level peers of the product tools + `delegate` |
 
 `org-chat.getTools()` spreads the fetch tool (when allowlisted), the product
 tools, `delegate`, and display tools as siblings. Display tools are UI echoes
@@ -108,13 +110,12 @@ auto-continues the chat.
 
 ## Context globals vs `inputSchema`
 
-`ToolContext` / `AgentToolsContext`: `{ organizationId, userId, waitUntil }`
+`ToolContext` / `AgentToolsContext`: `{ organizationId, userId }`
 
 | Closed in context | Passed per call (`inputSchema`) |
 |-------------------|----------------------------------|
 | `organizationId` (every tool) | Product ids / refs, create/update fields |
 | `userId` (writes — `assertCan`; tool execute often lacks ALS) | `limit`, filters |
-| `waitUntil` | Unused today |
 
 `execute` always receives full `ToolContext`. The read-only binder fills
 `userId` with `""` because write pieces are not registered there. Writes call
@@ -180,7 +181,7 @@ type ToolResult<T> = ToolOk<T> | ToolErr;
 
 `asToolResult(fn)` wraps `execute`:
 
-- `DomainError` → `{ ok: false, error: message, code: map DomainErrorCode }`
+- `DomainError` → `{ ok: false, error: message, code: the DomainError's code }`
 - `Error` with `PERMISSION_DENIED_MESSAGE` → `{ ok: false, code: "forbidden" }`
 - other `Error` → `{ ok: false, code: "unknown" }`
 - success → `{ ok: true, data }`
@@ -325,7 +326,7 @@ For day-to-day "add `get_foo`," skip the grill and follow **Adding a new tool**.
 
 - Unit: `packages/agent/src/tools/tool-result.test.ts` — `requireFound` and
   `asToolResult` mapping.
-- Agent: `packages/agent/src/in-app/__tests__/product-tools.test.ts` — in-app
+- Agent: `packages/agent/src/in-app/product-tools.test.ts` — in-app
   execute returns `ToolResult`, no throw on miss.
 - Workerd: `apps/web/test/agent/tool-approvals.workerd.test.ts` —
   `needsApproval` on `update_product` / `delete_product`; `sub-agent-tools.workerd.test.ts`

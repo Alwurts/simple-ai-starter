@@ -1,6 +1,6 @@
 import type { Action } from "@workspace/auth/access-control";
 import { can } from "@workspace/auth/access-control";
-import { getActiveMemberRole } from "@workspace/core/auth";
+import { getActiveMemberRole } from "@workspace/core/organization";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { HonoContextWithAuthAndOrg } from "../types";

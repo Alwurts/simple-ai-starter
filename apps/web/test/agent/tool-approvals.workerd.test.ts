@@ -16,7 +16,6 @@ import { describe, expect, it } from "vitest";
 const ctx = {
   organizationId: "org_test",
   userId: "user_test",
-  waitUntil: () => undefined,
 };
 
 describe("top-level approval-gated writes", () => {

@@ -1,4 +1,4 @@
-import { getOrganizationSummary } from "@workspace/core/organizations";
+import { getOrganizationSummary } from "@workspace/core/organization";
 import { buildOrgHeader } from "./system-prompt";
 
 export async function buildOrgContext(organizationId: string) {

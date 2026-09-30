@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "private": true,
   "exports": {
-    "./ai": "./src/ai.ts",
     "./catalog": "./src/catalog/index.ts",
     "./utils": "./src/utils.ts",
     "./pagination": "./src/pagination.ts"
@@ -12,7 +11,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "ai": "7.0.68",
     "zod": "4.3.5"
   },
   "devDependencies": {

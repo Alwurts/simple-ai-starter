@@ -1,15 +1,15 @@
 import { Link, Outlet } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
-import { AppBreadcrumbs } from "@workspace/ui/components/brand/app-breadcrumbs";
 import {
   ShellContent,
   ShellHeader,
   ShellHeaderActions,
+  ShellHeaderSidebarTrigger,
   ShellPage,
 } from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
-import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
+import { AppBreadcrumbs } from "@/components/layout/app-breadcrumbs";
 import {
   type SettingsNavSection,
   SettingsSectionLayout,
@@ -46,8 +46,6 @@ export function SettingsLayout() {
         <ShellHeader>
           <ShellHeaderSidebarTrigger className="-ml-1" />
           <AppBreadcrumbs
-            ellipsisAriaLabel="Show hidden breadcrumb segments"
-            homeLabel="Today"
             items={[
               {
                 title: "Settings",
@@ -72,8 +70,6 @@ export function SettingsLayout() {
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
         <AppBreadcrumbs
-          ellipsisAriaLabel="Show hidden breadcrumb segments"
-          homeLabel="Today"
           items={[
             {
               title: "Settings",
@@ -97,8 +93,6 @@ function SettingsSkeleton({ sections }: { sections: SettingsNavSection[] }) {
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
         <AppBreadcrumbs
-          ellipsisAriaLabel="Show hidden breadcrumb segments"
-          homeLabel="Today"
           items={[
             {
               title: "Settings",

@@ -1,4 +1,4 @@
-import { LogoMark } from "@workspace/ui/components/icons/logo-monochrome";
+import { LogoMark } from "@workspace/ui/components/brand/logo-monochrome";
 import { CreateOrganizationForm } from "@/components/organization/create-organization-form";
 
 export function OnboardingPage() {

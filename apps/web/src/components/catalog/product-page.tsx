@@ -1,8 +1,8 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { AppBreadcrumbs } from "@workspace/ui/components/brand/app-breadcrumbs";
 import {
   ShellHeader,
   ShellHeaderActions,
+  ShellHeaderSidebarTrigger,
   ShellPage,
 } from "@workspace/ui/components/brand/shell";
 import {
@@ -35,8 +35,8 @@ import {
   ProductForm,
   type ProductFormValues,
 } from "@/components/catalog/product-form";
+import { AppBreadcrumbs } from "@/components/layout/app-breadcrumbs";
 import { ResourceNotFound } from "@/components/layout/resource-not-found";
-import { ShellHeaderSidebarTrigger } from "@/components/layout/shell-header-sidebar-trigger";
 import {
   useDeleteProduct,
   useProduct,
@@ -139,8 +139,6 @@ export function ProductPage() {
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
         <AppBreadcrumbs
-          ellipsisAriaLabel="Show hidden breadcrumb segments"
-          homeLabel="Today"
           items={[
             {
               title: "Catalog",

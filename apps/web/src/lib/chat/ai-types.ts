@@ -1,8 +1,7 @@
 import type { useAgentChat } from "@cloudflare/think/react";
-import type { AIDataPart, AIMetadata } from "@workspace/contract/ai";
-import type { UIMessage } from "ai";
+import type { OrgChatUIMessage } from "@workspace/agent/types";
 
-export interface OrgChatMessage extends UIMessage<AIMetadata, AIDataPart> {}
+export type OrgChatMessage = OrgChatUIMessage;
 
 export type ChatHelpers = ReturnType<
   typeof useAgentChat<unknown, OrgChatMessage>

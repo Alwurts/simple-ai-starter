@@ -13,12 +13,14 @@ import {
   type Table as TanstackTable,
   useTable,
 } from "@tanstack/react-table";
-import { sortAriaSort } from "@workspace/ui/components/brand/sortable-header";
 import {
-  TableFilterToolbar,
-  type TableFilterToolbarLabels,
-} from "@workspace/ui/components/brand/table-filter-toolbar";
-import { getSortableColumns } from "@workspace/ui/components/brand/table-sort-control";
+  type DataTableColumnDef,
+  type DataTableFeatures,
+  dataTableFeatures,
+} from "@workspace/ui/components/data-table/data-table-features";
+import { sortAriaSort } from "@workspace/ui/components/data-table/sortable-header";
+import { TableFilterToolbar } from "@workspace/ui/components/data-table/table-filter-toolbar";
+import type { TableFilterDefinition } from "@workspace/ui/components/data-table/table-filter-types";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
   DropdownMenu,
@@ -35,12 +37,6 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/shadcn/table";
-import {
-  type DataTableColumnDef,
-  type DataTableFeatures,
-  dataTableFeatures,
-} from "@workspace/ui/lib/data-table-features";
-import type { TableFilterDefinition } from "@workspace/ui/lib/table-filter-types";
 import { cn } from "@workspace/ui/lib/utils";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -344,7 +340,6 @@ interface DataTableProps<TData extends RowData> {
   totalCount?: number;
   /** Rich empty UI for server-driven lists — replaces the default table empty row. */
   collectionEmpty?: ReactNode;
-  toolbarLabels?: TableFilterToolbarLabels;
 }
 export function DataTable<TData extends RowData>(props: DataTableProps<TData>) {
   const controller = useDataTableController(props);
@@ -437,10 +432,8 @@ function useDataTableController<TData extends RowData>({
     filteredRows,
     isServerSide,
     setColumnFilters,
-    setSorting,
     showCollectionEmpty,
     showLegacyFilterRow,
-    sorting,
     table,
     tableBodyContent,
     toolbarFilteredCount,
@@ -462,9 +455,7 @@ function DataTableView<TData extends RowData>({
   filteredRows,
   isServerSide,
   setColumnFilters,
-  setSorting,
   showLegacyFilterRow,
-  sorting,
   table,
   tableBodyContent,
   toolbarFilteredCount,
@@ -473,7 +464,6 @@ function DataTableView<TData extends RowData>({
   showClientPagination,
   collectionEmpty,
   showCollectionEmpty,
-  toolbarLabels,
 }: DataTableProps<TData> & ReturnType<typeof useDataTableController<TData>>) {
   return (
     <div
@@ -488,13 +478,7 @@ function DataTableView<TData extends RowData>({
             columnFilters={columnFilters}
             definitions={filterDefinitions ?? []}
             filteredCount={toolbarFilteredCount}
-            labels={toolbarLabels}
             onColumnFiltersChange={setColumnFilters}
-            sort={{
-              sorting,
-              onSortingChange: setSorting,
-              columns: getSortableColumns(table),
-            }}
             totalCount={toolbarTotalCount}
           />
         </div>
@@ -539,13 +523,7 @@ function DataTableView<TData extends RowData>({
       {isServerSide && !showCollectionEmpty ? (
         <div className="flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3">
           <div className="flex-1 text-muted-foreground text-sm tabular-nums">
-            {(
-              toolbarLabels?.pageOf ??
-              ((page, total) => `Page ${page} of ${total}`)
-            )(
-              (externalPagination?.pageIndex ?? 0) + 1,
-              Math.max(pageCount ?? 0, 1)
-            )}
+            {`Page ${(externalPagination?.pageIndex ?? 0) + 1} of ${Math.max(pageCount ?? 0, 1)}`}
           </div>
           <DataTablePaginationButtons
             canNext={table.getCanNextPage()}

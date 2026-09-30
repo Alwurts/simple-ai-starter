@@ -1,5 +1,5 @@
 import { auth } from "@workspace/auth";
-import { getActiveMemberRole } from "@workspace/core/auth";
+import { getActiveMemberRole } from "@workspace/core/organization";
 import { routeAgentRequest } from "agents";
 
 /**
