@@ -2,8 +2,6 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { auth } from "@workspace/auth";
-import { getUserOrganization } from "@workspace/core/auth";
-import { db } from "@workspace/db";
 import { Shell, ShellInset } from "@workspace/ui/components/brand/shell";
 import { OrgConnection } from "@/components/chat/connection/org-connection";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -19,18 +17,16 @@ const ensureActiveOrg = createServerFn({ method: "GET" }).handler(async () => {
   }
 
   if (!session.session.activeOrganizationId) {
-    const membership = await getUserOrganization(
-      { userId: session.user.id },
-      db
-    );
+    const organizations = await auth.api.listOrganizations({ headers });
+    const first = organizations[0];
 
-    if (!membership) {
+    if (!first) {
       return { session, needsOnboarding: true };
     }
 
     await auth.api.setActiveOrganization({
       headers,
-      body: { organizationId: membership.organizationId },
+      body: { organizationId: first.id },
     });
   }
 

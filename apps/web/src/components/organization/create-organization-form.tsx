@@ -16,7 +16,6 @@ import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { slug as slugify } from "github-slugger";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { client } from "@/lib/client";
 
 function createOrganizationSchema() {
   return z.object({
@@ -71,12 +70,15 @@ export function CreateOrganizationForm({
 
   async function onSubmit(values: CreateOrganizationData) {
     try {
-      const response = await client.organization["check-slug"].$post({
-        json: { slug: values.slug },
-      });
-      const { available } = await response.json();
+      const { data: slugCheck, error: slugError } =
+        await authClient.organization.checkSlug({ slug: values.slug });
 
-      if (!available) {
+      if (slugError) {
+        toast.error(slugError.message ?? "Failed to create organization");
+        return;
+      }
+
+      if (!slugCheck?.status) {
         toast.error("Slug already exists");
         return;
       }
