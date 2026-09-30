@@ -51,5 +51,4 @@ export interface ChatSearchHit extends ChatMessageHit {
 export interface AgentToolsContext {
   organizationId: string;
   userId: string;
-  waitUntil: (promise: Promise<unknown>) => void;
 }

@@ -23,19 +23,16 @@ import {
 } from "../tool-parts/catalog/products";
 import { readOnlyToolContext } from "../tool-parts/context";
 import type { AgentToolsContext } from "../types";
-import { createDisplayTools } from "./display";
 import { inAppTool } from "./in-app-tool";
 
 function bindProductReadTools(bind: ReturnType<typeof inAppTool>): ToolSet {
   return {
     [listProductsName]: bind({
-      name: listProductsName,
       description: listProductsDescription,
       inputSchema: listProductsInputSchema,
       execute: listProductsExecute,
     }),
     [getProductName]: bind({
-      name: getProductName,
       description: getProductDescription,
       inputSchema: getProductInputSchema,
       execute: getProductExecute,
@@ -49,20 +46,17 @@ export const getOrgAgentTools = (ctx: AgentToolsContext): ToolSet => {
   return {
     ...bindProductReadTools(bind),
     [createProductName]: bind({
-      name: createProductName,
       description: createProductDescription,
       inputSchema: createProductInputSchema,
       execute: createProductExecute,
     }),
     [updateProductName]: bind({
-      name: updateProductName,
       description: updateProductDescription,
       inputSchema: updateProductInputSchema,
       needsApproval: true,
       execute: updateProductExecute,
     }),
     [deleteProductName]: bind({
-      name: deleteProductName,
       description: deleteProductDescription,
       inputSchema: deleteProductInputSchema,
       needsApproval: true,
@@ -70,9 +64,6 @@ export const getOrgAgentTools = (ctx: AgentToolsContext): ToolSet => {
     }),
   };
 };
-
-export const getOrgAgentDisplayTools = (ctx: AgentToolsContext): ToolSet =>
-  createDisplayTools(ctx);
 
 /** Read-only reach for delegated sub-agents (`OrgSubAgent`). */
 export const getOrgAgentReadOnlyTools = (

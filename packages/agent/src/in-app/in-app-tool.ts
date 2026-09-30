@@ -11,9 +11,7 @@ export interface InAppToolPieces<Schema extends z.ZodType = z.ZodType> {
   description: string;
   execute: (ctx: ToolContext, input: z.infer<Schema>) => Promise<unknown>;
   inputSchema: Schema;
-  name: string;
   needsApproval?: boolean;
-  outputSchema?: z.ZodTypeAny;
 }
 
 export function inAppTool(toolCtx: ToolContext) {
@@ -23,7 +21,6 @@ export function inAppTool(toolCtx: ToolContext) {
     return tool({
       description: pieces.description,
       inputSchema: pieces.inputSchema,
-      outputSchema: pieces.outputSchema,
       needsApproval: pieces.needsApproval,
       execute: async (input: z.infer<Schema>) =>
         await asToolResult(() => pieces.execute(toolCtx, input)),

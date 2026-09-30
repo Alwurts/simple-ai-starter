@@ -1,6 +1,6 @@
 import { DomainError } from "@workspace/core/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PERMISSION_DENIED_MESSAGE } from "../../constants";
+import { PERMISSION_DENIED_MESSAGE } from "../constants";
 import {
   getProductDescription,
   getProductExecute,
@@ -10,8 +10,8 @@ import {
   updateProductExecute,
   updateProductInputSchema,
   updateProductName,
-} from "../../tool-parts/catalog/products";
-import { inAppTool } from "../in-app-tool";
+} from "../tool-parts/catalog/products";
+import { inAppTool } from "./in-app-tool";
 
 vi.mock("@workspace/core/catalog", () => ({
   getProduct: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("@workspace/core/catalog", () => ({
   resolveProductRef: vi.fn(),
 }));
 
-vi.mock("../../tools/guard", () => ({
+vi.mock("../tools/guard", () => ({
   assertCan: vi.fn(),
 }));
 
@@ -31,18 +31,16 @@ import {
   resolveProductRef,
   updateProduct,
 } from "@workspace/core/catalog";
-import { assertCan } from "../../tools/guard";
+import { assertCan } from "../tools/guard";
 
 const ctx = {
   organizationId: "org_test",
   userId: "user_test",
-  waitUntil: () => undefined,
 };
 
 const readOnlyCtx = {
   organizationId: "org_test",
   userId: "",
-  waitUntil: () => undefined,
 };
 
 interface ExecutableTool {

@@ -23,10 +23,8 @@ import { generateText, type LanguageModel, type ToolSet } from "ai";
 import { z } from "zod";
 import { PERMISSION_DENIED_MESSAGE } from "../../constants";
 import { buildOrgContext } from "../../context/assemble";
-import {
-  getOrgAgentDisplayTools,
-  getOrgAgentTools,
-} from "../../in-app/compose-org-tools";
+import { getOrgAgentTools } from "../../in-app/compose-org-tools";
+import { createDisplayTools } from "../../in-app/display";
 import {
   gateChatAttachments,
   getCompactionLimit,
@@ -406,10 +404,9 @@ export class OrgChat extends Think<Cloudflare.Env> {
         );
       },
       organizationId: this.organizationId,
-      waitUntil: (promise: Promise<unknown>) => this.ctx.waitUntil(promise),
     };
     const productTools = getOrgAgentTools(toolsCtx);
-    const displayTools = getOrgAgentDisplayTools(toolsCtx);
+    const displayTools = createDisplayTools(toolsCtx);
 
     // The read-only fetch tool is opt-in via FETCH_ALLOWED_HOSTS
     // (comma-separated hostnames). Empty/unset means no fetch tool at all.
