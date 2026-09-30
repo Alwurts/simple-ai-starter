@@ -5,13 +5,6 @@ import { useAgentChat } from "@cloudflare/think/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import type { OrgChat } from "@workspace/agent/org/chat";
 import type { ChatSummary } from "@workspace/agent/types";
-import {
-  ShellHeader,
-  ShellHeaderActions,
-  ShellHeaderIcon,
-  ShellHeaderSidebarTrigger,
-  ShellHeaderTitle,
-} from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
   DropdownMenu,
@@ -32,7 +25,6 @@ import {
   MessageScroller,
   MessageScrollerButton,
   MessageScrollerContent,
-  MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@workspace/ui/components/shadcn/message-scroller";
@@ -41,16 +33,13 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@workspace/ui/components/shadcn/resizable";
-import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { useAgent } from "agents/react";
 import { isTextUIPart } from "ai";
 import {
-  BotIcon,
   ClipboardCopyIcon,
   MessageCircleDashedIcon,
   MoreHorizontalIcon,
-  PanelRightIcon,
   ShrinkIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -61,6 +50,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { ChatHeader } from "@/components/chat/chat-header";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { useAgentToolMutationInvalidation } from "@/hooks/chat/use-agent-tool-mutation-invalidation";
 import { useChatSidePanel } from "@/hooks/chat/use-chat-side-panel";
@@ -73,26 +63,13 @@ import { chatRouteState } from "@/lib/chat/chat-route";
 import { defaultNewChatTitle } from "@/lib/chat/chat-titles";
 import { firstSendPlan } from "@/lib/chat/first-send";
 import { ChatComposer, type PromptMessage } from "./input/chat-composer";
-import { ChatMessageRow } from "./messages/chat-message-row";
+import {
+  EmptyConversation,
+  HydratingSkeleton,
+  MessageListOrEmpty,
+} from "./messages/message-list";
 import { TurnErrorBanner } from "./messages/turn-error-banner";
 import { ChatSidePanel } from "./side-panel/chat-side-panel";
-
-function EmptyConversation() {
-  return (
-    <Empty className="h-full border-0">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <MessageCircleDashedIcon />
-        </EmptyMedia>
-        <EmptyTitle>How can I help?</EmptyTitle>
-        <EmptyDescription>
-          Ask about your products, or have the assistant work in the org
-          workspace.
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
-  );
-}
 
 function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
   if (!chatId) {
@@ -578,49 +555,6 @@ function ChatView({ chatId, title }: ChatViewProps) {
   );
 }
 
-function MessageListOrEmpty({
-  messages,
-  streamingMessageId,
-  onRegenerate,
-  onToolApproval,
-  onExecutionApproval,
-  onLoadPendingExecution,
-  resolvingExecutions,
-}: {
-  messages: OrgChatMessage[];
-  streamingMessageId: string | null;
-  onRegenerate: (messageId: string) => void;
-  onToolApproval: (id: string, approved: boolean) => void;
-  onExecutionApproval: (executionId: string, approved: boolean) => void;
-  onLoadPendingExecution: (executionId: string) => Promise<PendingAction[]>;
-  resolvingExecutions: ReadonlySet<string>;
-}) {
-  if (messages.length === 0) {
-    return <EmptyConversation />;
-  }
-  return (
-    <>
-      {messages.map((message) => (
-        <MessageScrollerItem
-          key={message.id}
-          messageId={message.id}
-          scrollAnchor={message.role === "user"}
-        >
-          <ChatMessageRow
-            isStreaming={streamingMessageId === message.id}
-            message={message}
-            onExecutionApproval={onExecutionApproval}
-            onLoadPendingExecution={onLoadPendingExecution}
-            onRegenerate={onRegenerate}
-            onToolApproval={onToolApproval}
-            resolvingExecutions={resolvingExecutions}
-          />
-        </MessageScrollerItem>
-      ))}
-    </>
-  );
-}
-
 function ChatColumn({
   header,
   body,
@@ -640,45 +574,6 @@ function ChatColumn({
       {body}
       {footer}
     </ResizablePanel>
-  );
-}
-
-function ChatHeader({
-  title,
-  menu,
-  panelOpen,
-  onTogglePanel,
-}: {
-  title: string;
-  menu: ReactNode;
-  panelOpen: boolean;
-  onTogglePanel?: () => void;
-}) {
-  return (
-    <ShellHeader className="px-3" data-slot="full-screen-chat-header">
-      <ShellHeaderSidebarTrigger className="-ml-1" />
-      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-        <ShellHeaderIcon>
-          <BotIcon />
-        </ShellHeaderIcon>
-        <ShellHeaderTitle>{title}</ShellHeaderTitle>
-        {menu}
-      </div>
-      {panelOpen || !onTogglePanel ? null : (
-        <ShellHeaderActions>
-          <Button
-            className="size-7 shrink-0"
-            onClick={onTogglePanel}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <PanelRightIcon />
-            <span className="sr-only">Open side panel</span>
-          </Button>
-        </ShellHeaderActions>
-      )}
-    </ShellHeader>
   );
 }
 
@@ -706,19 +601,5 @@ function ChatUnavailable({
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
-  );
-}
-
-function HydratingSkeleton() {
-  return (
-    <div className="flex flex-col gap-6" data-slot="chat-hydrating">
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-4 w-1/2" />
-      </div>
-      <div className="flex flex-col items-end gap-2">
-        <Skeleton className="h-4 w-1/3" />
-      </div>
-    </div>
   );
 }
