@@ -12,6 +12,7 @@ export const LOG_KINDS = [
   "catalog_search_failed",
   "email_send_failed",
   "email_sent",
+  "org_agent_tool_run_cleanup_failed",
   "org_chat_auto_compaction_failed",
   "org_chat_search_failed",
   "org_chat_touch_failed",

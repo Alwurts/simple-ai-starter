@@ -55,6 +55,12 @@ type OrgAgentParent = Pick<
   "readOrgMemory" | "writeOrgMemory" | "touchChat"
 >;
 
+/**
+ * Retained agent-tool runs (the `delegate` child facets and their run rows)
+ * older than this are swept. Matches the agents docs' example retention.
+ */
+const AGENT_TOOL_RUN_RETENTION_MS = 7 * 24 * 60 * 60_000;
+
 export class OrgChat extends Think<Cloudflare.Env> {
   override maxSteps = 50;
 
@@ -359,8 +365,50 @@ export class OrgChat extends Think<Cloudflare.Env> {
         })
     );
 
+    // Retention for retained agent-tool runs (agents agent-tools.md › Clear
+    // retained runs): delegate child facets and their run rows are kept for
+    // refresh/drill-in by default and otherwise accumulate forever. Sweeping
+    // off this chat's own activity piggybacks on the one wake that already
+    // happens per turn — no alarms, and a stale run can't be mid-drill-in
+    // when its chat hasn't been active for a week.
+    this.ctx.waitUntil(
+      this.clearAgentToolRuns({
+        olderThan: Date.now() - AGENT_TOOL_RUN_RETENTION_MS,
+      }).catch((err: unknown) => {
+        structuredLog({
+          kind: "org_agent_tool_run_cleanup_failed",
+          severity: "error",
+          organizationId,
+          chatName: this.name,
+          error: errorMessage(err),
+        });
+      })
+    );
+
     // No instructions/model overrides: the system prompt is the context
     // blocks (org header + org_memory) and the model is `getModel()`.
+  }
+
+  /**
+   * Agent-tool runs (the `delegate` children) are sub-agents of this chat.
+   * Without this gate a guessed `/agents/org-agent/<org>/<chat>/sub/
+   * org-sub-agent/<id>` URL spawns a fresh facet; the run registry is the
+   * authority — only ids this chat actually launched resolve (agents
+   * agent-tools.md › Drill in and gate access). Existence-check only: this
+   * hook never creates.
+   */
+  override onBeforeSubAgent(
+    _request: Request,
+    child: { className: string; name: string }
+  ): Promise<Response | undefined> {
+    if (!this.hasAgentToolRun(child.className, child.name)) {
+      return Promise.resolve(
+        new Response(`Agent-tool run "${child.name}" not found`, {
+          status: 404,
+        })
+      );
+    }
+    return Promise.resolve(undefined);
   }
 
   /** The ALS connection's stamped user, or undefined when unresolvable. */
