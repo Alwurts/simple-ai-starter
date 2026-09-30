@@ -38,7 +38,7 @@ An unknown `ORG_CHAT_MODEL` override defaults to text-only (conservative, same s
 Adding a model or provider is a data edit: extend `OrgChatProvider`, `PROVIDER_BUILD`,
 and `MODEL_OFFERINGS` (include `inputModalities` on every row).
 
-Attachment gating: `gateChatAttachments` + `GET /api/protected/chat/capabilities`
+Attachment gating: `gateChatAttachments` + `GET /api/chat/capabilities`
 hide or reject non-text parts for text-only models before the model call, so users never
 see opaque provider errors like `messages.content.type is invalid`.
 
