@@ -37,8 +37,8 @@ import {
 import {
   gateChatAttachments,
   getCompactionLimit,
-  type OrgChatModelCapabilities,
   orgChatContextOverflow,
+  type ResolvedOrgChatModel,
   resolveOrgChatModel,
 } from "../../inference/chat-models";
 import type { ChatMessageHit } from "../../types";
@@ -66,11 +66,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
 
   override workspace: WorkspaceFsLike = new SharedWorkspace(this);
 
-  private organizationId!: string;
-  private resolvedChatModel!: LanguageModel;
-  private resolvedModelId!: string;
-  private resolvedContextWindow!: number;
-  private resolvedCapabilities!: OrgChatModelCapabilities;
+  private resolvedModel: ResolvedOrgChatModel | undefined;
   private lastTurnUsage: LanguageModelUsage | undefined;
   /**
    * Acting user for this turn's / this approval's tool executes. Stamped from
@@ -81,21 +77,29 @@ export class OrgChat extends Think<Cloudflare.Env> {
    */
   private turnUserId: string | undefined;
 
+  /**
+   * Env-driven model resolution (id, window, capabilities), memoised. Lazy —
+   * not an onStart-assigned field — because Think runs `configureSession`
+   * during its own startup, *before* the subclass `onStart`
+   * (think lifecycle-hooks.md: configureSession fires "once during onStart";
+   * the wrapped startup awaits it ahead of `_onStart`), so a field set in
+   * onStart is undefined exactly when `compactAfter` reads it — the NaN
+   * budget that made Sessions auto-compact on every append.
+   */
+  private get resolved(): ResolvedOrgChatModel {
+    this.resolvedModel ??= resolveOrgChatModel(this.env);
+    return this.resolvedModel;
+  }
+
+  private get organizationId(): string {
+    return this.requireOrganizationId();
+  }
+
   override onStart(): void {
-    this.organizationId = this.requireOrganizationId();
-    // The chat model is a constant env-driven resolution — resolve it once here
-    // rather than re-resolving every turn.
-    const resolved = resolveOrgChatModel(this.env);
-    this.resolvedChatModel = resolved.model;
-    this.resolvedModelId = resolved.modelId;
-    this.resolvedContextWindow = resolved.contextWindow;
-    this.resolvedCapabilities = resolved.capabilities;
-    // Context-window overflow recovery (a Think built-in) — the reactive
-    // backstop compacts and retries a turn a provider rejected as too long,
-    // and the proactive guard compacts mid-turn once real step usage crosses
-    // 90% of the model's window. `compactAfter` (below) keeps the cheaper
-    // pre-turn estimate heuristic as the first line of defence.
-    this.contextOverflow = orgChatContextOverflow(this.resolvedContextWindow);
+    // Warm the resolution here (same fail-fast on a missing provider key as
+    // before) and set the turn-time overflow config — contextOverflow is only
+    // read during turns, so onStart assignment is fine for it.
+    this.contextOverflow = orgChatContextOverflow(this.resolved.contextWindow);
   }
 
   private getParent(): Promise<OrgAgentParent> {
@@ -134,7 +138,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   override getModel(): LanguageModel {
-    return this.resolvedChatModel;
+    return this.resolved.model;
   }
 
   /**
@@ -217,7 +221,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
         // Mid-turn growth is `contextOverflow`'s job (see onStart): the
         // proactive guard compacts on real step usage and the reactive
         // backstop compacts + retries an overflow-rejected turn.
-        .compactAfter(getCompactionLimit(this.resolvedContextWindow))
+        .compactAfter(getCompactionLimit(this.resolved.contextWindow))
     );
   }
 
@@ -248,7 +252,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
     await super.onChatResponse(result);
 
     const usage = this.lastTurnUsage;
-    const modelId = this.resolvedModelId;
+    const modelId = this.resolved.modelId;
     this.lastTurnUsage = undefined;
 
     if (result.status !== "completed" || !usage?.inputTokens || !modelId) {
@@ -335,7 +339,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
       }));
       const gate = gateChatAttachments(
         attachmentParts,
-        this.resolvedCapabilities
+        this.resolved.capabilities
       );
       if (!gate.ok) {
         throw new Error(gate.reason);
