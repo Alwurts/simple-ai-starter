@@ -102,7 +102,7 @@ migration) rather than letting a recreate run for no functional gain.
 
 ### 4. CI guard (a check, not a rewrite)
 
-`apps/web/test/migration-safety.test.ts` fails when a migration ships the unsafe
+`apps/web/test/core/migration-safety.workerd.test.ts` fails when a migration ships the unsafe
 table-recreate pattern (a literal `PRAGMA foreign_keys=OFF`) instead of
 `defer_foreign_keys`, pointing the author at this ADR with the exact edit. It
 runs as part of `pnpm test` in CI. The starter's existing migrations contain no
@@ -157,7 +157,7 @@ forward-only — add a corrective migration, never edit the applied one.
 
 | Area | Location |
 |---|---|
-| CI guard test | `apps/web/test/migration-safety.workerd.test.ts` (runs in `pnpm test`) |
+| CI guard test | `apps/web/test/core/migration-safety.workerd.test.ts` (runs in `pnpm test`) |
 | Migration source | `packages/db/drizzle/*.sql` (loaded into `TEST_MIGRATIONS` by `vitest.config.ts`) |
 | Grandfather allowlist | none (the starter ships clean) |
 | Manual procedure | After `pnpm db:generate`, in any migration with `__new_*` + `DROP TABLE`: `PRAGMA foreign_keys=OFF;` → `PRAGMA defer_foreign_keys=true;`, drop the trailing `PRAGMA foreign_keys=ON;` |
