@@ -21,7 +21,7 @@ Run from the **monorepo root** (not inside a package):
 | Tests | `pnpm test` |
 | E2E tests | `pnpm --filter web test:e2e` — own port + state, fake model server; runs in CI, not in `pnpm verify` |
 | Build | `pnpm build` |
-| Everything CI runs (before you push) | `pnpm verify` |
+| CI checks except e2e (before you push) | `pnpm verify` |
 | Generate a migration | `pnpm db:generate` |
 | Apply migrations (local) | `pnpm db:migrate` |
 | Reset local DB | `pnpm db:reset` |
@@ -61,7 +61,7 @@ Run from the **monorepo root** (not inside a package):
 - **Think / Agents SDK APIs** → read the installed docs first —
   `@cloudflare/think/docs/` and `agents/docs/` (under the depending package's
   `node_modules`, e.g. `packages/agent/node_modules/`), plus the packages'
-  `dist/*.d.ts` — and prefer their helpers over hand-rolled code (D-016).
+  `dist/*.d.ts` — and prefer their helpers over hand-rolled code.
 - **Procedural domain knowledge, loaded on demand** → `.agents/skills/`
   (`wrangler`, `durable-objects`, `workers-best-practices`,
   `agents-sdk`, `ai-sdk`, `shadcn`,
@@ -91,7 +91,7 @@ Before editing files for a substantial task:
 
 This project uses **Biome** for formatting and linting. Fix with `pnpm lint:fix`;
 verify with `pnpm typecheck` and `pnpm lint:check`. Run from the root. Before
-you push, run `pnpm verify`: the same checks as CI, and the pre-push hook runs it too.
+you push, run `pnpm verify`: CI's checks except the e2e job, and the pre-push hook runs it too.
 
 - **Self-descriptive code first** — names and types should carry the *what*; comments
   only for non-inherent *why* (invariants, races, platform quirks, ADR links).

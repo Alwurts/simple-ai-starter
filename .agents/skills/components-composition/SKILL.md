@@ -13,8 +13,7 @@ filtered through this repo's reality. The reference component is
 > **Scope frame.** components.build is written for *publishing* reusable component libraries
 > (Registry / Marketplace / NPM). We are building **an app + a template**, not a
 > distributed library — take its build-quality rules, drop the publish posture and the
-> library-grade "maximal flexibility everywhere" ceremony. (A Radix→Base UI migration of
-> third-party primitives is out of scope here — a separate decision.)
+> library-grade "maximal flexibility everywhere" ceremony.
 
 > Stack: React **19.2**, Tailwind **v4**, `class-variance-authority` + `clsx` + `tailwind-merge`
 > (`cn` at `@workspace/ui/lib/utils`), and shadcn primitives
@@ -129,7 +128,7 @@ function ComposerHeader({ className, ...props }: React.ComponentProps<"div">) {
   `org-connection.tsx`). **Split into multiple contexts by concern** when a part shouldn't
   re-render on changes it doesn't use. This is the only built-in way to get
   re-render isolation — `useContext` has no selector.
-- **Extract derivations to pure functions** (`formatMoney(minorUnits)`, `canSubmit(state)`) and
+- **Extract derivations to pure functions** (`formatMoneyMinor(minorUnits)`, `canSubmit(state)`) and
   call them from the provider memo — so validation logic is unit-testable without rendering.
 - **Escape hatch — `{ state, actions, meta }`:** *only* when the **same parts must run against 2+
   interchangeable data sources** (e.g. a live server doc vs an offline local draft), isolate *that

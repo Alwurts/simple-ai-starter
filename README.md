@@ -72,7 +72,7 @@ How the agent is put together — and how to add your own tools:
 | Layer | Technology |
 |-------|-----------|
 | **Framework** | [TanStack Start](https://tanstack.com/start), full-stack React |
-| **Agent** | [Cloudflare Agents SDK](https://developers.cloudflare.com/agents/) + [@cloudflare/think](https://developers.cloudflare.com/agents/concepts/think/), one Durable Object per org |
+| **Agent** | [Cloudflare Agents SDK](https://developers.cloudflare.com/agents/) + [@cloudflare/think](https://developers.cloudflare.com/agents/api-reference/think/), one Durable Object per org |
 | **Chat UI** | simple-ai [`chat-page`](https://www.simple-ai.dev) |
 | **API** | [Hono](https://hono.dev/) RPC, type-safe from route to client |
 | **Database** | [Drizzle ORM](https://orm.drizzle.team/) + [Cloudflare D1](https://developers.cloudflare.com/d1/) |
@@ -95,7 +95,10 @@ where the rest live. The full map and a worked example:
 
 Deploying needs Cloudflare resources first:
 
-1. Durable Objects require a **Workers Paid** plan.
+1. A **Workers Paid** plan: the code-execution sandbox (`execute`) runs on
+   [Dynamic Workers](https://developers.cloudflare.com/dynamic-workers/) through
+   the `worker_loaders` binding, which is Paid-only. The org agent's
+   SQLite-backed Durable Objects also run on the Free plan.
 2. `wrangler d1 create simple-ai-starter`, then paste the id into
    `apps/web/wrangler.jsonc` (`database_id` is
    `placeholder-replace-before-deploy` until you do).
@@ -103,16 +106,16 @@ Deploying needs Cloudflare resources first:
    provider key (`AI_GATEWAY_API_KEY` by default), and `RESEND_API_KEY` if you
    send real email.
 4. Migrate the remote database: `pnpm db:migrate:prod`.
-5. `pnpm build`, then deploy (`pnpm --filter web deploy`).
+5. Build and deploy: `pnpm --filter web deploy`.
 
-The code-execution sandbox uses the `worker_loaders` binding declared in
-`apps/web/wrangler.jsonc`. Deploys can also run from GitHub Actions —
+Deploys can also run from GitHub Actions —
 `.github/workflows/deploy.yml` is manual (`workflow_dispatch`) and never runs
 on push.
 
 ## Tests
 
-- `pnpm verify` — everything CI runs: lint, typecheck, unit tests, build.
+- `pnpm verify` — lint, typecheck, unit tests, build (the pre-push hook runs
+  it). CI runs the same checks plus the e2e job.
 - `pnpm --filter web test:e2e` — Playwright drives a full chat turn against a
   local fake model server on its own port and state.
 
