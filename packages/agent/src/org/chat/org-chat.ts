@@ -69,11 +69,13 @@ export class OrgChat extends Think<Cloudflare.Env> {
   private resolvedModel: ResolvedOrgChatModel | undefined;
   private lastTurnUsage: LanguageModelUsage | undefined;
   /**
-   * Acting user for this turn's / this approval's tool executes. Stamped from
-   * the connection that started the turn (beforeTurn) or sent the approval
-   * frame (approveExecution / rejectExecution) — never from onConnect, which
-   * every connection in the org triggers. Unresolvable ⇒ undefined ⇒ write
-   * tools fail closed (permission-denied result).
+   * Fallback acting user for tool executes that have no ALS connection
+   * (codemode sandbox callbacks): stamped from the connection that started
+   * the turn (beforeTurn) or sent the approval frame (approveExecution /
+   * rejectExecution). Not authoritative — requireTurnUserId prefers the live
+   * ALS connection, because an approval callable runs outside the turn queue
+   * and can overwrite this between stamp and execute. Unresolvable ⇒
+   * undefined ⇒ write tools fail closed (permission-denied result).
    */
   private turnUserId: string | undefined;
 
@@ -422,21 +424,25 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   /**
-   * Acting user for tool execute / approve-resume: the identity stamped for
-   * this turn or approval, else the ALS connection of the exact call tree.
-   * No "any live connection" fallback — another member's open socket must
-   * never lend its identity. Unresolvable fails closed with the
+   * Acting user for tool execute / approve-resume. The ALS connection wins:
+   * the identity of the call tree actually executing — an approval callable
+   * from another member runs outside Think's turn queue and can overwrite the
+   * stamped field between this turn's `beforeTurn` and its next tool execute,
+   * so field-first would let that stamp authorize this turn's writes. The
+   * stamped field is only the fallback for code with no ALS connection at all
+   * (codemode sandbox callbacks), and the ALS result is deliberately never
+   * written back — the field belongs to the turn/approval that set it. No
+   * "any live connection" fallback; unresolvable fails closed with the
    * permission-denied result (`asToolResult` maps this exact message to
    * `code: "forbidden"`).
    */
   private requireTurnUserId(): string {
+    const alsUserId = this.tryResolveTurnUserId();
+    if (alsUserId) {
+      return alsUserId;
+    }
     if (this.turnUserId) {
       return this.turnUserId;
-    }
-    const userId = this.tryResolveTurnUserId();
-    if (userId) {
-      this.turnUserId = userId;
-      return userId;
     }
     throw new Error(PERMISSION_DENIED_MESSAGE);
   }

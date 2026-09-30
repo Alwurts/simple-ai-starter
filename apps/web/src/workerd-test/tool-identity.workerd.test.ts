@@ -3,6 +3,10 @@ import { PERMISSION_DENIED_MESSAGE } from "@workspace/agent/constants";
 import { OrgChat } from "@workspace/agent/org/chat";
 import { db } from "@workspace/db";
 import { member, organization, user } from "@workspace/db/schema";
+import {
+  __DO_NOT_USE_WILL_BREAK__agentContext as agentContext,
+  type Connection,
+} from "agents";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -15,7 +19,9 @@ import { describe, expect, it } from "vitest";
  * Driven on a bare OrgChat prototype instance (the established seam — see
  * compaction/org-chat-context tests): `turnUserId` plays the per-turn stamp,
  * and a fake owner connection stays attached the whole time — the removed
- * fallback would have picked it and made these writes succeed.
+ * fallback would have picked it and made these writes succeed. The ordering
+ * test plants the ALS store directly (`__DO_NOT_USE_WILL_BREAK__agentContext`
+ * is what the framework's own wrappers `run`), pinning ALS-over-field.
  */
 
 interface ToolResultLike {
@@ -140,5 +146,41 @@ describe("OrgChat tool identity (in workerd)", () => {
     });
     expect(result.ok).toBe(false);
     expect(result.code).toBe("forbidden");
+  });
+
+  it("prefers the ALS connection's user over the stamped field (approval callable raced the turn stamp)", async () => {
+    // An approve/reject WS callable runs outside Think's turn queue: user Y's
+    // approval can overwrite the field between user X's beforeTurn stamp and
+    // X's next tool execute. The live connection — X's — must win, so the
+    // stale stamp can never authorize X's writes as Y.
+    const { ownerId, viewerId, orgId } = await seedOrgWithRoles();
+    const chat = chatOverDb(orgId);
+    // Field stamped by the OWNER (as an owner approval would)…
+    (chat as unknown as { turnUserId: string | undefined }).turnUserId =
+      ownerId;
+    // …but the executing call tree is the VIEWER's connection (their turn).
+    const viewerConnection = {
+      id: "viewer-conn",
+      state: { userId: viewerId },
+    } as unknown as Connection;
+    const result = await agentContext.run(
+      {
+        agent: chat,
+        connection: viewerConnection,
+        request: undefined,
+        email: undefined,
+      },
+      () =>
+        execute(toolsFor(chat, orgId), "create_product", {
+          name: "Should Not Exist",
+        })
+    );
+    expect(result.ok).toBe(false);
+    expect(result.code).toBe("forbidden");
+    // And the ALS resolution never wrote itself over the stamp it beat —
+    // the field still belongs to the turn/approval that set it.
+    expect((chat as unknown as { turnUserId: string }).turnUserId).toBe(
+      ownerId
+    );
   });
 });
