@@ -24,9 +24,8 @@ example capability that walks every layer — table → `contract` schema →
 - **One source of truth per fact, at its natural home.** The database owns row
   shapes; the boundary owns input shapes; the typechecker carries them outward.
   Nothing is hand-copied between layers.
-- **Boundaries enforced by construction.** The dependency graph and the runtime
-  import rules make an illegal cross-layer import fail on its own — not because a
-  reviewer noticed.
+- **Boundaries enforced by construction.** The dependency graph makes an
+  illegal cross-layer import fail on its own — not because a reviewer noticed.
 - **Multi-surface by default.** UI, HTTP API, and AI tools are all just
   surfaces over the same `core`. `core` never imports a framework.
 
@@ -37,12 +36,12 @@ A capability flows top-to-bottom; dependencies only ever point *down* this list.
 | Layer | Home | Owns |
 |---|---|---|
 | **db** | `packages/db` | Drizzle schema (one file per capability) + the `db` client singleton. Leaf — no workspace deps. Row types via `$infer`. |
-| **contract** | `packages/contract` | Pure boundary Zod for inputs/commands, feature-keyed (`contract/<cap>/`). Leaf — no workspace deps. Input types via `z.infer`. |
-| **core** | `packages/core` | Queries + domain logic, feature-keyed (`core/<cap>/`). Framework-agnostic. Depends on `db` + `contract`. |
+| **contract** | `packages/contract` | Pure boundary Zod for **inbound** inputs/commands only, feature-keyed (`contract/src/<cap>/`). Leaf — no workspace deps. Input types via `z.infer`. Outbound shapes are never declared here (ADR-004). |
+| **core** | `packages/core` | Queries + domain logic, feature-keyed (`core/src/<cap>/`), plus `errors.ts` + `pagination.ts`. Framework-agnostic. Depends on `db` + `contract`. |
 | **surfaces** | `apps/web/src/...` | The ways `core` is exposed: Hono HTTP (`api/<auth-scope>/<cap>/`), AI Durable Objects, jobs. |
-| **agent** | `packages/agent` | Binder-agnostic tool-parts (`tool-parts/<cap>/`) + in-app binder + DO classes (bound in `apps/web`). The one *packaged* surface. |
-| **ui** | `packages/ui` | Primitives / design-system only. Depends on `contract`, never on `core`/`db`. |
-| **components** | `apps/web/src/components/<cap>/` | Feature/composite components — built in-app from `ui` primitives. |
+| **agent** | `packages/agent` | Named tool-parts (`tool-parts/<cap>/`: `xName` / `xDescription` / `xInputSchema` / `xExecute`) + DO classes (bound in `apps/web`). Each surface composes the pieces itself and may wrap `execute` differently — `in-app/` today; `mcp/` is reserved. The one *packaged* surface. |
+| **ui** | `packages/ui` | Primitives / design-system only (`components/{shadcn,brand,data-table}/`). Leaf — no workspace deps. |
+| **components** | `apps/web/src/components/<cap>/` | Feature/composite components — built in-app from `ui` primitives; anything router- or app-aware lives here, not in `ui`. |
 
 Cross-cutting homes: auth = `packages/auth`; typed env = `packages/env`;
 structured ops logging = `packages/log` (`@workspace/log`, zero-dep leaf — not a `core` facet);
@@ -57,10 +56,10 @@ layer.** `db` keeps it to one file; the other layers give it a folder. So the
 
 ```
 packages/db/src/schema/catalog.ts            # one schema file
-packages/contract/catalog/                   # boundary zod for inputs
-packages/core/catalog/                       # queries + domain logic
+packages/contract/src/catalog/               # boundary zod for inputs
+packages/core/src/catalog/                   # queries + domain logic
 apps/web/src/api/org-protected/catalog/      # HTTP surface (auth-scoped)
-packages/agent/src/tool-parts/catalog/products.ts  # AI tool-parts (in-app binder in `in-app/`)
+packages/agent/src/tool-parts/catalog/products.ts  # AI tool-parts (each surface composes its own binder)
 apps/web/src/components/catalog/             # feature components
 ```
 
@@ -213,6 +212,24 @@ framework demands it — the Worker entries); one exported component per file
 each `api/<scope>/index.ts` is the exception that isn't one: it **composes**
 (the guard + `.route()` mounting), it never re-exports.
 
+## packages/ui taxonomy
+
+`packages/ui/src/components/` has three folders, pinned by
+`packages/ui/test/taxonomy.test.ts`:
+
+- **`shadcn/`** — exactly what `shadcn add` produced (including the
+  `@simple-ai` registry items), never hand-edited. Re-add a file with the
+  pinned CLI instead of editing it.
+- **`brand/`** — how we look. The test: *would a rebrand change this file?*
+  Today: `shell.tsx`, the logo (`logo-monochrome.tsx`), and the auth page.
+- **`data-table/`** — generic, look-less table composites (`data-table`,
+  `resource-table`, `sortable-header`, the filter-toolbar chips,
+  `table-filter-types`, `data-table-features`).
+
+Anything router- or app-aware is **not** in `packages/ui`: e.g. breadcrumbs
+live in `apps/web/src/components/layout/` because they render router `Link`s.
+`packages/ui` has no workspace dependencies and imports no router.
+
 ## Naming (role over technology)
 
 Packages and apps are named for the **role they play**, not the library that
@@ -224,17 +241,20 @@ types live in `contract`; row types come from `db` `$infer` — see **ADR-004**.
 ## Mechanical boundaries
 
 The layer rules are enforced *by construction*, not by review (**ADR-001**, D8):
+**enforcement is the `package.json` dependency graph under pnpm's strict,
+isolated node_modules** — each package lists only its allowed deps, so an
+illegal import simply doesn't resolve:
 
-- **Dependency graph.** Each `package.json` lists only its allowed deps:
-  `contract` and `db` are leaves (no workspace deps); `core` = `db` + `contract`;
-  `ui` = `contract` (never `core`/`db`); `apps/web` = `core` + `contract` + `ui`.
-  An illegal import simply doesn't resolve.
-- **Runtime guard.** `cloudflare:workers` / server-only imports keep server code
-  out of client/`ui` layers.
-- **CI cycle check.** A circular-dependency check runs in CI.
+- `db`, `contract`, `log`, `ui` are leaves (no workspace deps).
+- `core` = `db` + `contract`; `auth` = `db` + `email`.
+- `agent` = `auth` + `contract` + `core` + `log`.
+- `apps/web` = `agent` + `auth` + `core` + `contract` + `log` + `ui`.
+  (`@workspace/db` stays a **devDependency**: only the workerd tests seed and
+  query D1 directly; `apps/web/src` never imports it.)
 
-We deliberately skip TypeScript project-references and a custom ESLint boundary
-plugin — the dep graph plus the import guard already make the wrong thing fail.
+We deliberately skip TypeScript project-references, a custom ESLint boundary
+plugin, and a runtime import guard — the dep graph already makes the wrong
+thing fail.
 
 ## The database & env singletons
 

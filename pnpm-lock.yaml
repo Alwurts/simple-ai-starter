@@ -111,9 +111,6 @@ importers:
       '@workspace/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@workspace/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@workspace/log':
         specifier: workspace:*
         version: link:../../packages/log
@@ -202,6 +199,9 @@ importers:
       '@vitest/snapshot':
         specifier: 4.1.11
         version: 4.1.11
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@workspace/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig

@@ -51,9 +51,9 @@ Run from the **monorepo root** (not inside a package):
   `env` not `cloudflare-env`); scope stays `@workspace/*`.
 - **Timestamps are ISO `text`** for domain tables; money columns are integer
   minor units (cents).
-- **Boundaries are mechanical** — the `package.json` dep graph + the
-  `cloudflare:workers`/server-only import guard make illegal cross-layer imports
-  fail on their own. Don't add a wiring file; `import { db } from "@workspace/db"`.
+- **Boundaries are mechanical** — the `package.json` dependency graph under
+  pnpm strict makes illegal cross-layer imports fail on their own. Don't add a
+  wiring file; `import { db } from "@workspace/db"`.
 - **Generated files are never hand-edited** — `packages/env/src/env.d.ts` and the
   app's `worker-configuration.d.ts` come from `pnpm cf-typegen`.
 
