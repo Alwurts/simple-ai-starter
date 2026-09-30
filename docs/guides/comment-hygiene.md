@@ -68,5 +68,5 @@ Linter directives stay, but **always with a reason** on the same line:
 - `packages/agent/src/tool-parts/catalog/products.ts` — tool-piece naming/description contracts (keep)
 - `packages/agent/src/tools/guard.ts` — RBAC / mutation boundary (always keep)
 - `packages/agent/src/org/chat/org-chat.ts` — hibernation / WebSocket-ALS platform quirks (keep)
-- `apps/web/test/migration-safety.workerd.test.ts` — D1 FK-pragma invariant (ADR-007; always keep)
-- `apps/web/src/features/assistant/components/full-screen-chat.tsx` — framework rationale on the non-obvious hook options (keep)
+- `apps/web/test/core/migration-safety.workerd.test.ts` — D1 FK-pragma invariant (ADR-007; always keep)
+- `apps/web/src/components/chat/chat-page.tsx` — framework rationale on the non-obvious hook options (keep)

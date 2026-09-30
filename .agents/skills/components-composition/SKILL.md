@@ -176,7 +176,7 @@ swaps the element.
   `Shell`, `resource-table`). A piece that knows nothing about the domain lives here.
 - **`apps/web`** = domain composites, in **feature folders** (`components/<cap>/` — `catalog/`,
   `organization/`, `search/`; chat composites live under
-  `features/assistant/components/`). **kebab-case filenames**
+  `components/chat/<category>/`). **kebab-case filenames**
   (`create-product-dialog.tsx`). Add `"use client"` to any file using hooks/context/state.
 - Don't add a second `Intl.NumberFormat` for domain currency; reuse the formatters in
   `packages/ui/src/lib/money.ts`. Dates and quantities are fine.
@@ -188,7 +188,7 @@ swaps the element.
   layouts.
 
 ## Pre-PR checklist
-- [ ] Right tier/folder (`shadcn`/`brand`, `apps/web/components/<cap>/`, or `features/assistant/components/`); kebab filename; `"use client"` if stateful
+- [ ] Right tier/folder (`shadcn`/`brand`, `apps/web/components/<cap>/`, or `apps/web/components/chat/<category>/`); kebab filename; `"use client"` if stateful
 - [ ] Flat-named exports; single element on leaves; `...props` spread; caller's `className` resolves last via `cn`
 - [ ] Visual variants via `cva`/bare `data-*` enum; structural = explicit components; **no public mode flags** (async/responsive/vendor/optional-subpart exempt)
 - [ ] Element swapping via Base UI `render`; no generic `as`

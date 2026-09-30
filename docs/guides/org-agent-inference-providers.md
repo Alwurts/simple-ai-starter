@@ -12,7 +12,7 @@ Both agents resolve their model once in `onStart` via
 
 - **Files of interest:** `packages/agent/src/inference/chat-models.ts` (the
   registry + resolver), `packages/agent/src/org/chat/org-chat.ts:onStart`,
-  `.../org-sub-agent.ts:onStart` (call sites), `apps/web/test/inference/chat-models.test.ts`
+  `.../org-sub-agent.ts:onStart` (call sites), `apps/web/test/agent/chat-models.test.ts`
   (the AC coverage).
 
 The registry is a `Provider` union → a data-only `PROVIDER_BUILD` map → a

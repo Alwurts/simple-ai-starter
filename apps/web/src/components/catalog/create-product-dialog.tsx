@@ -12,7 +12,7 @@ import {
 import { DEFAULT_CURRENCY, majorToMinor } from "@workspace/ui/lib/money";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { useCreateProduct } from "@/hooks/use-products";
+import { useCreateProduct } from "@/hooks/catalog/use-products";
 import { ProductForm, type ProductFormValues } from "./product-form";
 export function CreateProductDialog() {
   const [open, setOpen] = useState(false);

@@ -27,8 +27,8 @@ import {
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { useInviteMember } from "@/hooks/use-organization";
-import { roleMessage } from "@/lib/role-label";
+import { useInviteMember } from "@/hooks/organization/use-organization";
+import { roleMessage } from "@/lib/organization/role-label";
 
 interface InviteMemberData {
   email: string;

@@ -19,7 +19,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { getPlatformNavigationItems } from "@/components/layout/platform-navigation";
-import { useCatalogSearch } from "@/hooks/use-catalog-search";
+import { useCatalogSearch } from "@/hooks/catalog/use-catalog-search";
 
 const MIN_QUERY_LENGTH = 2;
 

@@ -4,7 +4,7 @@ import { routeAgentRequest } from "agents";
 
 /**
  * The single `/agents/` gate, shared by the production entry (`src/server.ts`)
- * and the test worker entry (`src/workerd-test/worker-entry.ts`) so tests
+ * and the test worker entry (`test/agent/worker-entry.ts`) so tests
  * exercise the production code path. Runs inside `routeAgentRequest`'s
  * `onBeforeConnect` / `onBeforeRequest` hooks on the router's own URL parse
  * (agents routing.md › Hooks): the target namespace and instance name come

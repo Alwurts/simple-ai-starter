@@ -16,14 +16,10 @@ import {
   useAcceptInvitation,
   useInvitation,
   useRejectInvitation,
-} from "@/hooks/use-organization";
-import { InvitationError } from "./invitation-error-card";
+} from "@/hooks/organization/use-organization";
+import { InvitationError } from "./invitation-error";
 
-export default function AcceptInvitation({
-  invitationId,
-}: {
-  invitationId: string;
-}) {
+export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   const navigate = useNavigate();
   const [invitationStatus, setInvitationStatus] = useState<
     "pending" | "accepted" | "rejected"

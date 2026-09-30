@@ -9,147 +9,172 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as ProtectedRouteImport } from './routes/_protected'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
-import { Route as ProtectedSettingsRouteRouteImport } from './routes/_protected/settings/route'
-import { Route as AcceptInvitationIdRouteImport } from './routes/accept-invitation.$id'
-import { Route as ProtectedCatalogIndexRouteImport } from './routes/_protected/catalog/index'
-import { Route as ProtectedCatalogIdRouteImport } from './routes/_protected/catalog/$id'
-import { Route as ProtectedChatChatIdRouteImport } from './routes/_protected/chat.$chatId'
-import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
-import { Route as ProtectedSettingsGeneralRouteImport } from './routes/_protected/settings/general'
-import { Route as ProtectedSettingsMembersRouteImport } from './routes/_protected/settings/members'
+import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
+import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
+import { Route as ProtectedOrgRouteImport } from './routes/_protected/_org'
+import { Route as ProtectedOnboardingRouteImport } from './routes/_protected/onboarding'
+import { Route as ProtectedOrgIndexRouteImport } from './routes/_protected/_org/index'
+import { Route as ProtectedOrgSettingsRouteRouteImport } from './routes/_protected/_org/settings/route'
+import { Route as ProtectedAcceptInvitationIdRouteImport } from './routes/_protected/accept-invitation.$id'
+import { Route as ProtectedOrgCatalogIndexRouteImport } from './routes/_protected/_org/catalog/index'
+import { Route as ProtectedOrgCatalogIdRouteImport } from './routes/_protected/_org/catalog/$id'
+import { Route as ProtectedOrgChatChatIdRouteImport } from './routes/_protected/_org/chat/$chatId'
+import { Route as ProtectedOrgChatNewRouteImport } from './routes/_protected/_org/chat/new'
+import { Route as ProtectedOrgSettingsIndexRouteImport } from './routes/_protected/_org/settings/index'
+import { Route as ProtectedOrgSettingsGeneralRouteImport } from './routes/_protected/_org/settings/general'
+import { Route as ProtectedOrgSettingsMembersRouteImport } from './routes/_protected/_org/settings/members'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProtectedRoute = ProtectedRouteImport.update({
   id: '/_protected',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthRoute,
 } as any)
-const LoginRoute = LoginRouteImport.update({
+const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthRoute,
 } as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthRoute,
 } as any)
-const SignupRoute = SignupRouteImport.update({
+const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthRoute,
 } as any)
-const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
+const ProtectedOrgRoute = ProtectedOrgRouteImport.update({
+  id: '/_org',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedOnboardingRoute = ProtectedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedOrgIndexRoute = ProtectedOrgIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ProtectedRoute,
+  getParentRoute: () => ProtectedOrgRoute,
 } as any)
-const ProtectedSettingsRouteRoute = ProtectedSettingsRouteRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const AcceptInvitationIdRoute = AcceptInvitationIdRouteImport.update({
-  id: '/accept-invitation/$id',
-  path: '/accept-invitation/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProtectedCatalogIndexRoute = ProtectedCatalogIndexRouteImport.update({
-  id: '/catalog/',
-  path: '/catalog/',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedCatalogIdRoute = ProtectedCatalogIdRouteImport.update({
+const ProtectedOrgSettingsRouteRoute =
+  ProtectedOrgSettingsRouteRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => ProtectedOrgRoute,
+  } as any)
+const ProtectedAcceptInvitationIdRoute =
+  ProtectedAcceptInvitationIdRouteImport.update({
+    id: '/accept-invitation/$id',
+    path: '/accept-invitation/$id',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOrgCatalogIndexRoute =
+  ProtectedOrgCatalogIndexRouteImport.update({
+    id: '/catalog/',
+    path: '/catalog/',
+    getParentRoute: () => ProtectedOrgRoute,
+  } as any)
+const ProtectedOrgCatalogIdRoute = ProtectedOrgCatalogIdRouteImport.update({
   id: '/catalog/$id',
   path: '/catalog/$id',
-  getParentRoute: () => ProtectedRoute,
+  getParentRoute: () => ProtectedOrgRoute,
 } as any)
-const ProtectedChatChatIdRoute = ProtectedChatChatIdRouteImport.update({
+const ProtectedOrgChatChatIdRoute = ProtectedOrgChatChatIdRouteImport.update({
   id: '/chat/$chatId',
   path: '/chat/$chatId',
-  getParentRoute: () => ProtectedRoute,
+  getParentRoute: () => ProtectedOrgRoute,
 } as any)
-const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProtectedSettingsRouteRoute,
+const ProtectedOrgChatNewRoute = ProtectedOrgChatNewRouteImport.update({
+  id: '/chat/new',
+  path: '/chat/new',
+  getParentRoute: () => ProtectedOrgRoute,
 } as any)
-const ProtectedSettingsGeneralRoute =
-  ProtectedSettingsGeneralRouteImport.update({
+const ProtectedOrgSettingsIndexRoute =
+  ProtectedOrgSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProtectedOrgSettingsRouteRoute,
+  } as any)
+const ProtectedOrgSettingsGeneralRoute =
+  ProtectedOrgSettingsGeneralRouteImport.update({
     id: '/general',
     path: '/general',
-    getParentRoute: () => ProtectedSettingsRouteRoute,
+    getParentRoute: () => ProtectedOrgSettingsRouteRoute,
   } as any)
-const ProtectedSettingsMembersRoute =
-  ProtectedSettingsMembersRouteImport.update({
+const ProtectedOrgSettingsMembersRoute =
+  ProtectedOrgSettingsMembersRouteImport.update({
     id: '/members',
     path: '/members',
-    getParentRoute: () => ProtectedSettingsRouteRoute,
+    getParentRoute: () => ProtectedOrgSettingsRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof ProtectedIndexRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/signup': typeof SignupRoute
-  '/settings': typeof ProtectedSettingsRouteRouteWithChildren
-  '/accept-invitation/$id': typeof AcceptInvitationIdRoute
-  '/catalog/$id': typeof ProtectedCatalogIdRoute
-  '/chat/$chatId': typeof ProtectedChatChatIdRoute
-  '/settings/general': typeof ProtectedSettingsGeneralRoute
-  '/settings/members': typeof ProtectedSettingsMembersRoute
-  '/catalog/': typeof ProtectedCatalogIndexRoute
-  '/settings/': typeof ProtectedSettingsIndexRoute
+  '/': typeof ProtectedOrgIndexRoute
+  '/forgot-password': typeof AuthForgotPasswordRoute
+  '/login': typeof AuthLoginRoute
+  '/reset-password': typeof AuthResetPasswordRoute
+  '/signup': typeof AuthSignupRoute
+  '/onboarding': typeof ProtectedOnboardingRoute
+  '/settings': typeof ProtectedOrgSettingsRouteRouteWithChildren
+  '/accept-invitation/$id': typeof ProtectedAcceptInvitationIdRoute
+  '/catalog/$id': typeof ProtectedOrgCatalogIdRoute
+  '/chat/$chatId': typeof ProtectedOrgChatChatIdRoute
+  '/chat/new': typeof ProtectedOrgChatNewRoute
+  '/settings/general': typeof ProtectedOrgSettingsGeneralRoute
+  '/settings/members': typeof ProtectedOrgSettingsMembersRoute
+  '/catalog/': typeof ProtectedOrgCatalogIndexRoute
+  '/settings/': typeof ProtectedOrgSettingsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/signup': typeof SignupRoute
-  '/accept-invitation/$id': typeof AcceptInvitationIdRoute
-  '/': typeof ProtectedIndexRoute
-  '/catalog/$id': typeof ProtectedCatalogIdRoute
-  '/chat/$chatId': typeof ProtectedChatChatIdRoute
-  '/settings/general': typeof ProtectedSettingsGeneralRoute
-  '/settings/members': typeof ProtectedSettingsMembersRoute
-  '/catalog': typeof ProtectedCatalogIndexRoute
-  '/settings': typeof ProtectedSettingsIndexRoute
+  '/': typeof ProtectedOrgIndexRoute
+  '/forgot-password': typeof AuthForgotPasswordRoute
+  '/login': typeof AuthLoginRoute
+  '/reset-password': typeof AuthResetPasswordRoute
+  '/signup': typeof AuthSignupRoute
+  '/onboarding': typeof ProtectedOnboardingRoute
+  '/accept-invitation/$id': typeof ProtectedAcceptInvitationIdRoute
+  '/catalog/$id': typeof ProtectedOrgCatalogIdRoute
+  '/chat/$chatId': typeof ProtectedOrgChatChatIdRoute
+  '/chat/new': typeof ProtectedOrgChatNewRoute
+  '/settings/general': typeof ProtectedOrgSettingsGeneralRoute
+  '/settings/members': typeof ProtectedOrgSettingsMembersRoute
+  '/catalog': typeof ProtectedOrgCatalogIndexRoute
+  '/settings': typeof ProtectedOrgSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/_auth': typeof AuthRouteWithChildren
   '/_protected': typeof ProtectedRouteWithChildren
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/signup': typeof SignupRoute
-  '/_protected/settings': typeof ProtectedSettingsRouteRouteWithChildren
-  '/accept-invitation/$id': typeof AcceptInvitationIdRoute
-  '/_protected/': typeof ProtectedIndexRoute
-  '/_protected/catalog/$id': typeof ProtectedCatalogIdRoute
-  '/_protected/chat/$chatId': typeof ProtectedChatChatIdRoute
-  '/_protected/settings/general': typeof ProtectedSettingsGeneralRoute
-  '/_protected/settings/members': typeof ProtectedSettingsMembersRoute
-  '/_protected/catalog/': typeof ProtectedCatalogIndexRoute
-  '/_protected/settings/': typeof ProtectedSettingsIndexRoute
+  '/_auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/reset-password': typeof AuthResetPasswordRoute
+  '/_auth/signup': typeof AuthSignupRoute
+  '/_protected/_org': typeof ProtectedOrgRouteWithChildren
+  '/_protected/onboarding': typeof ProtectedOnboardingRoute
+  '/_protected/_org/settings': typeof ProtectedOrgSettingsRouteRouteWithChildren
+  '/_protected/accept-invitation/$id': typeof ProtectedAcceptInvitationIdRoute
+  '/_protected/_org/': typeof ProtectedOrgIndexRoute
+  '/_protected/_org/catalog/$id': typeof ProtectedOrgCatalogIdRoute
+  '/_protected/_org/chat/$chatId': typeof ProtectedOrgChatChatIdRoute
+  '/_protected/_org/chat/new': typeof ProtectedOrgChatNewRoute
+  '/_protected/_org/settings/general': typeof ProtectedOrgSettingsGeneralRoute
+  '/_protected/_org/settings/members': typeof ProtectedOrgSettingsMembersRoute
+  '/_protected/_org/catalog/': typeof ProtectedOrgCatalogIndexRoute
+  '/_protected/_org/settings/': typeof ProtectedOrgSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,63 +182,70 @@ export interface FileRouteTypes {
     | '/'
     | '/forgot-password'
     | '/login'
-    | '/onboarding'
     | '/reset-password'
     | '/signup'
+    | '/onboarding'
     | '/settings'
     | '/accept-invitation/$id'
     | '/catalog/$id'
     | '/chat/$chatId'
+    | '/chat/new'
     | '/settings/general'
     | '/settings/members'
     | '/catalog/'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/forgot-password'
     | '/login'
-    | '/onboarding'
     | '/reset-password'
     | '/signup'
+    | '/onboarding'
     | '/accept-invitation/$id'
-    | '/'
     | '/catalog/$id'
     | '/chat/$chatId'
+    | '/chat/new'
     | '/settings/general'
     | '/settings/members'
     | '/catalog'
     | '/settings'
   id:
     | '__root__'
+    | '/_auth'
     | '/_protected'
-    | '/forgot-password'
-    | '/login'
-    | '/onboarding'
-    | '/reset-password'
-    | '/signup'
-    | '/_protected/settings'
-    | '/accept-invitation/$id'
-    | '/_protected/'
-    | '/_protected/catalog/$id'
-    | '/_protected/chat/$chatId'
-    | '/_protected/settings/general'
-    | '/_protected/settings/members'
-    | '/_protected/catalog/'
-    | '/_protected/settings/'
+    | '/_auth/forgot-password'
+    | '/_auth/login'
+    | '/_auth/reset-password'
+    | '/_auth/signup'
+    | '/_protected/_org'
+    | '/_protected/onboarding'
+    | '/_protected/_org/settings'
+    | '/_protected/accept-invitation/$id'
+    | '/_protected/_org/'
+    | '/_protected/_org/catalog/$id'
+    | '/_protected/_org/chat/$chatId'
+    | '/_protected/_org/chat/new'
+    | '/_protected/_org/settings/general'
+    | '/_protected/_org/settings/members'
+    | '/_protected/_org/catalog/'
+    | '/_protected/_org/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  AuthRoute: typeof AuthRouteWithChildren
   ProtectedRoute: typeof ProtectedRouteWithChildren
-  ForgotPasswordRoute: typeof ForgotPasswordRoute
-  LoginRoute: typeof LoginRoute
-  OnboardingRoute: typeof OnboardingRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
-  SignupRoute: typeof SignupRoute
-  AcceptInvitationIdRoute: typeof AcceptInvitationIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_protected': {
       id: '/_protected'
       path: ''
@@ -221,139 +253,187 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/forgot-password': {
-      id: '/forgot-password'
+    '/_auth/forgot-password': {
+      id: '/_auth/forgot-password'
       path: '/forgot-password'
       fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/login': {
-      id: '/login'
+    '/_auth/login': {
+      id: '/_auth/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
+    '/_auth/reset-password': {
+      id: '/_auth/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/signup': {
-      id: '/signup'
+    '/_auth/signup': {
+      id: '/_auth/signup'
       path: '/signup'
       fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/_protected/': {
-      id: '/_protected/'
+    '/_protected/_org': {
+      id: '/_protected/_org'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ProtectedOrgRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/onboarding': {
+      id: '/_protected/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof ProtectedOnboardingRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/_org/': {
+      id: '/_protected/_org/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof ProtectedIndexRouteImport
-      parentRoute: typeof ProtectedRoute
+      preLoaderRoute: typeof ProtectedOrgIndexRouteImport
+      parentRoute: typeof ProtectedOrgRoute
     }
-    '/_protected/settings': {
-      id: '/_protected/settings'
+    '/_protected/_org/settings': {
+      id: '/_protected/_org/settings'
       path: '/settings'
       fullPath: '/settings'
-      preLoaderRoute: typeof ProtectedSettingsRouteRouteImport
-      parentRoute: typeof ProtectedRoute
+      preLoaderRoute: typeof ProtectedOrgSettingsRouteRouteImport
+      parentRoute: typeof ProtectedOrgRoute
     }
-    '/accept-invitation/$id': {
-      id: '/accept-invitation/$id'
+    '/_protected/accept-invitation/$id': {
+      id: '/_protected/accept-invitation/$id'
       path: '/accept-invitation/$id'
       fullPath: '/accept-invitation/$id'
-      preLoaderRoute: typeof AcceptInvitationIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ProtectedAcceptInvitationIdRouteImport
+      parentRoute: typeof ProtectedRoute
     }
-    '/_protected/catalog/': {
-      id: '/_protected/catalog/'
+    '/_protected/_org/catalog/': {
+      id: '/_protected/_org/catalog/'
       path: '/catalog'
       fullPath: '/catalog/'
-      preLoaderRoute: typeof ProtectedCatalogIndexRouteImport
-      parentRoute: typeof ProtectedRoute
+      preLoaderRoute: typeof ProtectedOrgCatalogIndexRouteImport
+      parentRoute: typeof ProtectedOrgRoute
     }
-    '/_protected/catalog/$id': {
-      id: '/_protected/catalog/$id'
+    '/_protected/_org/catalog/$id': {
+      id: '/_protected/_org/catalog/$id'
       path: '/catalog/$id'
       fullPath: '/catalog/$id'
-      preLoaderRoute: typeof ProtectedCatalogIdRouteImport
-      parentRoute: typeof ProtectedRoute
+      preLoaderRoute: typeof ProtectedOrgCatalogIdRouteImport
+      parentRoute: typeof ProtectedOrgRoute
     }
-    '/_protected/chat/$chatId': {
-      id: '/_protected/chat/$chatId'
+    '/_protected/_org/chat/$chatId': {
+      id: '/_protected/_org/chat/$chatId'
       path: '/chat/$chatId'
       fullPath: '/chat/$chatId'
-      preLoaderRoute: typeof ProtectedChatChatIdRouteImport
-      parentRoute: typeof ProtectedRoute
+      preLoaderRoute: typeof ProtectedOrgChatChatIdRouteImport
+      parentRoute: typeof ProtectedOrgRoute
     }
-    '/_protected/settings/': {
-      id: '/_protected/settings/'
+    '/_protected/_org/chat/new': {
+      id: '/_protected/_org/chat/new'
+      path: '/chat/new'
+      fullPath: '/chat/new'
+      preLoaderRoute: typeof ProtectedOrgChatNewRouteImport
+      parentRoute: typeof ProtectedOrgRoute
+    }
+    '/_protected/_org/settings/': {
+      id: '/_protected/_org/settings/'
       path: '/'
       fullPath: '/settings/'
-      preLoaderRoute: typeof ProtectedSettingsIndexRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
+      preLoaderRoute: typeof ProtectedOrgSettingsIndexRouteImport
+      parentRoute: typeof ProtectedOrgSettingsRouteRoute
     }
-    '/_protected/settings/general': {
-      id: '/_protected/settings/general'
+    '/_protected/_org/settings/general': {
+      id: '/_protected/_org/settings/general'
       path: '/general'
       fullPath: '/settings/general'
-      preLoaderRoute: typeof ProtectedSettingsGeneralRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
+      preLoaderRoute: typeof ProtectedOrgSettingsGeneralRouteImport
+      parentRoute: typeof ProtectedOrgSettingsRouteRoute
     }
-    '/_protected/settings/members': {
-      id: '/_protected/settings/members'
+    '/_protected/_org/settings/members': {
+      id: '/_protected/_org/settings/members'
       path: '/members'
       fullPath: '/settings/members'
-      preLoaderRoute: typeof ProtectedSettingsMembersRouteImport
-      parentRoute: typeof ProtectedSettingsRouteRoute
+      preLoaderRoute: typeof ProtectedOrgSettingsMembersRouteImport
+      parentRoute: typeof ProtectedOrgSettingsRouteRoute
     }
   }
 }
 
-interface ProtectedSettingsRouteRouteChildren {
-  ProtectedSettingsGeneralRoute: typeof ProtectedSettingsGeneralRoute
-  ProtectedSettingsMembersRoute: typeof ProtectedSettingsMembersRoute
-  ProtectedSettingsIndexRoute: typeof ProtectedSettingsIndexRoute
+interface AuthRouteChildren {
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthSignupRoute: typeof AuthSignupRoute
 }
 
-const ProtectedSettingsRouteRouteChildren: ProtectedSettingsRouteRouteChildren =
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthSignupRoute: AuthSignupRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+interface ProtectedOrgSettingsRouteRouteChildren {
+  ProtectedOrgSettingsGeneralRoute: typeof ProtectedOrgSettingsGeneralRoute
+  ProtectedOrgSettingsMembersRoute: typeof ProtectedOrgSettingsMembersRoute
+  ProtectedOrgSettingsIndexRoute: typeof ProtectedOrgSettingsIndexRoute
+}
+
+const ProtectedOrgSettingsRouteRouteChildren: ProtectedOrgSettingsRouteRouteChildren =
   {
-    ProtectedSettingsGeneralRoute: ProtectedSettingsGeneralRoute,
-    ProtectedSettingsMembersRoute: ProtectedSettingsMembersRoute,
-    ProtectedSettingsIndexRoute: ProtectedSettingsIndexRoute,
+    ProtectedOrgSettingsGeneralRoute: ProtectedOrgSettingsGeneralRoute,
+    ProtectedOrgSettingsMembersRoute: ProtectedOrgSettingsMembersRoute,
+    ProtectedOrgSettingsIndexRoute: ProtectedOrgSettingsIndexRoute,
   }
 
-const ProtectedSettingsRouteRouteWithChildren =
-  ProtectedSettingsRouteRoute._addFileChildren(
-    ProtectedSettingsRouteRouteChildren,
+const ProtectedOrgSettingsRouteRouteWithChildren =
+  ProtectedOrgSettingsRouteRoute._addFileChildren(
+    ProtectedOrgSettingsRouteRouteChildren,
   )
 
+interface ProtectedOrgRouteChildren {
+  ProtectedOrgSettingsRouteRoute: typeof ProtectedOrgSettingsRouteRouteWithChildren
+  ProtectedOrgIndexRoute: typeof ProtectedOrgIndexRoute
+  ProtectedOrgCatalogIdRoute: typeof ProtectedOrgCatalogIdRoute
+  ProtectedOrgChatChatIdRoute: typeof ProtectedOrgChatChatIdRoute
+  ProtectedOrgChatNewRoute: typeof ProtectedOrgChatNewRoute
+  ProtectedOrgCatalogIndexRoute: typeof ProtectedOrgCatalogIndexRoute
+}
+
+const ProtectedOrgRouteChildren: ProtectedOrgRouteChildren = {
+  ProtectedOrgSettingsRouteRoute: ProtectedOrgSettingsRouteRouteWithChildren,
+  ProtectedOrgIndexRoute: ProtectedOrgIndexRoute,
+  ProtectedOrgCatalogIdRoute: ProtectedOrgCatalogIdRoute,
+  ProtectedOrgChatChatIdRoute: ProtectedOrgChatChatIdRoute,
+  ProtectedOrgChatNewRoute: ProtectedOrgChatNewRoute,
+  ProtectedOrgCatalogIndexRoute: ProtectedOrgCatalogIndexRoute,
+}
+
+const ProtectedOrgRouteWithChildren = ProtectedOrgRoute._addFileChildren(
+  ProtectedOrgRouteChildren,
+)
+
 interface ProtectedRouteChildren {
-  ProtectedSettingsRouteRoute: typeof ProtectedSettingsRouteRouteWithChildren
-  ProtectedIndexRoute: typeof ProtectedIndexRoute
-  ProtectedCatalogIdRoute: typeof ProtectedCatalogIdRoute
-  ProtectedChatChatIdRoute: typeof ProtectedChatChatIdRoute
-  ProtectedCatalogIndexRoute: typeof ProtectedCatalogIndexRoute
+  ProtectedOrgRoute: typeof ProtectedOrgRouteWithChildren
+  ProtectedOnboardingRoute: typeof ProtectedOnboardingRoute
+  ProtectedAcceptInvitationIdRoute: typeof ProtectedAcceptInvitationIdRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
-  ProtectedSettingsRouteRoute: ProtectedSettingsRouteRouteWithChildren,
-  ProtectedIndexRoute: ProtectedIndexRoute,
-  ProtectedCatalogIdRoute: ProtectedCatalogIdRoute,
-  ProtectedChatChatIdRoute: ProtectedChatChatIdRoute,
-  ProtectedCatalogIndexRoute: ProtectedCatalogIndexRoute,
+  ProtectedOrgRoute: ProtectedOrgRouteWithChildren,
+  ProtectedOnboardingRoute: ProtectedOnboardingRoute,
+  ProtectedAcceptInvitationIdRoute: ProtectedAcceptInvitationIdRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
@@ -361,13 +441,8 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  AuthRoute: AuthRouteWithChildren,
   ProtectedRoute: ProtectedRouteWithChildren,
-  ForgotPasswordRoute: ForgotPasswordRoute,
-  LoginRoute: LoginRoute,
-  OnboardingRoute: OnboardingRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
-  SignupRoute: SignupRoute,
-  AcceptInvitationIdRoute: AcceptInvitationIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
