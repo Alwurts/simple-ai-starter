@@ -1,6 +1,6 @@
 import type { ChatSummary } from "@workspace/agent/types";
 import { describe, expect, it } from "vitest";
-import { homeRedirectChatId } from "./home-redirect";
+import { homeRedirectTarget } from "./home-redirect";
 
 const chat = (id: string): ChatSummary => ({
   createdAt: 0,
@@ -9,20 +9,23 @@ const chat = (id: string): ChatSummary => ({
   updatedAt: 0,
 });
 
-describe("homeRedirectChatId", () => {
+describe("homeRedirectTarget", () => {
   it("opens the newest chat when the list is ready and non-empty", () => {
-    expect(homeRedirectChatId("ready", [chat("b"), chat("a")])).toBe("b");
+    expect(homeRedirectTarget("ready", [chat("b"), chat("a")])).toEqual({
+      kind: "chat",
+      chatId: "b",
+    });
   });
 
   it("opens the new-chat draft when the org has no chats", () => {
-    expect(homeRedirectChatId("ready", [])).toBe("new");
+    expect(homeRedirectTarget("ready", [])).toEqual({ kind: "draft" });
   });
 
   it("opens the draft when the chat list failed to load", () => {
-    expect(homeRedirectChatId("error", [])).toBe("new");
+    expect(homeRedirectTarget("error", [])).toEqual({ kind: "draft" });
   });
 
   it("waits while the list is loading", () => {
-    expect(homeRedirectChatId("loading", [])).toBeNull();
+    expect(homeRedirectTarget("loading", [])).toBeNull();
   });
 });

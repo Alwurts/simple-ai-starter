@@ -157,7 +157,7 @@ export function AppSidebarChats() {
     }
     isCreating.current = true;
     try {
-      await navigate({ params: { chatId: "new" }, to: "/chat/$chatId" });
+      await navigate({ to: "/chat/new" });
     } finally {
       isCreating.current = false;
     }
@@ -171,10 +171,11 @@ export function AppSidebarChats() {
     }
     if (pathname === `/chat/${chatId}`) {
       const next = chats.find((chat) => chat.id !== chatId)?.id;
-      await navigate({
-        params: { chatId: next ?? "new" },
-        to: "/chat/$chatId",
-      });
+      await navigate(
+        next
+          ? { params: { chatId: next }, to: "/chat/$chatId" }
+          : { to: "/chat/new" }
+      );
     }
   };
 

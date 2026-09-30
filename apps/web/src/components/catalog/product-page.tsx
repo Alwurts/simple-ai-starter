@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { AppBreadcrumbs } from "@workspace/ui/components/brand/app-breadcrumbs";
 import {
   ShellHeader,
@@ -43,15 +43,14 @@ import {
   useUpdateProduct,
 } from "@/hooks/catalog/use-products";
 import { INTL_LOCALE } from "@/lib/locale";
-export const Route = createFileRoute("/_protected/catalog/$id")({
-  component: ProductPage,
-});
+
 interface ProductDetailsReadOnlyProps {
   product: {
     name: string;
     description: string | null;
   };
 }
+
 function ProductDetailsReadOnly({ product }: ProductDetailsReadOnlyProps) {
   return (
     <div className="space-y-4">
@@ -66,10 +65,13 @@ function ProductDetailsReadOnly({ product }: ProductDetailsReadOnlyProps) {
     </div>
   );
 }
-function ProductPage() {
+
+export function ProductPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { id: productId } = Route.useParams();
+  const { id: productId } = useParams({
+    from: "/_protected/_org/catalog/$id",
+  });
   const navigate = useNavigate();
   const {
     data: product,

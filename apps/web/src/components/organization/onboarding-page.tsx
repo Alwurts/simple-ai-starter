@@ -1,12 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { LogoMark } from "@workspace/ui/components/icons/logo-monochrome";
 import { CreateOrganizationForm } from "@/components/organization/create-organization-form";
 
-export const Route = createFileRoute("/onboarding")({
-  component: OnboardingPage,
-});
-
-function OnboardingPage() {
+export function OnboardingPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-background p-8">
       <div className="w-full max-w-md space-y-8">

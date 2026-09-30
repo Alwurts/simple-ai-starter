@@ -1,12 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 import { useEffect } from "react";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
-import { homeRedirectChatId } from "@/lib/chat/home-redirect";
-
-export const Route = createFileRoute("/_protected/")({
-  component: ChatHomeRedirect,
-});
+import { homeRedirectTarget } from "@/lib/chat/home-redirect";
 
 /**
  * The chat is the signed-in home. `/` opens the most recent chat — or the
@@ -14,18 +10,22 @@ export const Route = createFileRoute("/_protected/")({
  * linkable `/chat/$chatId` URL. A failed chat-list load also lands on the
  * draft (a draft needs no list); the sidebar offers Retry for the list.
  */
-function ChatHomeRedirect() {
+export function ChatHomePage() {
   const { chats, chatsLoadState } = useOrgConnection();
   const navigate = useNavigate();
 
   // biome-ignore lint/plugin/no-use-effect: redirect once the chat list resolves (or fails)
   useEffect(() => {
-    const chatId = homeRedirectChatId(chatsLoadState, chats);
-    if (chatId === null) {
+    const target = homeRedirectTarget(chatsLoadState, chats);
+    if (target === null) {
+      return;
+    }
+    if (target.kind === "draft") {
+      navigate({ replace: true, to: "/chat/new" });
       return;
     }
     navigate({
-      params: { chatId },
+      params: { chatId: target.chatId },
       replace: true,
       to: "/chat/$chatId",
     });

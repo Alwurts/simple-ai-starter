@@ -1,6 +1,4 @@
-"use client";
-
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
 import { AppBreadcrumbs } from "@workspace/ui/components/brand/app-breadcrumbs";
 import {
@@ -16,10 +14,6 @@ import {
   type SettingsNavSection,
   SettingsSectionLayout,
 } from "@/components/organization/settings/settings-nav";
-
-export const Route = createFileRoute("/_protected/settings")({
-  component: SettingsLayout,
-});
 
 function settingsSections(): SettingsNavSection[] {
   return [
@@ -39,7 +33,7 @@ function settingsSections(): SettingsNavSection[] {
   ];
 }
 
-function SettingsLayout() {
+export function SettingsLayout() {
   const { data: activeOrganization, isPending } =
     authClient.useActiveOrganization();
   const sections = settingsSections();

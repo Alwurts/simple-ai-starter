@@ -2,7 +2,7 @@
 
 import type { PendingAction } from "@cloudflare/codemode";
 import { useAgentChat } from "@cloudflare/think/react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import type { ChatSummary } from "@workspace/agent/types";
 import {
   ShellHeader,
@@ -114,16 +114,19 @@ function errorMessageFrom(error: unknown): string {
 }
 
 /**
- * The chat page. `chatId === null` is a draft: nothing connects until the
- * first send, which creates the chat via `OrgAgent.createChat` and hands off
- * to `/chat/$chatId` — no empty chats pile up (matches the starter's dock).
- * An unknown chat id never mounts ChatView (no chat socket): the sub-agent
- * 404 reaches the browser as a non-terminal close and would reconnect
- * forever, so the missing chat is detected from the org state's chat list
- * once it has loaded (`chatRouteState`).
+ * The chat page. `/chat/new` is the draft: nothing connects until the first
+ * send, which creates the chat via `OrgAgent.createChat` and hands off to
+ * `/chat/$chatId` — no empty chats pile up (matches the starter's dock). An
+ * unknown chat id never mounts ChatView (no chat socket): the sub-agent 404
+ * reaches the browser as a non-terminal close and would reconnect forever,
+ * so the missing chat is detected from the org state's chat list once it has
+ * loaded (`chatRouteState`).
  */
-export function FullScreenChat({ chatId }: { chatId: string | null }) {
+export function ChatPage() {
   const { chats, chatsLoadState } = useOrgConnection();
+  // `/chat/new` has no chatId param — that absence is the draft.
+  const { chatId: chatIdParam } = useParams({ strict: false });
+  const chatId = chatIdParam ?? null;
   const routeState =
     chatId === null ? "open" : chatRouteState(chatId, chatsLoadState, chats);
   return (
@@ -167,12 +170,7 @@ function ChatNotFound() {
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button
-          onClick={() =>
-            navigate({ params: { chatId: "new" }, to: "/chat/$chatId" })
-          }
-          type="button"
-        >
+        <Button onClick={() => navigate({ to: "/chat/new" })} type="button">
           <MessageCircleDashedIcon />
           Start a new chat
         </Button>
@@ -204,7 +202,7 @@ function DraftView({ title }: { title: string }) {
           to: "/chat/$chatId",
         });
       } catch (error) {
-        console.error("[FullScreenChat] createChat failed", error);
+        console.error("[ChatPage] createChat failed", error);
         setDraftError(
           error instanceof Error && error.message
             ? error.message
@@ -353,7 +351,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
           ) {
             const errorText =
               (result as { error?: unknown }).error ?? "Unknown error";
-            console.error(`[FullScreenChat] ${call} failed:`, errorText);
+            console.error(`[ChatPage] ${call} failed:`, errorText);
             toast.error(
               `Couldn't ${approved ? "approve" : "reject"}: this run already moved on.`,
               {
@@ -363,7 +361,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
           }
         })
         .catch((error: unknown) => {
-          console.error(`[FullScreenChat] ${call} failed`, error);
+          console.error(`[ChatPage] ${call} failed`, error);
           toast.error("Couldn't resolve the execution. Please try again.", {
             position: "top-center",
           });
@@ -392,7 +390,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
             timeout: 10_000,
           })) as PendingAction[];
         } catch (error) {
-          console.error("[FullScreenChat] pendingExecutions failed", error);
+          console.error("[ChatPage] pendingExecutions failed", error);
           await chatAgent.ready;
         }
       }
@@ -464,10 +462,11 @@ function ChatView({ chatId, title }: ChatViewProps) {
       return; // deleteChat already toasted the failure.
     }
     const next = chats.find((chat) => chat.id !== chatId)?.id;
-    navigate({
-      params: { chatId: next ?? "new" },
-      to: "/chat/$chatId",
-    });
+    navigate(
+      next
+        ? { params: { chatId: next }, to: "/chat/$chatId" }
+        : { to: "/chat/new" }
+    );
   }, [chatId, chats, deleteChat, helpers, navigate]);
 
   const hydrating = !(chatAgent.identified || chatAgent.connectionError);

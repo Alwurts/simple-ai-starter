@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
 import {
   Card,
@@ -15,11 +14,7 @@ import {
   MembersTable,
 } from "@/components/organization/members/members-table";
 
-export const Route = createFileRoute("/_protected/settings/members")({
-  component: MembersSettingsPage,
-});
-
-function MembersSettingsPage() {
+export function MembersSettingsPage() {
   const { data: activeOrganization } = authClient.useActiveOrganization();
 
   if (!activeOrganization) {

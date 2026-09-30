@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
 import {
   Card,
@@ -11,11 +10,7 @@ import { Separator } from "@workspace/ui/components/shadcn/separator";
 import { OrganizationDangerZone } from "@/components/organization/settings/organization-danger-zone";
 import { OrganizationDetailsForm } from "@/components/organization/settings/organization-details-form";
 
-export const Route = createFileRoute("/_protected/settings/general")({
-  component: GeneralSettingsPage,
-});
-
-function GeneralSettingsPage() {
+export function GeneralSettingsPage() {
   const { data: activeOrganization } = authClient.useActiveOrganization();
 
   if (!activeOrganization) {

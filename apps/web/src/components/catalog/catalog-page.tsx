@@ -1,11 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import type {
   ColumnFiltersState,
   PaginationState,
   SortingState,
   Updater,
 } from "@tanstack/react-table";
-import { paginationQuerySchema } from "@workspace/contract/pagination";
 import { AppBreadcrumbs } from "@workspace/ui/components/brand/app-breadcrumbs";
 import { ResourceTable } from "@workspace/ui/components/brand/resource-table";
 import {
@@ -30,11 +29,6 @@ import {
   tableToolbarLabels,
 } from "@/lib/catalog/table-toolbar-labels";
 import { INTL_LOCALE } from "@/lib/locale";
-
-export const Route = createFileRoute("/_protected/catalog/")({
-  component: CatalogPage,
-  validateSearch: paginationQuerySchema,
-});
 
 function productFilterDefinitions(): TableFilterDefinition[] {
   return [
@@ -75,9 +69,9 @@ function resolveCollectionEmpty({
   }
 }
 
-function CatalogPage() {
-  const searchParams = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
+export function CatalogPage() {
+  const searchParams = useSearch({ from: "/_protected/_org/catalog/" });
+  const navigate = useNavigate({ from: "/catalog/" });
   const { data: productsResponse, isLoading } = useProducts(searchParams);
 
   const pagination = useMemo<PaginationState>(
