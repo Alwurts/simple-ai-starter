@@ -8,16 +8,15 @@ import {
   PanelRightCloseIcon,
   XIcon,
 } from "lucide-react";
-import {
-  isTextFile,
-  type WorkspaceTree,
-} from "@/hooks/chat/use-workspace-tree";
+import { useWorkspaceFile } from "@/hooks/chat/use-workspace-queries";
+import { isTextFile } from "@/lib/chat/workspace-files";
 import { FileExplorerTree } from "./file-explorer-tree";
 
 /**
  * Read-only view over the org's shared workspace (`OrgAgent.listWorkspace` /
- * `readWorkspaceFile`). Opening a file shows its text; everything refetches
- * live on the `workspace-change` broadcast (see `useWorkspaceTree`).
+ * `readWorkspaceFile`). The open tab's file is shown; every directory and file
+ * is a TanStack Query invalidated by the `workspace-change` broadcast (see
+ * `use-workspace-queries.ts`).
  */
 export function ChatSidePanel({
   tabs,
@@ -27,7 +26,6 @@ export function ChatSidePanel({
   onCloseTab,
   onSelectTab,
   onOpenFile,
-  tree,
 }: {
   tabs: { id: string; path: string; name: string }[];
   activeTab: { id: string; path: string; name: string } | null;
@@ -36,7 +34,6 @@ export function ChatSidePanel({
   onCloseTab: (tabId: string) => void;
   onSelectTab: (tabId: string) => void;
   onOpenFile: (path: string, name: string) => void;
-  tree: WorkspaceTree;
 }) {
   return (
     <div
@@ -101,10 +98,10 @@ export function ChatSidePanel({
           >
             <div className="grid h-full min-h-0 @min-[36rem]/files:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)] @min-[36rem]/files:grid-rows-1 grid-rows-[minmax(9rem,40%)_minmax(0,1fr)]">
               <div className="min-h-0 overflow-auto @min-[36rem]/files:border-r border-b @min-[36rem]/files:border-b-0 bg-background">
-                <FileExplorerTree onOpenFile={onOpenFile} tree={tree} />
+                <FileExplorerTree onOpenFile={onOpenFile} />
               </div>
               <div className="min-h-0 overflow-hidden">
-                <FileContent tree={tree} />
+                <FileContent name={activeTab.name} path={activeTab.path} />
               </div>
             </div>
           </div>
@@ -120,7 +117,7 @@ export function ChatSidePanel({
               </p>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-              <FileExplorerTree onOpenFile={onOpenFile} tree={tree} />
+              <FileExplorerTree onOpenFile={onOpenFile} />
             </div>
           </div>
         )}
@@ -129,12 +126,10 @@ export function ChatSidePanel({
   );
 }
 
-function FileContent({ tree }: { tree: WorkspaceTree }) {
-  if (!tree.selectedPath) {
-    return <NoFileSelected />;
-  }
-  const name = tree.selectedName ?? tree.selectedPath;
-  if (tree.fileState === "loading") {
+function FileContent({ path, name }: { path: string; name: string }) {
+  const file = useWorkspaceFile(path);
+
+  if (file.isPending) {
     return (
       <div className="flex h-full items-center justify-center gap-2 text-muted-foreground text-sm">
         <Loader2Icon className="size-4 animate-spin" />
@@ -153,27 +148,11 @@ function FileContent({ tree }: { tree: WorkspaceTree }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b px-3 py-2 text-muted-foreground text-xs">
-        {tree.selectedPath}
+        {path}
       </div>
       <pre className="min-h-0 flex-1 overflow-auto p-3 font-mono text-xs leading-relaxed">
-        {tree.fileContent ??
-          (tree.fileState === "error" ? "// Couldn't load this file." : "")}
+        {file.isError ? "// Couldn't load this file." : (file.data ?? "")}
       </pre>
-    </div>
-  );
-}
-
-function NoFileSelected() {
-  return (
-    <div
-      className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
-      data-slot="no-file-selected"
-    >
-      <FileIcon className="size-6 text-muted-foreground" />
-      <p className="font-medium text-sm">No file selected</p>
-      <p className="max-w-xs text-muted-foreground text-xs">
-        Select a file from the tree to preview its contents.
-      </p>
     </div>
   );
 }

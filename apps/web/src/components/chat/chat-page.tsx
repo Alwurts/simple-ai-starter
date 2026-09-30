@@ -64,7 +64,6 @@ import {
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { useAgentToolMutationInvalidation } from "@/hooks/chat/use-agent-tool-mutation-invalidation";
 import { useChatSidePanel } from "@/hooks/chat/use-chat-side-panel";
-import { useWorkspaceTree } from "@/hooks/chat/use-workspace-tree";
 import {
   type OrgChatMessage,
   type OutgoingUserMessage,
@@ -563,7 +562,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
             maxSize="55%"
             minSize="22%"
           >
-            <ChatSidePanelController
+            <ChatSidePanel
               activeTab={sidePanel.activeTab}
               activeTabId={sidePanel.activeTabId}
               onClosePanel={sidePanel.closePanel}
@@ -577,23 +576,6 @@ function ChatView({ chatId, title }: ChatViewProps) {
       ) : null}
     </>
   );
-}
-
-/** Mounts the workspace tree hook only while the panel is open. */
-function ChatSidePanelController({
-  onOpenFile,
-  ...props
-}: {
-  tabs: { id: string; path: string; name: string }[];
-  activeTab: { id: string; path: string; name: string } | null;
-  activeTabId: string | null;
-  onClosePanel: () => void;
-  onCloseTab: (tabId: string) => void;
-  onSelectTab: (tabId: string) => void;
-  onOpenFile: (path: string, name: string) => void;
-}) {
-  const tree = useWorkspaceTree();
-  return <ChatSidePanel {...props} onOpenFile={onOpenFile} tree={tree} />;
 }
 
 function MessageListOrEmpty({

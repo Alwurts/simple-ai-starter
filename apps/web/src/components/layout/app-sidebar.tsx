@@ -27,7 +27,7 @@ import {
   SearchX,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { AppSidebarFooter } from "@/components/layout/app-sidebar-footer";
@@ -36,6 +36,10 @@ import {
   isPlatformNavActive,
 } from "@/components/layout/platform-navigation";
 import { SearchCommand } from "@/components/search/search-command";
+import {
+  CHAT_SEARCH_MIN_QUERY,
+  useChatSearch,
+} from "@/hooks/chat/use-chat-search";
 
 export function AppSidebar() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -141,7 +145,7 @@ function AppSidebarMainNavigation() {
 
 /** Org thread list (`OrgAgent.listChats`, newest first) with New chat + delete. */
 function AppSidebarChats() {
-  const { chats, chatsLoadState, deleteChat, retryConnection, searchChats } =
+  const { chats, chatsLoadState, deleteChat, retryConnection } =
     useOrgConnection();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -177,10 +181,7 @@ function AppSidebarChats() {
         <span className="sr-only">New chat</span>
       </SidebarGroupAction>
       <SidebarGroupContent>
-        <ChatSearchBox
-          closeOnNavigate={closeOnNavigate}
-          searchChats={searchChats}
-        />
+        <ChatSearchBox closeOnNavigate={closeOnNavigate} />
         <SidebarMenu>
           <ChatListGroupRows
             chats={chats}
@@ -196,7 +197,6 @@ function AppSidebarChats() {
   );
 }
 
-const CHAT_SEARCH_MIN_QUERY = 2;
 const CHAT_SEARCH_DEBOUNCE_MS = 300;
 
 /**
@@ -204,55 +204,19 @@ const CHAT_SEARCH_DEBOUNCE_MS = 300;
  * to `OrgAgent.searchChats` (FTS over each chat's transcript) and renders
  * matching chats with a snippet. Clicking a hit opens that chat.
  */
-function ChatSearchBox({
-  closeOnNavigate,
-  searchChats,
-}: {
-  closeOnNavigate: () => void;
-  searchChats: (query: string) => Promise<ChatSearchHit[]>;
-}) {
+function ChatSearchBox({ closeOnNavigate }: { closeOnNavigate: () => void }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [hits, setHits] = useState<ChatSearchHit[]>([]);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
-    "idle"
-  );
   const debouncedSetQuery = useDebouncedCallback(
     setDebouncedQuery,
     CHAT_SEARCH_DEBOUNCE_MS
   );
 
+  const search = useChatSearch(debouncedQuery);
   const trimmed = debouncedQuery.trim();
   const active = trimmed.length >= CHAT_SEARCH_MIN_QUERY;
-
-  // biome-ignore lint/plugin/no-use-effect: debounced search RPC on query change
-  useEffect(() => {
-    if (!active) {
-      setStatus("idle");
-      setHits([]);
-      return;
-    }
-    let cancelled = false;
-    setStatus("loading");
-    searchChats(trimmed)
-      .then((results) => {
-        if (cancelled) {
-          return;
-        }
-        setHits(results);
-        setStatus("ready");
-      })
-      .catch((error: unknown) => {
-        console.error("[AppSidebar] chat search failed", error);
-        if (!cancelled) {
-          setStatus("error");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [active, searchChats, trimmed]);
+  const hits = active ? (search.data ?? []) : [];
 
   const clear = () => {
     setQuery("");
@@ -290,18 +254,18 @@ function ChatSearchBox({
           </button>
         ) : null}
       </div>
-      {status === "loading" ? (
+      {active && search.isPending ? (
         <span className="flex items-center gap-1.5 px-1 py-0.5 text-muted-foreground text-xs">
           <Loader2Icon className="size-3 animate-spin" />
           Searching…
         </span>
       ) : null}
-      {status === "error" ? (
+      {search.isError ? (
         <span className="px-1 py-0.5 text-destructive text-xs">
           Couldn't search. Try again.
         </span>
       ) : null}
-      {status === "ready" && hits.length === 0 ? (
+      {active && search.isSuccess && hits.length === 0 ? (
         <span className="flex items-center gap-1.5 px-1 py-0.5 text-muted-foreground text-xs">
           <SearchX className="size-3" />
           No matching messages

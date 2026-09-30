@@ -7,39 +7,53 @@ import {
   FileIcon,
   FolderIcon,
   Loader2Icon,
+  RotateCcwIcon,
 } from "lucide-react";
-import type { WorkspaceTree } from "@/hooks/chat/use-workspace-tree";
+import { useState } from "react";
+import { useWorkspaceDirectory } from "@/hooks/chat/use-workspace-queries";
 
 /**
- * Read-only org workspace file tree. Directories load their children lazily on
- * first expand via the `tree` controller (which talks to the OrgAgent
- * `listWorkspace` RPC), so nothing is fetched until the user drills in.
+ * Read-only org workspace file tree. Every directory — root included — loads
+ * its entries through its own query (`OrgAgent.listWorkspace`), so expanded
+ * folders reopen instantly from cache, the `workspace-change` broadcast
+ * invalidates them, and a failed root load shows Retry instead of spinning.
  */
 export function FileExplorerTree({
-  tree,
   onOpenFile,
   className,
 }: {
-  tree: WorkspaceTree;
-  /** Notified alongside `tree.openFile` (e.g. to open a panel tab). */
+  /** Notified alongside opening a file (e.g. to open a panel tab). */
   onOpenFile?: (path: string, name: string) => void;
   className?: string;
 }) {
-  const rootEntries = tree.getEntries("/");
+  const root = useWorkspaceDirectory("/");
 
-  if (rootEntries === undefined) {
+  if (root.isPending) {
     return <TreeLoading className={className} />;
   }
 
-  if (tree.rootError) {
+  if (root.isError) {
     return (
-      <p className={cn("px-3 py-6 text-destructive text-sm", className)}>
-        {tree.rootError}
-      </p>
+      <div
+        className={cn(
+          "flex flex-col items-start gap-2 px-3 py-6 text-sm",
+          className
+        )}
+      >
+        <p className="text-destructive">Couldn't load the workspace.</p>
+        <button
+          className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-foreground text-xs hover:bg-muted"
+          onClick={() => root.refetch()}
+          type="button"
+        >
+          <RotateCcwIcon className="size-3" />
+          Retry
+        </button>
+      </div>
     );
   }
 
-  if (rootEntries.length === 0) {
+  if (root.data.length === 0) {
     return (
       <div
         className={cn(
@@ -61,12 +75,11 @@ export function FileExplorerTree({
       className={cn("flex flex-col gap-0.5 p-2 text-sm", className)}
       data-slot="file-explorer-tree"
     >
-      {sortEntries(rootEntries).map((entry) => (
+      {sortEntries(root.data).map((entry) => (
         <FileExplorerTreeNode
           entry={entry}
           key={entry.path}
           onOpenFile={onOpenFile}
-          tree={tree}
         />
       ))}
     </div>
@@ -77,62 +90,73 @@ function FileExplorerTreeNode({
   entry,
   depth = 0,
   onOpenFile,
-  tree,
 }: {
   entry: WorkspaceFileInfo;
   depth?: number;
   onOpenFile?: (path: string, name: string) => void;
-  tree: WorkspaceTree;
 }) {
   if (entry.type !== "directory") {
-    const isSelected = tree.selectedPath === entry.path;
-    return (
-      <button
-        className={cn(
-          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted hover:text-foreground",
-          isSelected ? "bg-muted text-foreground" : "text-muted-foreground"
-        )}
-        data-slot="file-explorer-tree-file"
-        onClick={() => {
-          tree.openFile(entry.path, entry.name);
-          onOpenFile?.(entry.path, entry.name);
-        }}
-        type="button"
-      >
-        <FileIcon className="size-3.5 shrink-0" />
-        <span className="truncate">{entry.name}</span>
-      </button>
-    );
+    return <FileNode entry={entry} onOpenFile={onOpenFile} />;
   }
+  return <DirectoryNode depth={depth} entry={entry} onOpenFile={onOpenFile} />;
+}
 
-  const isOpen = tree.isExpanded(entry.path);
-  const children = tree.getEntries(entry.path);
-  const isLoading = tree.isDirLoading(entry.path);
+function FileNode({
+  entry,
+  onOpenFile,
+}: {
+  entry: WorkspaceFileInfo;
+  onOpenFile?: (path: string, name: string) => void;
+}) {
+  return (
+    <button
+      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:bg-muted hover:text-foreground"
+      data-slot="file-explorer-tree-file"
+      onClick={() => onOpenFile?.(entry.path, entry.name)}
+      type="button"
+    >
+      <FileIcon className="size-3.5 shrink-0" />
+      <span className="truncate">{entry.name}</span>
+    </button>
+  );
+}
+
+function DirectoryNode({
+  entry,
+  depth,
+  onOpenFile,
+}: {
+  entry: WorkspaceFileInfo;
+  depth: number;
+  onOpenFile?: (path: string, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  // Fetches on first expand; cached afterwards and invalidated on
+  // `workspace-change`, so re-expanding never re-hits the socket when fresh.
+  const children = useWorkspaceDirectory(entry.path);
 
   return (
     <div data-slot="file-explorer-tree-folder">
       <button
         className="group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left hover:bg-muted"
-        onClick={() => tree.toggleDir(entry.path)}
+        onClick={() => setOpen((value) => !value)}
         type="button"
       >
         <ChevronRightIcon
           className={cn(
             "size-3.5 shrink-0 text-muted-foreground transition-transform",
-            isOpen && "rotate-90"
+            open && "rotate-90"
           )}
         />
         <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="truncate font-medium">{entry.name}</span>
       </button>
-      {isOpen ? (
+      {open ? (
         <div className="ml-3.5 flex flex-col gap-0.5 border-border/60 border-l pl-1.5">
           <DirectoryChildren
             depth={depth}
-            entries={children}
-            isLoading={isLoading}
             onOpenFile={onOpenFile}
-            tree={tree}
+            query={children}
           />
         </div>
       ) : null}
@@ -142,18 +166,14 @@ function FileExplorerTreeNode({
 
 function DirectoryChildren({
   depth,
-  entries,
-  isLoading,
+  query,
   onOpenFile,
-  tree,
 }: {
   depth: number;
-  entries: WorkspaceFileInfo[] | undefined;
-  isLoading: boolean;
+  query: ReturnType<typeof useWorkspaceDirectory>;
   onOpenFile?: (path: string, name: string) => void;
-  tree: WorkspaceTree;
 }) {
-  if (entries === undefined || isLoading) {
+  if (query.isPending) {
     return (
       <span className="flex items-center gap-1.5 px-2 py-1.5 text-muted-foreground text-xs">
         <Loader2Icon className="size-3 animate-spin" />
@@ -161,20 +181,26 @@ function DirectoryChildren({
       </span>
     );
   }
-  if (entries.length === 0) {
+  if (query.isError) {
+    return (
+      <span className="px-2 py-1.5 text-destructive text-xs">
+        Couldn't load this folder.
+      </span>
+    );
+  }
+  if (query.data.length === 0) {
     return (
       <span className="px-2 py-1.5 text-muted-foreground text-xs">Empty</span>
     );
   }
   return (
     <>
-      {sortEntries(entries).map((child) => (
+      {sortEntries(query.data).map((child) => (
         <FileExplorerTreeNode
           depth={depth + 1}
           entry={child}
           key={child.path}
           onOpenFile={onOpenFile}
-          tree={tree}
         />
       ))}
     </>

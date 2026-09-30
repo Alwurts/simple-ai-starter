@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import type { OrgAgent } from "@workspace/agent/org";
 import type {
   ChatSearchHit,
@@ -17,6 +18,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { workspaceQueryKey } from "@/hooks/chat/use-workspace-queries";
 import type { OutgoingUserMessage } from "@/lib/chat/ai-types";
 
 interface OrgConnectionValue {
@@ -42,8 +44,6 @@ interface OrgConnectionValue {
   organizationId: string;
   /** Read a workspace file's text contents (null when absent/binary). */
   readWorkspaceFile: (path: string) => Promise<string | null>;
-  /** Bumps whenever the org workspace changes, so viewers can refetch live. */
-  workspaceVersion: number;
 }
 
 const OrgConnectionContext = createContext<OrgConnectionValue | null>(null);
@@ -87,7 +87,7 @@ export function OrgConnection({
   organizationId,
   children,
 }: OrgConnectionProps) {
-  const [workspaceVersion, setWorkspaceVersion] = useState(0);
+  const queryClient = useQueryClient();
   const [pendingMessage, setPendingMessage] = useState<{
     chatId: string;
     message: OutgoingUserMessage;
@@ -104,15 +104,18 @@ export function OrgConnection({
     onMessage: (event) => {
       // The OrgAgent broadcasts `{ type: "workspace-change", event }` whenever a
       // file is created/updated/deleted (see OrgAgent.broadcastWorkspaceChange).
-      // Bump a version counter so open file viewers refetch. Ignore anything
-      // that isn't our JSON signal (the agent framework sends other frames too).
+      // Invalidate the org's workspace queries so open file viewers refetch.
+      // Ignore anything that isn't our JSON signal (the agent framework sends
+      // other frames too).
       if (typeof event.data !== "string") {
         return;
       }
       try {
         const parsed = JSON.parse(event.data) as { type?: string };
         if (parsed.type === "workspace-change") {
-          setWorkspaceVersion((v) => v + 1);
+          queryClient.invalidateQueries({
+            queryKey: workspaceQueryKey(organizationId),
+          });
         }
       } catch {
         // Non-JSON frame — not a workspace-change signal.
@@ -215,7 +218,6 @@ export function OrgConnection({
       searchChats,
       setPendingMessage: (chatId, message) =>
         setPendingMessage({ chatId, message }),
-      workspaceVersion,
     }),
     [
       chats,
@@ -228,7 +230,6 @@ export function OrgConnection({
       readWorkspaceFile,
       retryConnection,
       searchChats,
-      workspaceVersion,
     ]
   );
   return (
