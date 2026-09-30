@@ -41,3 +41,9 @@ the code (as a code block) plus its result, logs, or error. One execution can
 pause more than once (a loop that hits both gated tools): the card remounts
 per pause (keyed by `executionId` + pending `seq`) so a second pause never
 shows the first pause's args.
+
+Identity note: a tool always runs as the user of the connection that sent the
+turn or the approval frame (see `OrgChat.requireTurnUserId`); a model-initiated
+continuation turn has no connection, so it runs no write tool — it fails closed
+with the permission-denied result until a fresh user turn (or approval) stamps
+an identity, which is the price of never guessing "some live connection".
