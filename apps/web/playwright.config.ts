@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
@@ -10,6 +11,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // e2e run can never touch a developer's dev server or data, and points the
 // openai-compatible provider at the local fake model server.
 const E2E_APP_ENV = { CLOUDFLARE_ENV: "e2e" };
+
+// Checked here, not in globalSetup: Playwright starts the webServers before
+// globalSetup runs, and wrangler falls back to `.dev.vars` (a developer's real
+// provider key) when `.dev.vars.e2e` is missing.
+if (!existsSync(join(__dirname, ".dev.vars.e2e"))) {
+  throw new Error(
+    "apps/web/.dev.vars.e2e is missing — restore it (git checkout -- apps/web/.dev.vars.e2e) before running e2e."
+  );
+}
 
 export default defineConfig({
   testDir: "./test/e2e",
