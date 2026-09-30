@@ -21,25 +21,21 @@ import {
 } from "@workspace/ui/components/shadcn/input-group";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import type { ChatStatus, FileUIPart } from "ai";
-import { FileIcon, PaperclipIcon, XIcon } from "lucide-react";
+import { PaperclipIcon, XIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useChatCapabilities } from "@/hooks/chat/use-chat-capabilities";
+import { filePartsFromFiles } from "@/lib/chat/attachments";
 
 export interface PromptMessage {
   text: string;
   files: FileUIPart[];
 }
 
-type ChatInputFile = FileUIPart & { id: string };
-
-function filePartsFromList(fileList: FileList | File[]): ChatInputFile[] {
-  return Array.from(fileList).map((file) => ({
-    id: crypto.randomUUID(),
-    type: "file" as const,
-    filename: file.name,
-    mediaType: file.type,
-    url: URL.createObjectURL(file),
-  }));
+/** An attachment held for preview; converted to a data-URL part on submit. */
+interface ChatAttachment {
+  id: string;
+  file: File;
+  previewUrl: string;
 }
 
 function ChatInputInner({
@@ -55,20 +51,29 @@ function ChatInputInner({
   placeholder: string;
   status: ChatStatus;
 }) {
-  const [files, setFiles] = useState<ChatInputFile[]>([]);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [converting, setConverting] = useState(false);
   const inputRef = useRef<ChatInputHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: capabilities } = useChatCapabilities();
   const supportsImageInput = capabilities?.supportsImageInput === true;
 
-  const clearFiles = useCallback(() => {
-    setFiles((prev) => {
-      for (const file of prev) {
-        if (file.url) {
-          URL.revokeObjectURL(file.url);
-        }
+  const clearAttachments = useCallback(() => {
+    setAttachments((prev) => {
+      for (const attachment of prev) {
+        URL.revokeObjectURL(attachment.previewUrl);
       }
       return [];
+    });
+  }, []);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => {
+      const found = prev.find((attachment) => attachment.id === id);
+      if (found) {
+        URL.revokeObjectURL(found.previewUrl);
+      }
+      return prev.filter((attachment) => attachment.id !== id);
     });
   }, []);
 
@@ -88,20 +93,52 @@ function ChatInputInner({
         );
         return;
       }
-      setFiles((prev) => [...prev, ...filePartsFromList(images)]);
+      setAttachments((prev) => [
+        ...prev,
+        ...images.map((file) => ({
+          id: crypto.randomUUID(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+        })),
+      ]);
     },
     [supportsImageInput]
   );
 
-  const removeFile = useCallback((id: string) => {
-    setFiles((prev) => {
-      const found = prev.find((file) => file.id === id);
-      if (found?.url) {
-        URL.revokeObjectURL(found.url);
+  const submit = useCallback(
+    async (text: string, clear: () => void): Promise<void> => {
+      if (!(text || attachments.length > 0)) {
+        return;
       }
-      return prev.filter((file) => file.id !== id);
-    });
-  }, []);
+      if (attachments.length > 0 && !supportsImageInput) {
+        toast.error(
+          "This chat model only accepts text. Remove attachments and try again."
+        );
+        return;
+      }
+      let files: PromptMessage["files"] = [];
+      if (attachments.length > 0) {
+        setConverting(true);
+        try {
+          files = await filePartsFromFiles(
+            attachments.map((attachment) => attachment.file)
+          );
+        } catch (error) {
+          console.error("[ChatComposer] failed to read attachments", error);
+          toast.error("Couldn't read the attachments. Please try again.");
+          return;
+        } finally {
+          setConverting(false);
+        }
+      }
+      // The parts now carry the image data (data URLs), so the preview
+      // object URLs can go.
+      clearAttachments();
+      clear();
+      await onSubmit({ text, files });
+    },
+    [attachments, clearAttachments, onSubmit, supportsImageInput]
+  );
 
   return (
     <div className="w-full">
@@ -120,67 +157,41 @@ function ChatInputInner({
       />
       <ChatInput
         className="rounded-2xl"
-        disabled={disabled}
+        disabled={disabled || converting}
         onStop={onStop}
         onSubmit={(parsed, { clear }) => {
           const trimmed = String(parsed.text ?? "").trim();
-          if (!(trimmed || files.length > 0)) {
-            return;
-          }
-          if (files.length > 0 && !supportsImageInput) {
-            toast.error(
-              "This chat model only accepts text. Remove attachments and try again."
-            );
-            return;
-          }
-          const payload: PromptMessage = {
-            text: trimmed,
-            files: files.map(({ id: _id, ...file }) => file),
-          };
-          clearFiles();
-          clear();
-          Promise.resolve(onSubmit(payload)).catch(() => undefined);
+          return submit(trimmed, clear);
         }}
         ref={inputRef}
         status={status}
       >
-        {files.length > 0 ? (
+        {attachments.length > 0 ? (
           <InputGroupAddon align="block-start" className="pb-0">
             <AttachmentGroup>
-              {files.map((file) => {
-                const isImage = Boolean(
-                  file.mediaType?.startsWith("image/") && file.url
-                );
-                return (
-                  <Attachment key={file.id} size="xs" state="done">
-                    <AttachmentMedia variant={isImage ? "image" : "icon"}>
-                      {isImage ? (
-                        <img
-                          alt={file.filename ?? ""}
-                          height={24}
-                          src={file.url}
-                          width={24}
-                        />
-                      ) : (
-                        <FileIcon />
-                      )}
-                    </AttachmentMedia>
-                    <AttachmentContent>
-                      <AttachmentTitle>
-                        {file.filename ?? "Attachment"}
-                      </AttachmentTitle>
-                    </AttachmentContent>
-                    <AttachmentActions>
-                      <AttachmentAction
-                        aria-label={`Remove ${file.filename ?? "attachment"}`}
-                        onClick={() => removeFile(file.id)}
-                      >
-                        <XIcon />
-                      </AttachmentAction>
-                    </AttachmentActions>
-                  </Attachment>
-                );
-              })}
+              {attachments.map((attachment) => (
+                <Attachment key={attachment.id} size="xs" state="done">
+                  <AttachmentMedia variant="image">
+                    <img
+                      alt={attachment.file.name}
+                      height={24}
+                      src={attachment.previewUrl}
+                      width={24}
+                    />
+                  </AttachmentMedia>
+                  <AttachmentContent>
+                    <AttachmentTitle>{attachment.file.name}</AttachmentTitle>
+                  </AttachmentContent>
+                  <AttachmentActions>
+                    <AttachmentAction
+                      aria-label={`Remove ${attachment.file.name}`}
+                      onClick={() => removeAttachment(attachment.id)}
+                    >
+                      <XIcon />
+                    </AttachmentAction>
+                  </AttachmentActions>
+                </Attachment>
+              ))}
             </AttachmentGroup>
           </InputGroupAddon>
         ) : null}
