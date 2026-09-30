@@ -68,16 +68,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
 
   private resolvedModel: ResolvedOrgChatModel | undefined;
   private lastTurnUsage: LanguageModelUsage | undefined;
-  /**
-   * Fallback acting user for tool executes that have no ALS connection
-   * (codemode sandbox callbacks): stamped from the connection that started
-   * the turn (beforeTurn) or sent the approval frame (approveExecution /
-   * rejectExecution). Not authoritative — requireTurnUserId prefers the live
-   * ALS connection, because an approval callable runs outside the turn queue
-   * and can overwrite this between stamp and execute. Unresolvable ⇒
-   * undefined ⇒ write tools fail closed (permission-denied result).
-   */
-  private turnUserId: string | undefined;
 
   /**
    * Env-driven model resolution (id, window, capabilities), memoised. Lazy —
@@ -348,14 +338,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
       }
     }
 
-    // Acting-user identity for this turn: the connection whose call tree is
-    // running it (agents get-current-agent.md — the framework resolves
-    // `connection` inside the wrapped method that received the frame). The
-    // user id was persisted on the connection in onConnect, so it survives
-    // hibernation wakes. Unresolvable clears any stale stamp: write tools
-    // then fail closed.
-    this.turnUserId = this.tryResolveTurnUserId();
-
     const organizationId = this.requireOrganizationId();
     this.ctx.waitUntil(
       this.getParent()
@@ -424,58 +406,49 @@ export class OrgChat extends Think<Cloudflare.Env> {
   }
 
   /**
-   * Acting user for tool execute / approve-resume. The ALS connection wins:
-   * the identity of the call tree actually executing — an approval callable
-   * from another member runs outside Think's turn queue and can overwrite the
-   * stamped field between this turn's `beforeTurn` and its next tool execute,
-   * so field-first would let that stamp authorize this turn's writes. The
-   * stamped field is only the fallback for code with no ALS connection at all
-   * (codemode sandbox callbacks), and the ALS result is deliberately never
-   * written back — the field belongs to the turn/approval that set it. No
-   * "any live connection" fallback; unresolvable fails closed with the
-   * permission-denied result (`asToolResult` maps this exact message to
-   * `code: "forbidden"`).
-   */
-  private requireTurnUserId(): string {
-    const alsUserId = this.tryResolveTurnUserId();
-    if (alsUserId) {
-      return alsUserId;
-    }
-    if (this.turnUserId) {
-      return this.turnUserId;
-    }
-    throw new Error(PERMISSION_DENIED_MESSAGE);
-  }
-
-  /**
-   * Approvals run as the user who approved: the callable's own ALS
-   * connection is the socket that sent the approval frame, so the resumed
-   * run's gated tools (including codemode sandbox callbacks, where ALS is
-   * unavailable) authorize against the approver — not whoever started the
-   * last turn. `@callable()` keeps the Think built-in registered after the
-   * override (nearest decorated declaration wins).
+   * Approvals run as the user who approved: rebuilding the tools here — under
+   * the callable's own ALS connection (the socket that sent the approval
+   * frame) — rebinds `this.codemode` to a runtime whose tool closures carry
+   * the approver's identity. Think's `approveExecution` takes
+   * `_codemodeRuntime()` (= `this.codemode`, assigned by `createExecuteTool`
+   * inside `getTools()`) synchronously before the replay, so the paused
+   * sandbox writes — which have no ALS connection at execute time — authorize
+   * against the approver, and a concurrent turn's `getTools()` cannot swap
+   * the runtime mid-replay. `@callable()` keeps the Think built-in
+   * registered after the override (nearest decorated declaration wins).
    */
   @callable()
   override approveExecution(executionId: string): Promise<unknown> {
-    this.turnUserId = this.tryResolveTurnUserId();
+    try {
+      this.getTools();
+    } catch {
+      // The approval must still settle (Think returns a status error for a
+      // missing runtime); identity binding is best-effort here.
+    }
     return super.approveExecution(executionId);
-  }
-
-  @callable()
-  override rejectExecution(
-    executionId: string,
-    reason?: string
-  ): Promise<unknown> {
-    this.turnUserId = this.tryResolveTurnUserId();
-    return super.rejectExecution(executionId, reason);
   }
 
   override getTools(): ToolSet {
     const self = this;
-    // Lazy: getTools runs before beforeTurn; tool execute often has no ALS.
+    // Identity is captured per invocation: getTools runs at turn start inside
+    // the turn's ALS (think.js builds tools before beforeTurn), so the bound
+    // user is the connection that started this turn / sent this approval.
+    // Sandbox tool callbacks have no ALS of their own, so they read the bound
+    // user; a live ALS connection at execute time (direct tool calls, the
+    // approval continuation) still wins; neither → fail closed
+    // (PERMISSION_DENIED_MESSAGE). No shared mutable field: any member's
+    // approve/reject callable runs outside the turn queue and could
+    // otherwise re-stamp another turn's identity mid-flight.
+    const boundUserId = self.tryResolveTurnUserId();
     const toolsCtx = {
       get userId() {
-        return self.requireTurnUserId();
+        return (
+          self.tryResolveTurnUserId() ??
+          boundUserId ??
+          (() => {
+            throw new Error(PERMISSION_DENIED_MESSAGE);
+          })()
+        );
       },
       organizationId: this.organizationId,
       waitUntil: (promise: Promise<unknown>) => this.ctx.waitUntil(promise),
