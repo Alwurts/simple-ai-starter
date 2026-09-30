@@ -8,7 +8,7 @@ const checkSlugSchema = z.object({
   slug: z.string().min(3).max(50),
 });
 
-const organizationRoutes = new Hono<HonoContextWithAuth>()
+export const organizationRoutes = new Hono<HonoContextWithAuth>()
   .get("/membership", async (c) => {
     const userId = c.get("user").id;
     const membership = await db.query.member.findFirst({
@@ -26,5 +26,3 @@ const organizationRoutes = new Hono<HonoContextWithAuth>()
     });
     return c.json({ available: !existingOrg });
   });
-
-export default organizationRoutes;

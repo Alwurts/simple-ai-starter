@@ -2,15 +2,14 @@ import { env, SELF } from "cloudflare:test";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import {
-  extractAuth,
   requireActiveOrg,
-  requireAuth,
   requirePermission,
-} from "../../src/hono/middleware/auth";
+} from "../../src/api/middleware/organization";
+import { extractAuth, requireAuth } from "../../src/api/middleware/session";
 import type {
   HonoContext,
   HonoContextWithAuthAndOrg,
-} from "../../src/hono/types";
+} from "../../src/api/types";
 import { createTestSessionWithOrg } from "../helpers/auth";
 
 // Mirror the real middleware composition (protected → org-protected → gate) so

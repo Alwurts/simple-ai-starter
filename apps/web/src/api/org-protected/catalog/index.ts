@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import type { HonoContextWithAuthAndOrg } from "../../types";
-import productsRoute from "./products";
-import searchRoute from "./search";
+import { productsRoutes } from "./products";
+import { searchRoutes } from "./search";
 
 const catalogRoutes = new Hono<HonoContextWithAuthAndOrg>()
-  .route("/products", productsRoute)
-  .route("/search", searchRoute);
+  .route("/products", productsRoutes)
+  .route("/search", searchRoutes);
 
 export default catalogRoutes;

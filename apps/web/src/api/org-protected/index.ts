@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { requireActiveOrg } from "../middleware/auth";
+import { requireActiveOrg } from "../middleware/organization";
 import type { HonoContextWithAuthAndOrg } from "../types";
 import catalogRoutes from "./catalog";
 

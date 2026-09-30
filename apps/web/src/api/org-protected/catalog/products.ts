@@ -13,14 +13,14 @@ import {
 } from "@workspace/core/catalog";
 import { Hono } from "hono";
 import { z } from "zod";
-import { requirePermission } from "../../middleware/auth";
+import { requirePermission } from "../../middleware/organization";
 import type { HonoContextWithAuthAndOrg } from "../../types";
 
 const productIdSchema = z.object({
   id: z.string(),
 });
 
-const productsRoute = new Hono<HonoContextWithAuthAndOrg>()
+export const productsRoutes = new Hono<HonoContextWithAuthAndOrg>()
   .get("/", zValidator("query", paginationQuerySchema), async (c) => {
     const orgId = c.get("session").activeOrganizationId;
     const params = c.req.valid("query");
@@ -71,5 +71,3 @@ const productsRoute = new Hono<HonoContextWithAuthAndOrg>()
       return c.json(result);
     }
   );
-
-export default productsRoute;

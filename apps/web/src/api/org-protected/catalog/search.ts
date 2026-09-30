@@ -3,7 +3,7 @@ import { errorMessage, structuredLog } from "@workspace/log";
 import { Hono } from "hono";
 import type { HonoContextWithAuthAndOrg } from "../../types";
 
-const searchRoute = new Hono<HonoContextWithAuthAndOrg>().get(
+export const searchRoutes = new Hono<HonoContextWithAuthAndOrg>().get(
   "/",
   async (c) => {
     const orgId = c.get("session").activeOrganizationId;
@@ -27,5 +27,3 @@ const searchRoute = new Hono<HonoContextWithAuthAndOrg>().get(
     }
   }
 );
-
-export default searchRoute;

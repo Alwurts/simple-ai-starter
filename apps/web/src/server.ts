@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { routeGatedAgentRequest } from "./agent-gate";
-import { app as honoApp } from "./hono";
+import { app as honoApp } from "./api";
 
 // The codemode runtime behind OrgChat's `execute` tool is a DO facet of
 // OrgChat, so its class must be reachable via ctx.exports — the manual export
