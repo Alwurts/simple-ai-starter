@@ -203,7 +203,7 @@ export function isCollapsedWorkedPart(part: {
  * A role-denied write tool throws the RBAC guard's `PERMISSION_DENIED_MESSAGE`,
  * which arrives here as `errorText` on an errored part. We treat that as an
  * expected, benign outcome — a calm "not permitted" note — rather than the red
- * error block a real tool failure gets (ALW-401 AC-3).
+ * error block a real tool failure gets.
  */
 function isPermissionDenied(part: ToolUIPart | DynamicToolUIPart): boolean {
   return (

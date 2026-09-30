@@ -4,7 +4,7 @@ import { TestCounter } from "./test-counter-do";
 import { env } from "./test-env";
 
 /**
- * Reference in-workerd DO test (ALW-305). Proves the `workers` vitest project can
+ * Reference in-workerd DO test. Proves the `workers` vitest project can
  * instantiate a real Durable Object in workerd and drive it via
  * `runInDurableObject`. Copy this shape for Tier-2 Think / OrgAgent DO tests.
  */

@@ -31,7 +31,7 @@ async function seedOrgWithProduct(name: string, productName: string) {
 }
 
 /**
- * ALW-401 — the delegation sub-agent (`OrgSubAgent`) is deliberately read-only.
+ * The delegation sub-agent (`OrgSubAgent`) is deliberately read-only.
  * It runs without an acting user, so it must never receive a tool that mutates
  * data. These tests lock that invariant on the composition it is built from, so
  * a future write tool added to the read-only reach fails here (not in prod).

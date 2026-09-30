@@ -8,7 +8,7 @@ Root `biome.jsonc` extends:
 - `@workspace/biome-config/react`
 - `@workspace/biome-config/tanstack`
 
-## Plugins (ALW-672)
+## Plugins
 
 GritQL plugins under `plugins/` ban casual `useEffect` / `useLayoutEffect`
 outside vendored shadcn. Wired from root `biome.jsonc`. See

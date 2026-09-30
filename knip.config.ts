@@ -1,9 +1,9 @@
 import type { KnipConfig } from "knip";
 
 // Dead-code detection for this monorepo. Refreshed for knip 6
-// (ALW-692) after TypeScript 7 broke knip 5 (`typescript` peer `<7`).
+// after TypeScript 7 broke knip 5 (`typescript` peer `<7`).
 //
-// Conventions (same as sfab):
+// Conventions:
 // - `entry` lists only what Knip CAN'T auto-derive from package.json
 //   exports / scripts. Prefer deleting redundant entries over listing everything.
 // - `!` suffix = follow imports but don't check that file's own exports.

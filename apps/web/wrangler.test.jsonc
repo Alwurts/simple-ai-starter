@@ -1,5 +1,5 @@
 /**
- * ALW-305: dedicated Wrangler config for the in-workerd test worker
+ * Dedicated Wrangler config for the in-workerd test worker
  * (@cloudflare/vitest-pool-workers). NEVER deployed — production uses
  * wrangler.jsonc. It exists so the Workers test pool has a worker to run against,
  * keeping the test-only fixture (TestCounter DO) and its DO migration OUT of the

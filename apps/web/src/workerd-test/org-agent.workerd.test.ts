@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
 
 /**
- * ALW-398 AC-3 — the multi-session backend, aligned to the examples/assistant
+ * The multi-session backend, aligned to the examples/assistant
  * reference. Drives the real OrgAgent DO over RPC via `runInDurableObject`:
  * - the dynamic-agent registry is the source of truth for chat existence;
  *   `chat_meta` is decoration merged in by `listChats`.
@@ -203,7 +203,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
 });
 
 /**
- * ALW-398 AC-4 — the org's single shared workspace at the backend. The parent
+ * The org's single shared workspace at the backend. The parent
  * OrgAgent owns the real `Workspace`; every child chat proxies to it via
  * `SharedWorkspace` RPC, so a file written from one chat is visible to all.
  *

@@ -1,5 +1,5 @@
 /**
- * Test-worker entry for @cloudflare/vitest-pool-workers (ALW-305).
+ * Test-worker entry for @cloudflare/vitest-pool-workers.
  *
  * This is the `main` for wrangler.test.jsonc and is NEVER deployed — production
  * still boots `src/server.ts` via wrangler.jsonc. Keeping a dedicated test entry
@@ -16,7 +16,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { app as honoApp } from "../hono";
 
-// ALW-398: OrgAgent (+ its OrgChat facet) are exported so the workers vitest
+// OrgAgent (+ its OrgChat facet) are exported so the workers vitest
 // project can drive the multi-session backend over RPC. Mirrors production:
 // only OrgAgent is bound (wrangler.test.jsonc); OrgChat is resolved as a facet
 // via `ctx.exports.OrgChat`, so it needs the export but no binding/migration.

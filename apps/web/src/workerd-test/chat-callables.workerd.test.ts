@@ -3,10 +3,9 @@ import { Agent, callable } from "agents";
 import { describe, expect, it } from "vitest";
 
 /**
- * D-016 fix round — `@callable()` works on this repo's classes with the
- * agents() Vite plugin / Babel decorator transform (the ALW-500 note that it
- * "does not land for dynamic-agent methods" is obsolete: upstream facets use
- * the decorator too). OrgChat's client-callables go through the decorator and
+ * `@callable()` works on this repo's classes with the
+ * agents() Vite plugin / Babel decorator transform (upstream facets use the
+ * decorator too). OrgChat's client-callables go through the decorator and
  * are registered where the framework's `_isCallable` check reads them;
  * `searchMessages` stays deliberately unregistered (parent-only RPC).
  */

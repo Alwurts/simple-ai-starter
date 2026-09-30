@@ -2,7 +2,7 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 
 /**
- * ALW-305: vitest pool-workers exposes bindings on `env` from
+ * Vitest pool-workers exposes bindings on `env` from
  * `cloudflare:workers`. Extend ProvidedEnv so in-workerd tests type-check against
  * our production wrangler bindings (DB).
  *

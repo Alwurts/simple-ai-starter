@@ -13,7 +13,7 @@ const decoratorBabel = babel({
 });
 
 /**
- * ALW-305: two Vitest projects coexist in one config, split by where a test must
+ * Two Vitest projects coexist in one config, split by where a test must
  * run:
  * - `node` — pure unit tests (money math, RBAC logic). Plain node environment,
  *   no bindings. Fast. Matches every `*.test.ts` that is NOT `*.workerd.test.ts`.

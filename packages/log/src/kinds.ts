@@ -1,5 +1,5 @@
 /**
- * Canonical structured-log `kind` vocabulary (ALW-700).
+ * Canonical structured-log `kind` vocabulary.
  *
  * Single source of truth: call sites must pass a `LogKind` (enforced by
  * TypeScript). Prefer extending this array when introducing a **new** kind;
