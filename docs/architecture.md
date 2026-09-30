@@ -163,7 +163,9 @@ Tests split by where they must run (ALW-305): a plain `*.test.ts` is a pure unit
 test run in the fast `node` Vitest project, while anything that needs a binding —
 `env.DB`/`SELF`, or a Durable Object — is named `*.workerd.test.ts` and runs
 in-workerd via `@cloudflare/vitest-pool-workers` against `wrangler.test.jsonc`.
-The DO fixture + reference test live in `apps/web/src/workerd-test/`.
+The DO fixture + reference test live in `apps/web/src/workerd-test/`. Browser
+e2e (`pnpm --filter web test:e2e`) drives a full chat turn against a local fake
+model server in CI.
 
 ## Where to go next
 
