@@ -35,12 +35,10 @@ export async function gateAgentRequest(
 
 /**
  * Route `/agents/...` through the agents router with the membership gate
- * installed on both the WebSocket-upgrade and plain-HTTP hooks. Returns
- * null when the path is not an agent route.
- *
- * No warm-up: the router itself resolves and fetches the named Durable
- * Object (agents routing.md › Request Flow — "Get/create DO by instance
- * ID"), so a separate `getAgentByName` boot only duplicated the wake.
+ * installed on both the WebSocket-upgrade and plain-HTTP hooks. The router
+ * itself resolves and fetches the named Durable Object (agents routing.md ›
+ * Request Flow — "Get/create DO by instance ID"); this wrapper only installs
+ * the gate hooks. Returns null when the path is not an agent route.
  */
 export function routeGatedAgentRequest(
   request: Request,

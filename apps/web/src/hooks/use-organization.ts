@@ -14,9 +14,8 @@ export const useInvitation = (id: string) =>
   useQuery({
     queryKey: getInvitationKey(id),
     queryFn: async () => {
-      // better-auth's getInvitation checks recipient + pending + expiry —
-      // the custom REST route that returned any invitation to any
-      // signed-in user is gone.
+      // Server-side checks (recipient, pending, expiry) come from
+      // better-auth's endpoint — no app-side invitation lookup.
       const res = await authClient.organization.getInvitation({
         query: { id },
       });
