@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitHydrated } from "./helpers";
 
 // The reply is streamed by the local fake model server
 // (test/e2e/fake-model-server.mjs) the e2e env points the openai-compatible
@@ -12,7 +13,7 @@ test.describe("chat turn", () => {
     page,
   }) => {
     await page.goto("/chat/new");
-    await page.waitForLoadState("networkidle");
+    await waitHydrated(page);
 
     // The composer is a TipTap contenteditable that mounts after hydration.
     const composer = page.locator(

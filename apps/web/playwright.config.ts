@@ -52,7 +52,13 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: "pnpm db:reset:e2e && pnpm dev:e2e",
+      // vite optimize pre-bundles dependencies before the server accepts
+      // traffic. Without it, a cold node_modules/.vite makes Vite's dependency
+      // optimizer re-bundle mid-test and full-reload the page (CI: fresh cache
+      // every run), wiping form values between fill and submit. The CLI prints
+      // a "deprecated" notice in Vite 8 but is exactly the needed hook: run
+      // the optimizer before dev serves anything.
+      command: "pnpm db:reset:e2e && pnpm exec vite optimize && pnpm dev:e2e",
       port: 4012,
       timeout: 120_000,
       reuseExistingServer: false,

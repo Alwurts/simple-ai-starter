@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { fillValue, waitHydrated } from "./helpers";
 
 const CATALOG_DETAIL_URL_PATTERN = /\/catalog\/.+/;
 
@@ -7,7 +8,7 @@ test.describe("catalog products", () => {
 
   test("can create a product", async ({ page }) => {
     await page.goto("/catalog");
-    await page.waitForLoadState("networkidle");
+    await waitHydrated(page);
 
     // Open the create product dialog
     await page.getByRole("button", { name: "Add Product" }).click();
@@ -16,9 +17,9 @@ test.describe("catalog products", () => {
     ).toBeVisible({ timeout: 10_000 });
 
     // Fill the product form
-    await page.locator("input#name").fill(productName);
-    await page.locator("input#price").fill("29.99");
-    await page.locator("textarea#description").fill("An e2e product");
+    await fillValue(page.locator("input#name"), productName);
+    await fillValue(page.locator("input#price"), "29.99");
+    await fillValue(page.locator("textarea#description"), "An e2e product");
 
     // Submit — the dialog's submit shares the toolbar button's name
     await page
@@ -37,15 +38,15 @@ test.describe("catalog products", () => {
     const detailProductName = `Detail Product ${Date.now()}`;
 
     await page.goto("/catalog");
-    await page.waitForLoadState("networkidle");
+    await waitHydrated(page);
 
     await page.getByRole("button", { name: "Add Product" }).click();
     await expect(
       page.getByRole("heading", { name: "Add New Product" })
     ).toBeVisible({ timeout: 10_000 });
 
-    await page.locator("input#name").fill(detailProductName);
-    await page.locator("input#price").fill("15.00");
+    await fillValue(page.locator("input#name"), detailProductName);
+    await fillValue(page.locator("input#price"), "15.00");
     await page
       .getByRole("dialog")
       .getByRole("button", { name: "Add Product" })
