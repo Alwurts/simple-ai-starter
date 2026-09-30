@@ -1,7 +1,16 @@
-import type {
-  PaginatedResponse,
-  PaginationQuery,
-} from "@workspace/contract/pagination";
+import type { PaginationQuery } from "@workspace/contract/pagination";
+
+/**
+ * The outbound page envelope for list endpoints. Outbound shapes are inferred
+ * from the implementation (ADR-004) — this interface is the implementation's
+ * own return contract, not a boundary schema.
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
 export function getPaginationOffsetLimit(
   params: Pick<PaginationQuery, "page" | "pageSize">

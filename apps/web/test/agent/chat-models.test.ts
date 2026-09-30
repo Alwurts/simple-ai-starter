@@ -297,7 +297,7 @@ describe("buildOrgChatModel", () => {
 });
 
 describe("resolveOrgChatModel", () => {
-  it("stamps the bare model id (no provider prefix) for message metadata", () => {
+  it("resolves the bare model id (no provider prefix)", () => {
     const resolved = resolveOrgChatModel({} as unknown as Cloudflare.Env);
     expect(resolved.modelId).toBe("google/gemini-3-flash");
     expect(resolved.contextWindow).toBe(1_000_000);

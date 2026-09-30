@@ -4,7 +4,6 @@ import {
   defaultContextOverflowClassifier,
   type Session,
   type SkillSource,
-  type StepContext,
   Think,
   type TurnContext,
 } from "@cloudflare/think";
@@ -18,15 +17,9 @@ import {
   getCurrentAgent,
 } from "agents";
 import { agentTool } from "agents/agent-tools";
-import type { ChatResponseResult } from "agents/chat";
 import type { ContextConfig } from "agents/context";
 import { createCompactFunction } from "agents/sessions";
-import {
-  generateText,
-  type LanguageModel,
-  type LanguageModelUsage,
-  type ToolSet,
-} from "ai";
+import { generateText, type LanguageModel, type ToolSet } from "ai";
 import { z } from "zod";
 import { PERMISSION_DENIED_MESSAGE } from "../../constants";
 import { buildOrgContext } from "../../context/assemble";
@@ -67,7 +60,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
   override workspace: WorkspaceFsLike = new SharedWorkspace(this);
 
   private resolvedModel: ResolvedOrgChatModel | undefined;
-  private lastTurnUsage: LanguageModelUsage | undefined;
 
   /**
    * Env-driven model resolution (id, window, capabilities), memoised. Lazy —
@@ -232,48 +224,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
   // Pairs with `contextOverflow.reactive` above: without it Think warns and
   // never treats any error as an overflow.
   override classifyChatError = defaultContextOverflowClassifier;
-
-  override onStepFinish(ctx: StepContext): void {
-    super.onStepFinish(ctx);
-    if (ctx.usage) {
-      this.lastTurnUsage = ctx.usage;
-    }
-  }
-
-  override async onChatResponse(result: ChatResponseResult): Promise<void> {
-    await super.onChatResponse(result);
-
-    const usage = this.lastTurnUsage;
-    const modelId = this.resolved.modelId;
-    this.lastTurnUsage = undefined;
-
-    if (result.status !== "completed" || !usage?.inputTokens || !modelId) {
-      return;
-    }
-
-    // Stamp model/usage metadata on the finished assistant message. The
-    // session's `update` change event patches Think's transcript cache, so no
-    // explicit re-sync is needed.
-    const safe = await this.updateMessageInHistory({
-      ...result.message,
-      metadata: {
-        ...(result.message.metadata ?? {}),
-        createdAt: new Date().toISOString(),
-        status: "success",
-        modelId,
-        usage,
-      },
-    });
-
-    if (safe) {
-      this.broadcast(
-        JSON.stringify({
-          type: "cf_agent_message_updated",
-          message: safe,
-        })
-      );
-    }
-  }
 
   /**
    * Client-callable manual compaction (the header menu). Everything else

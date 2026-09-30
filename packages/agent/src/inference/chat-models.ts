@@ -86,7 +86,7 @@ export type OrgChatInputModality = "text" | "image";
  */
 export interface OrgChatModelCapabilities {
   provider: OrgChatProvider;
-  /** Bare model id (e.g. `google/gemini-3-flash`) — same as message metadata. */
+  /** Bare model id (e.g. `google/gemini-3-flash`). */
   entryId: string;
   inputModalities: readonly OrgChatInputModality[];
   supportsImageInput: boolean;
@@ -222,8 +222,7 @@ export type OrgChatModelConfig = {
 
 export interface ResolvedOrgChatModel {
   model: LanguageModel;
-  /** The bare provider model id (e.g. `google/gemini-3-flash`), stamped on
-   *  message metadata — kept prefix-free to preserve the persisted format. */
+  /** The bare provider model id (e.g. `google/gemini-3-flash`), prefix-free. */
   modelId: string;
   contextWindow: number;
   provider: OrgChatProvider;
