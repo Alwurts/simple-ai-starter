@@ -6,9 +6,8 @@ description: How this template is structured — the layer-sliced, feature-keyed
 # Template architecture
 
 This skill is a thin trigger. The knowledge itself lives in the repo's
-canonical docs (single source of truth, human-visible in the docs app) — read
-the relevant file directly rather than restating it here. This follows the
-"ours points into `docs/` by plain path" rule (ADR-0010 §H).
+canonical docs (single source of truth) — read the relevant file directly
+rather than restating it here.
 
 ## Read these
 
@@ -22,9 +21,9 @@ the relevant file directly rather than restating it here. This follows the
 
 ## The one rule to remember
 
-A capability uses the **same key in every layer**. A `customer` capability is
-exactly: `packages/db/src/schema/customer.ts` · `packages/contract/src/customer/`
-· `packages/core/src/customer/` · `apps/web/src/hono/<auth-scope>/customer/` ·
-`packages/agent/src/tool-parts/customer/` · `apps/web/src/components/customer/`. Find
+A capability uses the **same key in every layer**. The `catalog` capability is
+exactly: `packages/db/src/schema/catalog.ts` · `packages/contract/src/catalog/`
+· `packages/core/src/catalog/` · `apps/web/src/hono/org-protected/catalog/` ·
+`packages/agent/src/tool-parts/catalog/` · `apps/web/src/components/catalog/`. Find
 one slice and you know where the other five live. See `docs/architecture.md`
 for the worked example.
