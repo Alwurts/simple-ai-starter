@@ -1,5 +1,5 @@
 import { type Action, can } from "@workspace/auth/access-control";
-import { getActiveMemberRole } from "@workspace/core/auth";
+import { getActiveMemberRole } from "@workspace/core/organization";
 import { PERMISSION_DENIED_MESSAGE } from "../constants";
 import type { AgentToolsContext } from "../types";
 
