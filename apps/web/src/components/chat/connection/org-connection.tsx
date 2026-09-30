@@ -33,10 +33,14 @@ interface OrgConnectionValue {
   searchChats: (query: string) => Promise<ChatSearchHit[]>;
   /** Retry fallback: re-run `listChats` RPC (also re-broadcasts state). */
   reloadChats: () => Promise<ChatSummary[]>;
-  /** Draft bridged across the draft → createChat → navigate hand-off. */
-  pendingMessage: OutgoingUserMessage | null;
+  /**
+   * Draft bridged across the draft → createChat → navigate hand-off, tied to
+   * the chat it was created for so a fast chat switch can't flush it into
+   * another conversation.
+   */
+  pendingMessage: { chatId: string; message: OutgoingUserMessage } | null;
   clearPendingMessage: () => void;
-  setPendingMessage: (message: OutgoingUserMessage) => void;
+  setPendingMessage: (chatId: string, message: OutgoingUserMessage) => void;
   /** Read-only workspace listing for the file viewer (defaults to root). */
   listWorkspace: (path?: string) => Promise<WorkspaceFileInfo[]>;
   organizationId: string;
@@ -73,8 +77,10 @@ export function OrgConnection({
   children,
 }: OrgConnectionProps) {
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
-  const [pendingMessage, setPendingMessage] =
-    useState<OutgoingUserMessage | null>(null);
+  const [pendingMessage, setPendingMessage] = useState<{
+    chatId: string;
+    message: OutgoingUserMessage;
+  } | null>(null);
   const [chatsLoadState, setChatsLoadState] = useState<
     "loading" | "ready" | "error"
   >("loading");
@@ -229,7 +235,8 @@ export function OrgConnection({
       readWorkspaceFile,
       reloadChats,
       searchChats,
-      setPendingMessage,
+      setPendingMessage: (chatId, message) =>
+        setPendingMessage({ chatId, message }),
       workspaceVersion,
     }),
     [

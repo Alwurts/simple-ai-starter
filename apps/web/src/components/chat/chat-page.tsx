@@ -74,6 +74,7 @@ import { defaultNewChatTitle } from "@/lib/chat/chat-titles";
 import { firstSendPlan } from "@/lib/chat/first-send";
 import { ChatComposer, type PromptMessage } from "./input/chat-composer";
 import { ChatMessageRow } from "./messages/chat-message-row";
+import { TurnErrorBanner } from "./messages/turn-error-banner";
 import { ChatSidePanel } from "./side-panel/chat-side-panel";
 
 function EmptyConversation() {
@@ -102,16 +103,6 @@ function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
 
 /** Short, model-facing reason sent with `rejectExecution`. */
 const REJECT_REASON = "Denied by the user";
-
-function errorMessageFrom(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (typeof error === "string" && error) {
-    return error;
-  }
-  return "Couldn't send your message. Please try again.";
-}
 
 /**
  * The chat page. `/chat/new` is the draft: nothing connects until the first
@@ -195,7 +186,7 @@ function DraftView({ title }: { title: string }) {
         const chat = await createChat(
           plan.title ? { title: plan.title } : undefined
         );
-        setPendingMessage(plan.outgoing);
+        setPendingMessage(chat.id, plan.outgoing);
         navigate({
           params: { chatId: chat.id },
           replace: true,
@@ -257,7 +248,6 @@ function ChatView({ chatId, title }: ChatViewProps) {
   } = useOrgConnection();
   const navigate = useNavigate();
   const sidePanel = useChatSidePanel();
-  const [sendError, setSendError] = useState<string | null>(null);
 
   const chatAgent = useAgent({
     agent: "OrgAgent",
@@ -289,29 +279,28 @@ function ChatView({ chatId, title }: ChatViewProps) {
   useAgentToolMutationInvalidation({ messages: helpers.messages });
 
   // Flush the draft message bridged from `/` once the socket is identified and
-  // the hook is ready to send. Deduped by object identity (strict-mode safe).
+  // the hook is ready to send — but only into the chat it was created for.
+  // Deduped by object identity (strict-mode safe).
   const lastSentRef = useRef<OutgoingUserMessage | null>(null);
   const { sendMessage } = helpers;
   // biome-ignore lint/plugin/no-use-effect: flush the bridged draft once the connection is ready
   useEffect(() => {
-    if (!pendingMessage || helpers.status !== "ready" || sendError !== null) {
+    if (
+      pendingMessage?.chatId !== chatId ||
+      helpers.status !== "ready" ||
+      lastSentRef.current === pendingMessage.message
+    ) {
       return;
     }
-    if (lastSentRef.current === pendingMessage) {
-      return;
-    }
-    lastSentRef.current = pendingMessage;
-    const message = pendingMessage;
+    lastSentRef.current = pendingMessage.message;
+    const message = pendingMessage.message;
     clearPendingMessage();
-    sendMessage(toSendableMessage(message)).catch((error: unknown) => {
-      console.error("[ChatConnection] sendMessage failed", error);
-      lastSentRef.current = null;
-      setSendError(errorMessageFrom(error));
-    });
+    // Never rejects — failures arrive as the hook's `error` (B3 banner).
+    sendMessage(toSendableMessage(message));
   }, [
+    chatId,
     pendingMessage,
     helpers.status,
-    sendError,
     sendMessage,
     clearPendingMessage,
   ]);
@@ -406,14 +395,19 @@ function ChatView({ chatId, title }: ChatViewProps) {
       if (chatBusy) {
         return;
       }
-      setSendError(null);
-      helpers.regenerate({ messageId }).catch((error: unknown) => {
-        console.error("[ChatConnection] regenerate failed", error);
-        setSendError(errorMessageFrom(error));
-      });
+      return helpers.regenerate({ messageId });
     },
     [chatBusy, helpers]
   );
+
+  const handleRetryTurn = useCallback(() => {
+    if (chatBusy) {
+      return;
+    }
+    // The AI SDK's documented retry for a failed turn: regenerate the last
+    // assistant message (docs › Error Handling › Error Helper Object).
+    return helpers.regenerate();
+  }, [chatBusy, helpers]);
 
   const handleCopyConversation = useCallback(() => {
     const text = helpers.messages
@@ -531,8 +525,12 @@ function ChatView({ chatId, title }: ChatViewProps) {
                       onToolApproval={handleToolApproval}
                     />
                   )}
-                  {sendError ? (
-                    <p className="text-destructive text-sm">{sendError}</p>
+                  {helpers.error ? (
+                    <TurnErrorBanner
+                      message={helpers.error.message}
+                      onDismiss={helpers.clearError}
+                      onRetry={handleRetryTurn}
+                    />
                   ) : null}
                 </MessageScrollerContent>
               </MessageScrollerViewport>
@@ -548,14 +546,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
               if (!plan) {
                 return;
               }
-              // The composer swallows rejections; surface send failures the
-              // same way the bridged-draft flush does.
-              return sendMessage(toSendableMessage(plan.outgoing))
-                .then(() => undefined)
-                .catch((error: unknown) => {
-                  console.error("[ChatConnection] sendMessage failed", error);
-                  setSendError(errorMessageFrom(error));
-                });
+              return sendMessage(toSendableMessage(plan.outgoing));
             }}
             onStop={helpers.stop}
           />

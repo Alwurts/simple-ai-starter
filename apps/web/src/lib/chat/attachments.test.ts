@@ -57,7 +57,7 @@ describe("filePartsFromFiles", () => {
       filename: "chart.png",
       mediaType: "image/png",
     });
-    expect(parts[0].url.startsWith("data:image/png;base64,")).toBe(true);
+    expect(parts[0]?.url.startsWith("data:image/png;base64,")).toBe(true);
   });
 
   it("never sends blob: preview URLs", async () => {
