@@ -54,9 +54,9 @@ export default defineConfig(async (): Promise<ViteUserConfig> => {
           test: {
             name: "node",
             environment: "node",
-            // Cover both trees so a pure unit test can't be silently un-run by
-            // living outside `test/`; `*.workerd.test.ts` always routes to the
-            // `workers` project instead.
+            // Cover both trees so a pure unit test can't be silently un-run
+            // by living outside `test/`; `*.workerd.test.ts` always routes to
+            // the `workers` project instead.
             include: ["{test,src}/**/*.test.ts"],
             exclude: ["**/*.workerd.test.ts"],
           },
@@ -82,7 +82,7 @@ export default defineConfig(async (): Promise<ViteUserConfig> => {
           ],
           test: {
             name: "workers",
-            include: ["{test,src}/**/*.workerd.test.ts"],
+            include: ["test/**/*.workerd.test.ts"],
             setupFiles: ["./test/apply-migrations.ts"],
             testTimeout: 60_000,
           },

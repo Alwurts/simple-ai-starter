@@ -15,9 +15,7 @@ const config: KnipConfig = {
     "apps/web": {
       entry: [
         // Test-only worker main, bound via wrangler.test.jsonc (not package.json).
-        "src/workerd-test/worker-entry.ts!",
-        "src/**/*.{test,spec}.{ts,tsx}",
-        "src/**/*.workerd.test.ts",
+        "test/agent/worker-entry.ts!",
         "test/**/*.{ts,tsx}",
       ],
       project: ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"],

@@ -15,8 +15,8 @@
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { routeGatedAgentRequest } from "../agent-gate";
-import { app as honoApp } from "../hono";
+import { routeGatedAgentRequest } from "../../src/agent-gate";
+import { app as honoApp } from "../../src/hono";
 
 // Mirrors src/server.ts: OrgChat.getTools() builds the codemode `execute`
 // tool, whose runtime resolves through ctx.exports.CodemodeRuntime.

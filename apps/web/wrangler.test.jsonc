@@ -17,7 +17,7 @@
   "name": "simple-ai-starter",
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "./src/workerd-test/worker-entry.ts",
+  "main": "./test/agent/worker-entry.ts",
   // CI has no gitignored `.dev.vars`. These match `test/helpers/auth.ts` ORIGIN
   // so `authOrigin(env.BETTER_AUTH_URL)` does not throw on undefined.
   "vars": {
