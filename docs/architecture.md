@@ -8,10 +8,10 @@ made, and every guide in `docs/guides/` shows *how* to work within them.
 The starter is an org-scoped chat app with one worked example table.
 **Chat / Catalog / Settings** is the live information architecture
 (`apps/web/src/components/layout/platform-navigation.ts`). The chat is the
-signed-in home (`apps/web/src/features/assistant/`, the simple-ai `chat-page`
-block wired to the org's `OrgChat` Think agent). `products` is the example
-capability that walks every layer — table → `contract` schema → `core`
-functions → Hono route → one list/detail page → five agent tools.
+signed-in home (`apps/web/src/components/chat/chat-page.tsx`, the simple-ai
+`chat-page` block wired to the org's `OrgChat` Think agent). `products` is the
+example capability that walks every layer — table → `contract` schema →
+`core` functions → Hono route → one list/detail page → five agent tools.
 
 ## Guiding principles
 
@@ -127,6 +127,52 @@ The HTTP API is grouped by auth scope first, then capability:
 `hono/{public,protected,org-protected}/<cap>/`. Auth middleware enforces the
 scope; org-protected routes are organization-scoped.
 
+## apps/web layout
+
+Inside `apps/web/src`, code is organized **by kind, then by feature** — one
+place per kind, sub-folders per feature, mirroring the same feature keys:
+
+- **`routes/`** — TanStack Router file routes, **thin**: a route file holds
+  route config only (`beforeLoad`, `validateSearch`, `loader`, `head`,
+  `errorComponent` wiring) and renders **one** page component from
+  `components/<feature>/<name>-page.tsx`. A section with its own layout or
+  more than one page is a folder with a pathless layout route; a single page
+  is a flat file.
+- **`components/<feature>/`** — all of a feature's components (chat also
+  groups by category: `chat/{messages,input,side-panel,connection}/`).
+- **`hooks/<feature>/`**, **`lib/<feature>/`** — hooks and helpers per
+  feature; app-wide ones sit at the root of `hooks/` and `lib/` (the API
+  client `lib/client.ts`, the query client `lib/query.ts`, `lib/locale.ts`).
+- **`test/{api,core,agent,e2e}/`** — binding tests (`*.workerd.test.ts`) and
+  e2e; shared helpers at `test/` root. Unit tests (`*.test.ts`) sit **next to
+  the file they test**.
+
+```
+apps/web/src/
+  routes/
+    __root.tsx
+    _auth.tsx                        auth card layout; bounces signed-in users
+    _auth/{login,signup,forgot-password,reset-password}.tsx
+    _protected.tsx                   session required → /login?redirect=…
+    _protected/{onboarding,accept-invitation.$id}.tsx
+    _protected/_org.tsx              active org required (→ /onboarding); Shell
+    _protected/_org/index.tsx        "/" → most recent chat or /chat/new
+    _protected/_org/chat/{new,$chatId}.tsx
+    _protected/_org/catalog/{index,$id}.tsx
+    _protected/_org/settings/{route,index,general,members}.tsx
+  components/{chat,catalog,organization,auth,layout,search,common,providers}/
+  hooks/{chat,catalog,organization}/…
+  lib/{chat,catalog,organization}/…, lib/{client,query,locale}.ts
+  hono/                              HTTP surface (auth-scope → feature)
+  server.ts, router.tsx
+apps/web/test/{api,core,agent,e2e}/
+```
+
+Conventions: kebab-case files named after their main export
+(`chat-page.tsx` → `ChatPage`); **named exports only** (default only where a
+framework demands it — the Worker entries); one exported component per file
+(small private helpers OK); no barrel `index.ts` files inside `apps/web/src`.
+
 ## Naming (role over technology)
 
 Packages and apps are named for the **role they play**, not the library that
@@ -163,7 +209,7 @@ Tests split by where they must run: a plain `*.test.ts` is a pure unit
 test run in the fast `node` Vitest project, while anything that needs a binding —
 `env.DB`/`SELF`, or a Durable Object — is named `*.workerd.test.ts` and runs
 in-workerd via `@cloudflare/vitest-pool-workers` against `wrangler.test.jsonc`.
-The DO fixture + reference test live in `apps/web/src/workerd-test/`. Browser
+The DO fixture + reference tests live in `apps/web/test/agent/`. Browser
 e2e (`pnpm --filter web test:e2e`) drives a full chat turn against a local fake
 model server in CI.
 

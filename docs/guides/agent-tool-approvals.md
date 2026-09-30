@@ -9,10 +9,10 @@ gated writes such as `update_product` / `delete_product`) lives in
 
 `needsApproval: true` on a top-level tool pauses before `execute` with part
 state `approval-requested`. The chat renders Approve/Reject
-(`apps/web/src/features/assistant/components/chat-message-parts.tsx` →
+(`apps/web/src/components/chat/messages/chat-message-row.tsx` →
 `addToolApprovalResponse`); Approve and Reject call `addToolApprovalResponse`
 from `useAgentChat`
-(`apps/web/src/features/assistant/components/full-screen-chat.tsx`). The
+(`apps/web/src/components/chat/chat-page.tsx`). The
 agents client sends that as a tool-approval frame and continues the turn.
 
 ## 2. Codemode (`execute` tool) — approval at the gated tool call

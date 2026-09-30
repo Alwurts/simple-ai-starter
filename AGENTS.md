@@ -34,6 +34,13 @@ Run from the **monorepo root** (not inside a package):
 - **Layer-sliced, feature-keyed.** A capability is the same key `<cap>` repeated
   across layers (`db` → `contract` → `core` → surfaces → `ui`/`components`). Find
   one slice, you know where the other five live. → [`docs/architecture.md`](docs/architecture.md)
+- **`apps/web` code is by kind, then by feature:** thin routes
+  (`routes/` config-only → one page component in
+  `components/<feature>/<name>-page.tsx`), `components/<feature>/`,
+  `hooks/<feature>/`, `lib/<feature>/`; unit tests beside the file, binding
+  tests in `apps/web/test/{api,core,agent,e2e}/`. Kebab-case files named after
+  their main export; named exports only; no barrels inside `apps/web/src`.
+  → [`docs/architecture.md › apps/web layout`](docs/architecture.md#appsweb-layout)
 - **Two schema sources, by direction.** Row types come from `db` (`$infer`); input
   types come from `contract` (hand-written Zod). **No `drizzle-zod` derivation.**
   Inbound is defined once in `contract`; outbound is inferred from `core`. → [ADR-004](docs/decisions/004-schema-sources-and-boundary-types.md)

@@ -101,7 +101,7 @@ pause/approve/resume — see
 
 A paused run renders an approval card outside the collapsed Worked group
 (`PausedExecutionCard` in
-`apps/web/src/features/assistant/components/chat-message-parts.tsx`), which
+`apps/web/src/components/chat/messages/chat-message-row.tsx`), which
 loads the full pending args via `pendingExecutions(executionId)` and resolves
 via `approveExecution` / `rejectExecution`; Think replays the run and
 auto-continues the chat.
@@ -250,7 +250,7 @@ On `@cloudflare/think` + the AI SDK tool loop:
 - `needsApproval: true` on a top-level tool pauses before `execute` with
   part state `approval-requested`.
 - The chat renders Approve/Reject
-  (`apps/web/src/features/assistant/components/chat-message-parts.tsx` →
+  (`apps/web/src/components/chat/messages/chat-message-row.tsx` →
   `addToolApprovalResponse`).
 - **Pause happens before `execute`.** After approve, `execute` runs and returns
   `ToolResult` — a miss is a soft `{ ok: false }`, not a throw.
@@ -327,7 +327,7 @@ For day-to-day "add `get_foo`," skip the grill and follow **Adding a new tool**.
   `asToolResult` mapping.
 - Agent: `packages/agent/src/in-app/__tests__/product-tools.test.ts` — in-app
   execute returns `ToolResult`, no throw on miss.
-- Workerd: `apps/web/src/workerd-test/tool-approvals.workerd.test.ts` —
+- Workerd: `apps/web/test/agent/tool-approvals.workerd.test.ts` —
   `needsApproval` on `update_product` / `delete_product`; `sub-agent-tools.workerd.test.ts`
   — read-only composition + org-scoped reads.
 
@@ -340,4 +340,4 @@ For day-to-day "add `get_foo`," skip the grill and follow **Adding a new tool**.
 - `packages/agent/src/tool-parts/catalog/products.ts` — named pieces
 - `packages/agent/src/in-app/compose-org-tools.ts` — compose entry points
 - `packages/agent/src/tools/guard.ts` — RBAC
-- `apps/web/src/features/assistant/components/chat-message-parts.tsx` — Approve/Reject UI + paused-execution card
+- `apps/web/src/components/chat/messages/chat-message-row.tsx` — Approve/Reject UI + paused-execution card

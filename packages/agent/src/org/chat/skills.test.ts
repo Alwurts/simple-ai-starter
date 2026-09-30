@@ -10,7 +10,7 @@ import raw from "./skills/product-copy/SKILL.md?raw";
  * (the catalog the model sees) and the memory-first instruction in the body.
  * The file is imported as a string (`?raw`) because packages/agent has no node
  * types, and the no-scripts/no-runner rule is pinned in
- * apps/web/src/workerd-test/chat-skills.workerd.test.ts.
+ * apps/web/test/agent/chat-skills.workerd.test.ts.
  */
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
