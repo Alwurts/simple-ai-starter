@@ -64,8 +64,8 @@ directly and export singleton instances.
   interface containing `typeof import("...server")` with a relative path to the
   app entry. When another package includes the generated file, TS follows that
   import and type-checks the app's server under the wrong module resolution. No
-  wrangler flag excludes it, so the `cf-typegen` script strips it with a `node -e`
-  post-process step (must be `node -e`, not `sed`, for cross-platform).
+  wrangler flag excludes it, so the `cf-typegen` script strips it with a
+  post-process script (`packages/env/scripts/postprocess-env.mjs`).
 
 ### Neutral
 
@@ -86,7 +86,7 @@ The `cf-typegen` script (in `apps/web/package.json`):
 ```
 wrangler types                                                  # full worker-configuration.d.ts for the app
 wrangler types ../../packages/env/src/env.d.ts --include-runtime=false  # env-only types for the shared package
-node -e "<strip GlobalProps>"                                   # remove GlobalProps to avoid cross-package resolution errors
+node ../../packages/env/scripts/postprocess-env.mjs             # strip GlobalProps to avoid cross-package resolution errors
 ```
 
 > Never hand-edit `packages/env/src/env.d.ts` or the app's
