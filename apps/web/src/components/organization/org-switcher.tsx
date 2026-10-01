@@ -143,10 +143,10 @@ export function OrgSwitcher() {
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
-            <DropdownMenuLabel className="text-muted-foreground text-xs">
-              Organizations
-            </DropdownMenuLabel>
             <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-muted-foreground text-xs">
+                Organizations
+              </DropdownMenuLabel>
               {organizations?.map((organization) => {
                 const isActive =
                   organization.id ===
