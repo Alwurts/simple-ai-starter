@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { safeRedirectPath } from "./safe-redirect";
 
-// Node default origin is `http://localhost` (see safe-redirect.ts); tests
-// exercise the guard against that origin.
+// The helper's origin is `http://localhost` in node (window is undefined);
+// tests exercise the guard against it.
+const NODE_ORIGIN = "http://localhost";
 const OTHER_ORIGIN = "https://evil.example";
 
 describe("safeRedirectPath", () => {
@@ -46,8 +47,35 @@ describe("safeRedirectPath", () => {
     expect(safeRedirectPath("data:text/html,<b>x</b>")).toBe("/");
   });
 
+  it("rejects dot-segment paths that resolve to a // leading output", () => {
+    // The input URL parses same-origin (the dot segment collapses), but the
+    // returned `//evil.example` re-parses standalone as protocol-relative.
+    expect(safeRedirectPath("/.//evil.example")).toBe("/");
+    expect(safeRedirectPath("/..//evil.example")).toBe("/");
+    // WHATWG treats %2e as a dot segment.
+    expect(safeRedirectPath("/%2e//evil.example")).toBe("/");
+  });
+
   it("falls back on empty input", () => {
     expect(safeRedirectPath(undefined)).toBe("/");
     expect(safeRedirectPath("", "/onboarding")).toBe("/onboarding");
+  });
+
+  it("round-trips every kept result to the same origin when re-parsed standalone", () => {
+    const kept = [
+      "/accept-invitation/abc",
+      "/catalog?search=kettle#row-3",
+      "http://localhost/catalog",
+      "/org//nested/path",
+      "/",
+      safeRedirectPath("//evil.example"),
+      safeRedirectPath("/.//evil.example"),
+      safeRedirectPath(undefined, "/onboarding"),
+    ];
+    for (const result of kept) {
+      const reparsed = new URL(result, NODE_ORIGIN);
+      expect(reparsed.origin).toBe(NODE_ORIGIN);
+      expect(result.startsWith("//")).toBe(false);
+    }
   });
 });

@@ -30,5 +30,18 @@ export function safeRedirectPath(
   if (url.origin !== origin || url.origin === "null") {
     return fallback;
   }
-  return `${url.pathname}${url.search}${url.hash}`;
+  const result = `${url.pathname}${url.search}${url.hash}`;
+  // `location.assign` re-parses the returned string standalone, so dot
+  // segments in the input (`/.//host`, `/%2e//host`) can resolve to a
+  // `//`-leading "path" here that the standalone parse treats as
+  // protocol-relative — validate the output the way it will be read.
+  try {
+    const roundTrip = new URL(result, origin);
+    if (roundTrip.origin !== origin || roundTrip.origin === "null") {
+      return fallback;
+    }
+  } catch {
+    return fallback;
+  }
+  return result;
 }
