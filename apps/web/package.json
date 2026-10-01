@@ -16,6 +16,7 @@
     "test:e2e:ui": "playwright test --ui",
     "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types && wrangler types ../../packages/env/src/env.d.ts --include-runtime=false && node ../../packages/env/scripts/postprocess-env.mjs",
+    "types:check": "wrangler types --check",
     "typecheck": "tsc --noEmit",
     "db:generate": "pnpm --filter @workspace/db db:generate",
     "db:migrate": "wrangler d1 migrations apply DB --local",
