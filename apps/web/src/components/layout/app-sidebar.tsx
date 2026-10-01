@@ -66,7 +66,8 @@ export function AppSidebar() {
         <AppSidebarFooter />
       </SidebarFooter>
 
-      <SidebarRail />
+      {/* Expanded desktop uses the rail; collapsed desktop uses the header trigger. */}
+      <SidebarRail className="group-data-[collapsible=icon]:hidden" />
       <SearchCommand open={searchOpen} setOpen={setSearchOpen} />
     </Sidebar>
   );
