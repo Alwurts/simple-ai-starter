@@ -22,6 +22,12 @@ test.describe("auth guards", () => {
 
 test.describe("signup flow", () => {
   test("can sign up a new account", async ({ page }) => {
+    const invitationLists: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("list-user-invitations")) {
+        invitationLists.push(request.url());
+      }
+    });
     const uniqueEmail = `signup-${Date.now()}@test.com`;
 
     await page.goto("/signup");
@@ -32,6 +38,11 @@ test.describe("signup flow", () => {
     await page.getByRole("button", { name: "Sign up" }).click();
 
     await expect(page).toHaveURL(ONBOARDING_URL_PATTERN, { timeout: 15_000 });
+    await expect(
+      page.getByRole("button", { name: "Create Organization" })
+    ).toBeVisible();
+    await waitForRouteSettled(page);
+    expect(invitationLists).toEqual([]);
   });
 });
 

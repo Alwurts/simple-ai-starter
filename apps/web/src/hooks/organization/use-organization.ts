@@ -4,7 +4,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { authClient } from "@workspace/auth/client";
 
 export const getInvitationKey = (id: string) => ["invitation", id];
-export const getUserInvitationsKey = () => ["user-invitations"] as const;
 
 export const useActiveOrganizationId = () => {
   const { data: session } = authClient.useSession();
@@ -28,23 +27,6 @@ export const useInvitation = (id: string) =>
       return res.data;
     },
     enabled: !!id,
-  });
-
-/**
- * The signed-in user's pending invitations (better-auth
- * `list-user-invitations`); onboarding offers them above "create an
- * organization". Not org data — user-scoped key.
- */
-export const useUserInvitations = () =>
-  useQuery({
-    queryKey: getUserInvitationsKey(),
-    queryFn: async () => {
-      const res = await authClient.organization.listUserInvitations();
-      if (res.error) {
-        throw new Error(res.error.message ?? "Failed to load invitations");
-      }
-      return res.data ?? [];
-    },
   });
 
 // Mutations touch Better Auth state only: its nanostore hooks
