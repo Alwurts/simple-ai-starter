@@ -75,11 +75,7 @@ async function signUpAndCreateOrg(
   { name, email, orgName }: { name: string; email: string; orgName: string }
 ) {
   await page.goto("/signup");
-  await waitHydrated(page);
-  await fillValue(page.locator("input#name"), name);
-  await fillValue(page.locator("input#email"), email);
-  await fillValue(page.locator("input#password"), "TestPassword123!");
-  await page.getByRole("button", { name: "Sign up" }).click();
+  await submitSignUp(page, email, name);
   await expect(page).toHaveURL(ONBOARDING_URL_PATTERN, { timeout: 15_000 });
   await waitForRouteSettled(page);
   await fillValue(page.locator("input#name"), orgName);
@@ -107,14 +103,17 @@ async function inviteMember(
   return invitation.id;
 }
 
-async function signUp(page: import("@playwright/test").Page, email: string) {
-  await page.goto("/signup");
+/** Fill and submit the signup form on the already-open signup page. */
+async function submitSignUp(
+  page: import("@playwright/test").Page,
+  email: string,
+  name = "E2E Invited User"
+) {
   await waitHydrated(page);
-  await fillValue(page.locator("input#name"), "E2E Invited User");
+  await fillValue(page.locator("input#name"), name);
   await fillValue(page.locator("input#email"), email);
   await fillValue(page.locator("input#password"), "TestPassword123!");
   await page.getByRole("button", { name: "Sign up" }).click();
-  await expect(page).toHaveURL(ONBOARDING_URL_PATTERN, { timeout: 15_000 });
 }
 
 async function logIn(page: import("@playwright/test").Page, email: string) {
@@ -152,9 +151,8 @@ test.describe("invitation for a brand-new user", () => {
       timeout: 10_000,
     });
 
-    await signUp(page, inviteeEmail);
-
-    // Sign-up honours the redirect: straight to the invitation.
+    // Sign-up on this page honours the redirect: straight to the invitation.
+    await submitSignUp(page, inviteeEmail);
     await expect(page).toHaveURL(
       new RegExp(`accept-invitation/${invitationId}`),
       {
@@ -188,7 +186,9 @@ test.describe("removed member", () => {
 
     // The invitee signs up (no org), then accepts via the link.
     await page.context().clearCookies();
-    await signUp(page, inviteeEmail);
+    await page.goto("/signup");
+    await submitSignUp(page, inviteeEmail);
+    await expect(page).toHaveURL(ONBOARDING_URL_PATTERN, { timeout: 15_000 });
     await page.goto(`/accept-invitation/${invitationId}`);
     await waitHydrated(page);
     await page.getByRole("button", { name: "Accept invitation" }).click();
