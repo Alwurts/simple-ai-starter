@@ -28,6 +28,8 @@ interface OrgConnectionValue {
   chatsLoadState: "loading" | "ready" | "error";
   createChat: (opts?: { title?: string }) => Promise<ChatSummary>;
   deleteChat: (chatId: string) => Promise<void>;
+  /** Retitle a chat (`OrgAgent.renameChat`); throws after toasting. */
+  renameChat: (chatId: string, title: string) => Promise<void>;
   /** FTS search over the org's chats (`OrgAgent.searchChats`). */
   searchChats: (query: string) => Promise<ChatSearchHit[]>;
   /** Retry after a terminal close: force the built-in reconnection. */
@@ -156,6 +158,19 @@ export function OrgConnection({
     [orgAgent]
   );
 
+  const renameChat = useCallback(
+    async (chatId: string, title: string) => {
+      try {
+        await orgAgent.stub.renameChat(chatId, title);
+      } catch (error) {
+        console.error("[OrgConnection] failed to rename chat", error);
+        toast.error("Couldn't rename chat. Please try again.");
+        throw error;
+      }
+    },
+    [orgAgent]
+  );
+
   /**
    * Sidebar Retry after a terminal close. `call()` can't help here — it
    * rejects on a closed socket, and partysocket never reopens a terminal
@@ -194,6 +209,7 @@ export function OrgConnection({
       organizationId,
       pendingMessage,
       readWorkspaceFile,
+      renameChat,
       retryConnection,
       searchChats,
       setPendingMessage: (chatId, message) =>
@@ -208,6 +224,7 @@ export function OrgConnection({
       organizationId,
       pendingMessage,
       readWorkspaceFile,
+      renameChat,
       retryConnection,
       searchChats,
     ]
