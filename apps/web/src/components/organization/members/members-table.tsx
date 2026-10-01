@@ -147,11 +147,11 @@ export function MembersTable({ members }: MembersTableProps) {
                 <TableCell>{roleLabel(member.role)}</TableCell>
                 <TableCell className="text-right">
                   <Button
-                    className="h-auto px-2 py-1 text-destructive text-xs underline hover:no-underline"
+                    className="h-auto px-2 py-1 text-xs underline hover:no-underline"
                     disabled={isLoading || !canAct || isSoleOwner}
                     onClick={() => setMemberPendingRemoval(member)}
                     title={actionTitle}
-                    variant="ghost"
+                    variant="destructive"
                   >
                     {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
                     {!isLoading && isCurrentUser && "Leave"}
@@ -190,9 +190,9 @@ export function MembersTable({ members }: MembersTableProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={removeMember.isPending}
               onClick={onConfirmRemove}
+              variant="destructive"
             >
               {removeConfirmLabel}
             </AlertDialogAction>

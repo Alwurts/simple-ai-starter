@@ -173,10 +173,9 @@ export function ProductPage() {
               </Button>
               <Button
                 aria-label="Delete"
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => setIsDeleteDialogOpen(true)}
                 size="sm"
-                variant="outline"
+                variant="destructive"
               >
                 <Trash2 className="size-4" />
                 <span className="hidden sm:inline">Delete</span>
@@ -258,9 +257,9 @@ export function ProductPage() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteProduct.isPending}
               onClick={handleDelete}
+              variant="destructive"
             >
               {deleteProduct.isPending ? "Deleting..." : "Delete Product"}
             </AlertDialogAction>

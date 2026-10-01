@@ -121,7 +121,7 @@ export function ResourceTable<TData extends RowData>({
                   <DropdownMenuItem
                     disabled={action.disabled}
                     key={action.label}
-                    onSelect={() => action.onSelect(row.original)}
+                    onClick={() => action.onSelect(row.original)}
                     title={action.disabled ? action.disabledReason : undefined}
                   >
                     {action.label}

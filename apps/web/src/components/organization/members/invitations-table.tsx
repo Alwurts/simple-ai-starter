@@ -109,10 +109,10 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
               {canManageMembers && (
                 <TableCell className="text-right">
                   <Button
-                    className="h-auto px-2 py-1 text-destructive text-xs underline hover:no-underline"
+                    className="h-auto px-2 py-1 text-xs underline hover:no-underline"
                     disabled={cancelInvitation.isPending}
                     onClick={() => setInvitationPendingCancel(invitation)}
-                    variant="ghost"
+                    variant="destructive"
                   >
                     Cancel
                   </Button>
@@ -143,9 +143,9 @@ export function InvitationsTable({ invitations }: InvitationsTableProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={cancelInvitation.isPending}
               onClick={onConfirmCancel}
+              variant="destructive"
             >
               {cancelInvitation.isPending ? "Cancelling..." : "Cancel"}
             </AlertDialogAction>
