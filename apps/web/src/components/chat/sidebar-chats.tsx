@@ -42,7 +42,8 @@ export function SidebarChats() {
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
 
   const onDelete = async (chatId: string) => {
-    // Leave the open chat before delete so its socket closes first.
+    // This tab leaves the chat route before the delete RPC. A late
+    // re-register is ignored; chat_meta is the record.
     if (pathname === `/chat/${chatId}`) {
       closeOnNavigate();
       await navigate({ to: "/chat/new" });

@@ -456,7 +456,8 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   const handleDelete = useCallback(async () => {
     helpers.stop();
-    // Leave this chat before delete so its socket closes first.
+    // This tab leaves the chat route before the delete RPC. A late
+    // re-register is ignored; chat_meta is the record.
     const next = chats.find((chat) => chat.id !== chatId)?.id;
     await navigate(
       next
