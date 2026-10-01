@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createTestSession, createTestSessionWithOrg } from "../helpers/auth";
 
@@ -6,7 +6,8 @@ import { createTestSession, createTestSessionWithOrg } from "../helpers/auth";
  * The `/agents/` gate (src/agent-gate.ts) runs inside `routeAgentRequest`'s
  * onBeforeConnect / onBeforeRequest hooks on the router's own URL parse, so
  * the parsed route — not a hand-rolled prefix match — decides. Covered here
- * through SELF (the test worker entry imports the same gate module as
+ * through `exports.default` (the pool-workers replacement for the deprecated
+ * `cloudflare:test` SELF; the test worker entry imports the same gate module as
  * src/server.ts): no session → 401; live membership in the target org →
  * through; any other org → 403 (including the `/agents//org-agent/<id>`
  * double-slash shape that bypassed the old startsWith gate); any other
@@ -29,14 +30,14 @@ beforeAll(async () => {
 });
 
 function get(url: string, cookie?: string) {
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     headers: cookie ? { Cookie: cookie } : {},
     redirect: "manual",
   });
 }
 
 function wsUpgrade(url: string, cookie?: string) {
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     headers: {
       Upgrade: "websocket",
       ...(cookie ? { Cookie: cookie } : {}),
@@ -77,8 +78,10 @@ describe("agent gate (plain HTTP path)", () => {
   });
 
   it("404s any non-OrgAgent namespace", async () => {
+    // `session-host` resolves to the test worker's SESSION_HOST binding —
+    // the gate (not the router) 404s every non-OrgAgent namespace.
     const res = await get(
-      "http://localhost/agents/test-counter/whatever",
+      "http://localhost/agents/session-host/whatever",
       member.cookie
     );
     expect(res.status).toBe(404);

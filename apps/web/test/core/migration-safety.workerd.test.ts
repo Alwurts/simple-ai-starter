@@ -1,4 +1,5 @@
-import { applyD1Migrations, env } from "cloudflare:test";
+import { applyD1Migrations } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
 // Guard for ADR-007: Cloudflare D1 + Drizzle table-recreate migrations & FK cascades.
@@ -97,7 +98,7 @@ describe("0001 over a database with orphaned products", () => {
   const m0 = migrationFiles.find((f) => f.name.startsWith("0000"));
   const m1 = migrationFiles.find((f) => f.name.startsWith("0001"));
 
-  function sqlFor(m: { queries: string[] } | undefined) {
+  function sqlFor(m: { name: string; queries: string[] } | undefined) {
     if (!m) {
       throw new Error("migration missing from TEST_MIGRATIONS");
     }

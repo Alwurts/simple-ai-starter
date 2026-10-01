@@ -19,7 +19,7 @@ describe("deriveTitleFromMessage", () => {
     ).toBe("fix formatMinor please");
   });
 
-  it("clamps long messages to 50 chars with an ellipsis", () => {
+  it("clamps long messages to 48 chars: 47 text + ellipsis", () => {
     const title = deriveTitleFromMessage([
       { type: "text", text: "a".repeat(80) },
     ]);

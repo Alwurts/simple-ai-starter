@@ -119,8 +119,12 @@ on `/api/auth/*` (for example 10 requests / 10 minutes per IP on the
 sign-up, sign-in and reset-password endpoints); no application code involved.
 
 Deploys can also run from GitHub Actions —
-`.github/workflows/deploy.yml` is manual (`workflow_dispatch`) and never runs
-on push.
+`.github/workflows/deploy.yml` is manual (`workflow_dispatch`, `main` only)
+and never runs on push. The job targets the `production` GitHub environment:
+after creating the repo's environments, add **required reviewers** on
+`production` in the GitHub settings (Settings → Environments → production →
+Required reviewers) so every deploy needs an approval; that protection is
+owner-managed in GitHub, not in this repo.
 
 ## Tests
 

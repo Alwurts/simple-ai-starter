@@ -100,7 +100,7 @@ async function inviteMember(
   ).json()) as Array<{ email: string; id: string }>;
   const invitation = invitations.find((candidate) => candidate.email === email);
   expect(invitation, `invitation for ${email} exists`).toBeTruthy();
-  return invitation.id;
+  return invitation?.id ?? "";
 }
 
 /** Fill and submit the signup form on the already-open signup page. */

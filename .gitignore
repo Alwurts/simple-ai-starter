@@ -1,9 +1,5 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # Dependencies
 node_modules
-.pnp
-.pnp.js
 
 # Local env files
 .env
@@ -12,9 +8,6 @@ node_modules
 .env.test.local
 .env.production.local
 .dev.vars
-
-# Docker
-docker-compose.override.yml
 
 # Testing
 coverage
@@ -25,15 +18,10 @@ playwright-report/
 # Turbo
 .turbo
 
-# Vercel
-.vercel
-
-# Build Outputs
-.next/
-out/
-build
-dist
-
+# Build outputs
+dist/
+build/
+.wrangler
 
 # Debug
 npm-debug.log*

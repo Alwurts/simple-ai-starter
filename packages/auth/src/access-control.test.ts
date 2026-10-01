@@ -1,6 +1,5 @@
-import { type Action, can } from "@workspace/auth/access-control";
 import { describe, expect, it } from "vitest";
-import { ROLE_LABELS } from "../../src/lib/organization/role-label";
+import { type Action, can } from "./access-control";
 
 const OPERATOR_ACTIONS: Action[] = ["catalog:write"];
 const ADMIN_ACTIONS: Action[] = [
@@ -51,13 +50,5 @@ describe("can() — statement authorization", () => {
       expect(can(action, { role: undefined })).toBe(false);
       expect(can(action, { role: "viewer" })).toBe(false);
     }
-  });
-});
-
-describe("role labels", () => {
-  it("labels the three stored roles in plain English", () => {
-    expect(ROLE_LABELS.member).toBe("Member");
-    expect(ROLE_LABELS.admin).toBe("Admin");
-    expect(ROLE_LABELS.owner).toBe("Owner");
   });
 });

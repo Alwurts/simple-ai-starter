@@ -37,7 +37,7 @@ describe("getProducts", () => {
     const { getProducts } = await import("@workspace/core/catalog");
     const products = await getProducts(orgId);
     expect(products).toHaveLength(1);
-    expect(products[0].name).toBe("My Product");
+    expect(products[0]?.name).toBe("My Product");
   });
 });
 
@@ -47,7 +47,7 @@ describe("getProduct", () => {
     const { getProduct } = await import("@workspace/core/catalog");
     const product = await getProduct(seeded.id, orgId);
     expect(product).toBeDefined();
-    expect(product.name).toBe("Specific Product");
+    expect(product?.name).toBe("Specific Product");
   });
 
   it("returns undefined for non-existent product", async () => {
@@ -74,8 +74,8 @@ describe("createProduct", () => {
       name: "New Product",
     });
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("New Product");
-    expect(result[0].organizationId).toBe(orgId);
+    expect(result[0]?.name).toBe("New Product");
+    expect(result[0]?.organizationId).toBe(orgId);
   });
 
   it("creates a product with optional fields", async () => {
@@ -86,8 +86,8 @@ describe("createProduct", () => {
       description: "A description",
       price: 4999,
     });
-    expect(result[0].description).toBe("A description");
-    expect(result[0].price).toBe(4999);
+    expect(result[0]?.description).toBe("A description");
+    expect(result[0]?.price).toBe(4999);
   });
 });
 
@@ -126,7 +126,7 @@ describe("updateProduct", () => {
     ).rejects.toThrow(DomainError);
 
     const unchanged = await getProduct(seeded.id, otherOrg.id);
-    expect(unchanged.name).toBe("Other Org Product");
+    expect(unchanged?.name).toBe("Other Org Product");
   });
 });
 

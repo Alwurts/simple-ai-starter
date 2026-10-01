@@ -17,7 +17,7 @@
     "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types && wrangler types ../../packages/env/src/env.d.ts --include-runtime=false && node ../../packages/env/scripts/postprocess-env.mjs",
     "types:check": "wrangler types --check",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "db:generate": "pnpm --filter @workspace/db db:generate",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote",
@@ -64,11 +64,8 @@
     "zod": "4.3.5"
   },
   "devDependencies": {
-    "@babel/core": "8.0.1",
-    "@babel/plugin-proposal-decorators": "8.0.2",
     "@cloudflare/vitest-pool-workers": "0.22.0",
     "@playwright/test": "^1.61.1",
-    "@rolldown/plugin-babel": "0.2.3",
     "@tanstack/devtools-vite": "0.8.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",

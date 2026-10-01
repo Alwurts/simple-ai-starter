@@ -3,14 +3,9 @@ import {
   cloudflareTest,
   readD1Migrations,
 } from "@cloudflare/vitest-pool-workers";
-import babel from "@rolldown/plugin-babel";
+import agents from "agents/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig, type ViteUserConfig } from "vitest/config";
-
-/** Vite 8/Oxc does not lower stage-3 decorators (`@callable` on OrgAgent). */
-const decoratorBabel = babel({
-  plugins: [["@babel/plugin-proposal-decorators", { version: "2023-11" }]],
-});
 
 /**
  * Two Vitest projects coexist in one config, split by where a test must
@@ -36,16 +31,6 @@ export default defineConfig(async (): Promise<ViteUserConfig> => {
   const migrations = await readD1Migrations(migrationsPath);
 
   return {
-    resolve: {
-      alias: {
-        // The `agents()` Vite plugin resolves `agents:skills` only in the app
-        // build; tests alias it to a stub (OrgChat's bundled skills source).
-        "agents:skills": path.resolve(
-          import.meta.dirname,
-          "test/agents-skills-shim.ts"
-        ),
-      },
-    },
     plugins: [tsconfigPaths({ projects: ["./tsconfig.json"] })],
     test: {
       projects: [
@@ -65,7 +50,11 @@ export default defineConfig(async (): Promise<ViteUserConfig> => {
         {
           extends: true,
           plugins: [
-            decoratorBabel,
+            // The Agents SDK plugin lowers the stage-3 decorators (`@callable`
+            // on OrgAgent) that Vite 8/Oxc doesn't handle, and builds the real
+            // `agents:skills` virtual module from
+            // packages/agent/src/org/chat/skills/ — same source as `vite dev`.
+            agents(),
             tsconfigPaths({ projects: ["./tsconfig.json"] }),
             cloudflareTest({
               wrangler: { configPath: "./wrangler.test.jsonc" },

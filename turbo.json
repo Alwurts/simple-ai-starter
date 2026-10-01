@@ -1,12 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["NODE_ENV", "BETTER_AUTH_SECRET"],
+  "globalPassThroughEnv": ["CLOUDFLARE_ENV"],
+  "globalEnv": ["NODE_ENV"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".output/**", "dist/**"]
+      "outputs": ["dist/**", ".wrangler/deploy/**"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]

@@ -1,5 +1,4 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
-import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -32,10 +31,9 @@ const config = defineConfig({
     },
   },
   plugins: [
-    // Vite 8/Oxc does not lower stage-3 decorators (`@callable` on OrgAgent).
-    babel({
-      plugins: [["@babel/plugin-proposal-decorators", { version: "2023-11" }]],
-    }),
+    // agents() also lowers the stage-3 decorators (`@callable` on OrgAgent)
+    // that Vite 8/Oxc doesn't handle, and builds the `agents:skills` virtual
+    // module from packages/agent/src/org/chat/skills/.
     agents(),
     devtools({
       eventBusConfig: { port: isE2E ? 42_086 : 42_085 },

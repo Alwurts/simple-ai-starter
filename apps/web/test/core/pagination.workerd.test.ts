@@ -18,6 +18,7 @@ describe("getPaginatedProducts", () => {
     const result = await getPaginatedProducts(orgId, {
       page: 1,
       pageSize: 10,
+      sortOrder: "asc",
     });
 
     expect(result.data).toHaveLength(2);
@@ -35,6 +36,7 @@ describe("getPaginatedProducts", () => {
     const result = await getPaginatedProducts(orgId, {
       page: 1,
       pageSize: 3,
+      sortOrder: "asc",
     });
 
     expect(result.data).toHaveLength(3);
@@ -50,10 +52,12 @@ describe("getPaginatedProducts", () => {
     const page1 = await getPaginatedProducts(orgId, {
       page: 1,
       pageSize: 3,
+      sortOrder: "asc",
     });
     const page2 = await getPaginatedProducts(orgId, {
       page: 2,
       pageSize: 3,
+      sortOrder: "asc",
     });
 
     expect(page1.data).toHaveLength(3);
@@ -72,10 +76,11 @@ describe("getPaginatedProducts", () => {
       page: 1,
       pageSize: 10,
       search: "Alpha",
+      sortOrder: "asc",
     });
 
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].name).toBe("Alpha Widget");
+    expect(result.data[0]?.name).toBe("Alpha Widget");
     expect(result.total).toBe(1);
   });
 
@@ -90,10 +95,11 @@ describe("getPaginatedProducts", () => {
       page: 1,
       pageSize: 10,
       search: "UNIQUE-DESC",
+      sortOrder: "asc",
     });
 
     expect(result.total).toBe(1);
-    expect(result.data[0].name).toBe("Some Product");
+    expect(result.data[0]?.name).toBe("Some Product");
   });
 
   it("search is case-insensitive", async () => {
@@ -104,6 +110,7 @@ describe("getPaginatedProducts", () => {
       page: 1,
       pageSize: 10,
       search: "uppercase",
+      sortOrder: "asc",
     });
 
     expect(result.total).toBe(1);
@@ -121,8 +128,8 @@ describe("getPaginatedProducts", () => {
       sortOrder: "asc",
     });
 
-    expect(result.data[0].name).toBe("Apple");
-    expect(result.data[1].name).toBe("Zebra");
+    expect(result.data[0]?.name).toBe("Apple");
+    expect(result.data[1]?.name).toBe("Zebra");
   });
 
   it("sorts by name descending", async () => {
@@ -137,8 +144,8 @@ describe("getPaginatedProducts", () => {
       sortOrder: "desc",
     });
 
-    expect(result.data[0].name).toBe("Zebra");
-    expect(result.data[1].name).toBe("Apple");
+    expect(result.data[0]?.name).toBe("Zebra");
+    expect(result.data[1]?.name).toBe("Apple");
   });
 
   it("does not return products from other orgs", async () => {
@@ -151,10 +158,11 @@ describe("getPaginatedProducts", () => {
     const result = await getPaginatedProducts(orgId, {
       page: 1,
       pageSize: 10,
+      sortOrder: "asc",
     });
 
     expect(result.total).toBe(1);
-    expect(result.data[0].name).toBe("My Product");
+    expect(result.data[0]?.name).toBe("My Product");
   });
 
   it("returns empty result for page beyond data", async () => {
@@ -164,6 +172,7 @@ describe("getPaginatedProducts", () => {
     const result = await getPaginatedProducts(orgId, {
       page: 5,
       pageSize: 10,
+      sortOrder: "asc",
     });
 
     expect(result.data).toHaveLength(0);

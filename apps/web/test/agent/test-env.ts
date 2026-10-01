@@ -1,8 +1,8 @@
 /**
  * Typed accessor for the in-workerd test worker's bindings.
  *
- * The test-only fixture (TestCounter DO) is declared in wrangler.test.jsonc —
- * NOT the production wrangler.jsonc / cf-typegen output — so it is intentionally
+ * The test-only DO (SessionHost) is declared in wrangler.test.jsonc — NOT the
+ * production wrangler.jsonc / cf-typegen output — so it is intentionally
  * absent from the global `Cloudflare.Env` type, and prod code can't accidentally
  * reference it. The pool-workers runtime still populates it on `env` at run time;
  * this module re-exports `env` with the fixture binding typed, keeping the test
@@ -12,10 +12,8 @@
 import { env as runtimeEnv } from "cloudflare:workers";
 import type { OrgAgent } from "@workspace/agent/org";
 import type { SessionHost } from "./session-host-do";
-import type { TestCounter } from "./test-counter-do";
 
 export const env = runtimeEnv as typeof runtimeEnv & {
-  TEST_COUNTER: DurableObjectNamespace<TestCounter>;
   // OrgAgent is bound in wrangler.test.jsonc for the multi-session
   // backend test; typed here so tests get RPC-method inference on the stub.
   OrgAgent: DurableObjectNamespace<OrgAgent>;
