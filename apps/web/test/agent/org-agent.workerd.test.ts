@@ -207,8 +207,8 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
       stub,
       async (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
-        (o.dynamicAgents as { get: () => Promise<never> }).get = () =>
-          Promise.reject(new Error("facet unavailable"));
+        (o.dynamicAgents as unknown as { get: () => Promise<never> }).get =
+          () => Promise.reject(new Error("facet unavailable"));
         let rejected: string | null = null;
         try {
           await o.createChat({ title: "Never" });
