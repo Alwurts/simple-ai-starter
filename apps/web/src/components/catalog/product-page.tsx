@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ShellHeader,
   ShellHeaderActions,
@@ -43,6 +43,7 @@ import {
   useUpdateProduct,
 } from "@/hooks/catalog/use-products";
 import { INTL_LOCALE } from "@/lib/locale";
+import { isNotFoundError } from "@/lib/query";
 
 interface ProductDetailsReadOnlyProps {
   product: {
@@ -77,6 +78,8 @@ export function ProductPage() {
     data: product,
     isPending: isLoadingProduct,
     isError: isProductError,
+    error: productError,
+    refetch: refetchProduct,
   } = useProduct(productId || "");
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
@@ -125,7 +128,30 @@ export function ProductPage() {
       </ShellPage>
     );
   }
-  if (isProductError || !product) {
+  if (isProductError) {
+    // A 404 is terminal ("not found"); any other failure is transient — offer
+    // Retry (the hook already retried silently, per retryUnlessNotFound).
+    return isNotFoundError(productError) ? (
+      <ResourceNotFound
+        backLabel="Back to Catalog"
+        title="Product not found"
+        to="/catalog"
+      />
+    ) : (
+      <ShellPage>
+        <div className="flex h-full flex-col items-center justify-center gap-4">
+          <h2 className="font-semibold text-xl">Failed to load product</h2>
+          <div className="flex gap-2">
+            <Button onClick={() => refetchProduct()} variant="outline">
+              Retry
+            </Button>
+            <Button render={<Link to="/catalog" />}>Back to Catalog</Button>
+          </div>
+        </div>
+      </ShellPage>
+    );
+  }
+  if (!product) {
     return (
       <ResourceNotFound
         backLabel="Back to Catalog"
