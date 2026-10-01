@@ -56,8 +56,9 @@ export default defineConfig(async (): Promise<ViteUserConfig> => {
             environment: "node",
             // Cover both trees so a pure unit test can't be silently un-run
             // by living outside `test/`; `*.workerd.test.ts` always routes to
-            // the `workers` project instead.
-            include: ["{test,src}/**/*.test.ts"],
+            // the `workers` project instead. `@vitest-environment jsdom`
+            // docblocks opt individual files into a DOM.
+            include: ["{test,src}/**/*.test.{ts,tsx}"],
             exclude: ["**/*.workerd.test.ts"],
           },
         },

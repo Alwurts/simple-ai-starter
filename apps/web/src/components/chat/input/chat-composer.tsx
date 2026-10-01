@@ -22,20 +22,13 @@ import {
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import type { ChatStatus, FileUIPart } from "ai";
 import { PaperclipIcon, XIcon } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
+import { useChatAttachments } from "@/hooks/chat/use-chat-attachments";
 import { useChatCapabilities } from "@/hooks/chat/use-chat-capabilities";
-import { filePartsFromFiles } from "@/lib/chat/attachments";
 
 export interface PromptMessage {
   text: string;
   files: FileUIPart[];
-}
-
-/** An attachment held for preview; converted to a data-URL part on submit. */
-interface ChatAttachment {
-  id: string;
-  file: File;
-  previewUrl: string;
 }
 
 function ChatInputInner({
@@ -51,59 +44,12 @@ function ChatInputInner({
   placeholder: string;
   status: ChatStatus;
 }) {
-  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
-  const [converting, setConverting] = useState(false);
   const inputRef = useRef<ChatInputHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: capabilities } = useChatCapabilities();
   const supportsImageInput = capabilities?.supportsImageInput === true;
-
-  const clearAttachments = useCallback(() => {
-    setAttachments((prev) => {
-      for (const attachment of prev) {
-        URL.revokeObjectURL(attachment.previewUrl);
-      }
-      return [];
-    });
-  }, []);
-
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments((prev) => {
-      const found = prev.find((attachment) => attachment.id === id);
-      if (found) {
-        URL.revokeObjectURL(found.previewUrl);
-      }
-      return prev.filter((attachment) => attachment.id !== id);
-    });
-  }, []);
-
-  const addFiles = useCallback(
-    (list: FileList | File[]) => {
-      if (!supportsImageInput) {
-        toast.error(
-          "This chat model only accepts text. Remove attachments and try again."
-        );
-        return;
-      }
-      const incoming = Array.from(list);
-      const images = incoming.filter((file) => file.type.startsWith("image/"));
-      if (incoming.length > 0 && images.length === 0) {
-        toast.error(
-          "Only image attachments are supported. Remove other file types and try again."
-        );
-        return;
-      }
-      setAttachments((prev) => [
-        ...prev,
-        ...images.map((file) => ({
-          id: crypto.randomUUID(),
-          file,
-          previewUrl: URL.createObjectURL(file),
-        })),
-      ]);
-    },
-    [supportsImageInput]
-  );
+  const { addFiles, attachments, converting, removeAttachment, takeParts } =
+    useChatAttachments({ supportsImages: supportsImageInput });
 
   const submit = useCallback(
     async (text: string, clear: () => void): Promise<void> => {
@@ -116,28 +62,15 @@ function ChatInputInner({
         );
         return;
       }
-      let files: PromptMessage["files"] = [];
-      if (attachments.length > 0) {
-        setConverting(true);
-        try {
-          files = await filePartsFromFiles(
-            attachments.map((attachment) => attachment.file)
-          );
-        } catch (error) {
-          console.error("[ChatComposer] failed to read attachments", error);
-          toast.error("Couldn't read the attachments. Please try again.");
-          return;
-        } finally {
-          setConverting(false);
-        }
+      // Null = a read failed and the attachments were kept for a retry.
+      const files = await takeParts();
+      if (files === null) {
+        return;
       }
-      // The parts now carry the image data (data URLs), so the preview
-      // object URLs can go.
-      clearAttachments();
       clear();
       await onSubmit({ text, files });
     },
-    [attachments, clearAttachments, onSubmit, supportsImageInput]
+    [attachments.length, onSubmit, supportsImageInput, takeParts]
   );
 
   return (
