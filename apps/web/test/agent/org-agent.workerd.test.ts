@@ -1,13 +1,13 @@
 import { runInDurableObject } from "cloudflare:test";
-import type { OrgAgent } from "@workspace/agent/org";
+import { OrgAgent } from "@workspace/agent/org";
 import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
 
 /**
  * The multi-session backend, aligned to the examples/assistant
  * reference. Drives the real OrgAgent DO over RPC via `runInDurableObject`:
- * - the dynamic-agent registry is the source of truth for chat existence;
- *   `chat_meta` is decoration merged in by `listChats`.
+ * - `chat_meta` is the only chat record. `listChats` reads that table;
+ *   a registry row with no meta row is not a chat.
  * - `createChat` / `listChats` / `deleteChat` behave and persist.
  * - deleting the last chat leaves zero chats — there is no `"default"` re-seed.
  * - `onBeforeSubAgent` gates unknown children with a 404 and admits known ones.
@@ -80,9 +80,8 @@ function installFakeRegistry(o: OrgAgent, sql: SqlStorage): void {
 }
 
 describe("OrgAgent multi-session backend (in workerd)", () => {
-  it("404s an unknown child on the real, un-faked registry", async () => {
-    // No fake here: `onBeforeSubAgent` → `dynamicAgents.has` reads the real
-    // (empty) registry without spawning, so the gate is exercised end-to-end.
+  it("404s an unknown child when chat_meta has no row", async () => {
+    // No fake: the gate reads chat_meta (created on demand) and does not spawn.
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-real-gate"));
     const res = await runInDurableObject(stub, (o: OrgAgent) =>
       o.onBeforeSubAgent(new Request("http://do/"), {
@@ -94,7 +93,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
     expect((res as Response).status).toBe(404);
   });
 
-  it("creates and lists chats registry-first, isolating per-chat metadata", async () => {
+  it("creates and lists chats from chat_meta, isolating per-chat metadata", async () => {
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-lifecycle"));
 
     const { list, alphaId, betaId } = await runInDurableObject(
@@ -111,7 +110,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
     expect(list.map((c) => c.id).sort((a, b) => a.localeCompare(b))).toEqual(
       [alphaId, betaId].sort((a, b) => a.localeCompare(b))
     );
-    // chat_meta decoration is isolated per chat.
+    // Titles come from each chat's own chat_meta row.
     expect(list.find((c) => c.id === alphaId)?.title).toBe("Alpha");
     expect(list.find((c) => c.id === betaId)?.title).toBe("Beta");
   });
@@ -136,14 +135,105 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
     );
 
     expect(afterOne).toHaveLength(1);
-    // No "default" chat is re-created — the registry is genuinely empty.
+    // No "default" chat is re-created — zero chats is a valid list.
     expect(afterAll).toEqual([]);
+  });
+
+  it("keeps a deleted chat deleted when its registry row is re-inserted", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-ghost"));
+
+    const result = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        const chat = await o.createChat({ title: "Doomed" });
+        await o.deleteChat(chat.id);
+
+        // The upstream forward-on-close does INSERT OR IGNORE back into the
+        // registry after dynamicAgents.delete. The fake stands in for that.
+        state.storage.sql.exec(
+          "INSERT INTO _test_registry (name, created_at) VALUES (?, ?)",
+          chat.id,
+          Date.now()
+        );
+
+        const listed = o.listChats().map((entry) => entry.id);
+        const gated = await o.onBeforeSubAgent(new Request("http://do/"), {
+          className: "OrgChat",
+          name: chat.id,
+        });
+        await o.renameChat(chat.id, "Revived");
+        const afterRename = o.listChats().map((entry) => entry.id);
+        const metaAfterRename = [
+          ...state.storage.sql.exec(
+            "SELECT id FROM chat_meta WHERE id = ?",
+            chat.id
+          ),
+        ];
+
+        // The constructor wraps onStart with facet startup this pool can't run.
+        // The class method is what that wrapper awaits.
+        await OrgAgent.prototype.onStart.call(o);
+        const registryAfterSweep = [
+          ...state.storage.sql.exec(
+            "SELECT name FROM _test_registry WHERE name = ?",
+            chat.id
+          ),
+        ];
+
+        return {
+          listed,
+          gatedStatus: (gated as Response).status,
+          afterRename,
+          metaAfterRename: metaAfterRename.length,
+          registryAfterSweep: registryAfterSweep.length,
+          listedAfterSweep: o.listChats().map((entry) => entry.id),
+        };
+      }
+    );
+
+    expect(result.listed).toEqual([]);
+    expect(result.gatedStatus).toBe(404);
+    expect(result.afterRename).toEqual([]);
+    expect(result.metaAfterRename).toBe(0);
+    expect(result.registryAfterSweep).toBe(0);
+    expect(result.listedAfterSweep).toEqual([]);
+  });
+
+  it("caps a rename and does not recreate a chat from a long title", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-rename-cap"));
+
+    const { renamed, cappedLength, afterDelete } = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        const chat = await o.createChat({ title: "Short" });
+        await o.renameChat(chat.id, "Renamed");
+        const renamed = o
+          .listChats()
+          .find((entry) => entry.id === chat.id)?.title;
+        await o.renameChat(chat.id, "y".repeat(240));
+        const cappedLength = o.listChats().find((entry) => entry.id === chat.id)
+          ?.title.length;
+        await o.deleteChat(chat.id);
+        await o.renameChat(chat.id, "Nope");
+        return {
+          renamed,
+          cappedLength,
+          afterDelete: o.listChats().map((entry) => entry.id),
+        };
+      }
+    );
+
+    expect(renamed).toBe("Renamed");
+    expect(cappedLength).toBe(200);
+    expect(afterDelete).toEqual([]);
   });
 
   it("gates an unknown facet (incl. 'default') and admits a created chat", async () => {
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-gate"));
 
-    const { unknownStatus, legacyDefaultStatus, admitted } =
+    const { unknownStatus, legacyDefaultStatus, admitted, wrongClassStatus } =
       await runInDurableObject(stub, async (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
 
@@ -162,17 +252,23 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
           className: "OrgChat",
           name: chat.id,
         });
+        const wrongClass = await o.onBeforeSubAgent(new Request("http://do/"), {
+          className: "OrgSubAgent",
+          name: chat.id,
+        });
 
         return {
           unknownStatus: (unknown as Response).status,
           legacyDefaultStatus: (legacyDefault as Response).status,
           admitted: known,
+          wrongClassStatus: (wrongClass as Response).status,
         };
       });
 
     expect(unknownStatus).toBe(404);
     expect(legacyDefaultStatus).toBe(404);
-    // A registered child falls through (undefined) so the framework forwards it.
+    expect(wrongClassStatus).toBe(404);
+    // A chat_meta row falls through (undefined) so the framework forwards it.
     expect(admitted).toBeUndefined();
   });
 
@@ -188,7 +284,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
     );
 
     // A new stub for the same DO id models a later client connection / wake.
-    // The SQL-backed fake registry + chat_meta both survive.
+    // chat_meta survives; the list is that table.
     const list = await runInDurableObject(
       env.OrgAgent.get(id),
       (o: OrgAgent, state) => {

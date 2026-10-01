@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { waitHydrated } from "./helpers";
 
 const CHAT_ID_URL_PATTERN = /\/chat\/[0-9a-f]{16}$/;
+const CHAT_ID_IN_URL = /\/chat\/([0-9a-f]{16})$/;
 const NEW_CHAT_URL_PATTERN = /\/chat\/new/;
 const COMPOSER = '[data-slot="chat-input"] [contenteditable="true"]';
 
@@ -91,6 +92,91 @@ test.describe("sidebar", () => {
     ).toBeHidden({ timeout: 15_000 });
     // The deleted chat was the open one — land on the draft.
     await expect(page).toHaveURL(NEW_CHAT_URL_PATTERN, { timeout: 15_000 });
+  });
+
+  test("a deleted open chat stays deleted in a new page", async ({ page }) => {
+    const title = `Stay Deleted ${Date.now()}`;
+    await createChatWithTitle(page, title);
+    // The outgoing bubble is on screen only after the chat socket connects.
+    await expect(
+      page
+        .locator('[data-slot="bubble-content"]')
+        .getByText(title, { exact: true })
+        .first()
+    ).toBeVisible({ timeout: 15_000 });
+    const chatId = CHAT_ID_IN_URL.exec(page.url())?.[1];
+    expect(chatId).toBeTruthy();
+
+    await chatRowMenu(page, title).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Delete" })
+      .click();
+    await expect(
+      page.getByRole("link", { name: title, exact: true })
+    ).toBeHidden({ timeout: 15_000 });
+    await expect(page).toHaveURL(NEW_CHAT_URL_PATTERN, { timeout: 15_000 });
+
+    const fresh = await page.context().newPage();
+    await fresh.goto("/chat/new");
+    await waitHydrated(fresh);
+    await expect(fresh.getByText("Loading…")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+
+    // createChat re-reads the list. A forwarded close re-registers the facet
+    // after delete; that id comes back unless chat_meta is the only record.
+    const followUp = `After delete ${Date.now()}`;
+    const composer = fresh.locator(COMPOSER);
+    await expect(composer).toBeVisible({ timeout: 15_000 });
+    await composer.click();
+    await fresh.keyboard.type(followUp);
+    await fresh.getByRole("button", { name: "Send" }).click();
+    await expect(fresh).toHaveURL(CHAT_ID_URL_PATTERN, { timeout: 15_000 });
+    await expect(
+      fresh.getByRole("link", { name: followUp, exact: true })
+    ).toBeVisible({ timeout: 15_000 });
+
+    await expect(async () => {
+      const hrefs = await fresh
+        .locator("a")
+        .evaluateAll((els) => els.map((el) => el.getAttribute("href") ?? ""));
+      expect(hrefs.some((href) => href.includes(`/chat/${chatId}`))).toBe(
+        false
+      );
+    }).toPass({ timeout: 5000 });
+    await fresh.close();
+  });
+
+  test("header delete asks to confirm; cancel keeps the chat", async ({
+    page,
+  }) => {
+    const title = `Header Delete ${Date.now()}`;
+    await createChatWithTitle(page, title);
+    const chatId = CHAT_ID_IN_URL.exec(page.url())?.[1];
+    expect(chatId).toBeTruthy();
+
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete conversation" }).click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(
+      page.getByRole("link", { name: title, exact: true })
+    ).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/chat/${chatId}$`));
+
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete conversation" }).click();
+    await dialog.getByRole("button", { name: "Delete" }).click();
+    await expect(
+      page.getByRole("link", { name: title, exact: true })
+    ).toBeHidden({ timeout: 15_000 });
+    await expect(page).not.toHaveURL(new RegExp(`/chat/${chatId}$`), {
+      timeout: 15_000,
+    });
   });
 
   test("org switcher marks the active organization", async ({ page }) => {
