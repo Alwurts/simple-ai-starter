@@ -155,7 +155,8 @@ the created row, `PATCH /:id` partial update, `DELETE /:id` → **204** no body)
 more than one resource is a folder; a single-resource scope is one file.
 
 **Every non-2xx response has one shape** — `{ error: { code, message, issues? } }`
-— built in `api/middleware/error-handler.ts`: `HTTPException` (401/403),
+— built in `api/middleware/error-handler.ts` (`/api/auth/*` keeps Better
+Auth's own error bodies): `HTTPException` (401/403),
 `DomainError` (`not_found` / `conflict` / `unprocessable` → 404/409/422),
 validation failures (`code: "validation"`, 400, readable message + zod issues),
 unknown routes (`notFound`), and the 500 fallback. The typed Hono RPC client
