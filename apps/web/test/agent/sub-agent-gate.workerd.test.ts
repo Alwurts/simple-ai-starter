@@ -3,6 +3,14 @@ import { OrgChat } from "@workspace/agent/org/chat";
 import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
 
+// A resolvable model config — the gate tests never call the model.
+const STUB_ENV = {
+  ORG_CHAT_PROVIDER: "openai-compatible",
+  OPENAI_COMPATIBLE_BASE_URL: "http://localhost:9/v1",
+  OPENAI_COMPATIBLE_API_KEY: "test-key",
+  ORG_CHAT_MODEL: "test-model",
+} as unknown as Cloudflare.Env;
+
 /**
  * S5: `OrgChat.onBeforeSubAgent` gates sub-agent URLs on the agent-tool run
  * registry (agents agent-tools.md › Drill in and gate access) — a guessed
@@ -21,7 +29,7 @@ describe("OrgChat.onBeforeSubAgent (in workerd)", () => {
     const res = await runInDurableObject(stub, (_host, state) => {
       const chat = new OrgChat(
         state as unknown as DurableObjectState,
-        { AI_GATEWAY_API_KEY: "test-key" } as unknown as Cloudflare.Env
+        STUB_ENV
       );
       return chat.onBeforeSubAgent(new Request("http://do/"), {
         className: "OrgSubAgent",
@@ -39,7 +47,7 @@ describe("OrgChat.onBeforeSubAgent (in workerd)", () => {
     const res = await runInDurableObject(stub, (_host, state) => {
       const chat = new OrgChat(
         state as unknown as DurableObjectState,
-        { AI_GATEWAY_API_KEY: "test-key" } as unknown as Cloudflare.Env
+        STUB_ENV
       );
       // Seed the real run registry with one launched run, as a delegate
       // tool call would leave behind.

@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import {
   createTestSession,
@@ -14,7 +14,7 @@ import {
  */
 
 function authPost(url: string, body: object, cookie?: string) {
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -27,9 +27,12 @@ function authPost(url: string, body: object, cookie?: string) {
 }
 
 function getInvitation(id: string, cookie: string) {
-  return SELF.fetch(`${ORIGIN}/api/auth/organization/get-invitation?id=${id}`, {
-    headers: { Cookie: cookie },
-  });
+  return exports.default.fetch(
+    `${ORIGIN}/api/auth/organization/get-invitation?id=${id}`,
+    {
+      headers: { Cookie: cookie },
+    }
+  );
 }
 
 async function invite(email: string, ownerCookie: string): Promise<string> {

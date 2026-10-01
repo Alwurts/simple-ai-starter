@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
 import { Hono } from "hono";
 import { beforeAll, describe, expect, it } from "vitest";
 import { extractAuth } from "../../src/api/middleware/session";
@@ -22,7 +22,7 @@ beforeAll(async () => {
 
 describe("scope order: public", () => {
   it("GET /api/health serves anonymously", async () => {
-    const res = await SELF.fetch("http://localhost/api/health");
+    const res = await exports.default.fetch("http://localhost/api/health");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });
@@ -30,7 +30,9 @@ describe("scope order: public", () => {
 
 describe("scope order: protected", () => {
   it("GET /api/chat/capabilities 401s without a session", async () => {
-    const res = await SELF.fetch("http://localhost/api/chat/capabilities");
+    const res = await exports.default.fetch(
+      "http://localhost/api/chat/capabilities"
+    );
     expect(res.status).toBe(401);
     const body = (await res.json()) as {
       error: { code: string; message: string };
@@ -41,9 +43,12 @@ describe("scope order: protected", () => {
 
   it("GET /api/chat/capabilities serves a signed-in user", async () => {
     const { cookie } = await createTestSession();
-    const res = await SELF.fetch("http://localhost/api/chat/capabilities", {
-      headers: { Cookie: cookie },
-    });
+    const res = await exports.default.fetch(
+      "http://localhost/api/chat/capabilities",
+      {
+        headers: { Cookie: cookie },
+      }
+    );
     expect(res.status).toBe(200);
   });
 });
@@ -51,9 +56,12 @@ describe("scope order: protected", () => {
 describe("scope order: org-protected", () => {
   it("GET /api/catalog/products 403s a signed-in user with no membership", async () => {
     const { cookie } = await createTestSession();
-    const res = await SELF.fetch("http://localhost/api/catalog/products", {
-      headers: { Cookie: cookie },
-    });
+    const res = await exports.default.fetch(
+      "http://localhost/api/catalog/products",
+      {
+        headers: { Cookie: cookie },
+      }
+    );
     expect(res.status).toBe(403);
     const body = (await res.json()) as {
       error: { code: string; message: string };
@@ -63,14 +71,19 @@ describe("scope order: org-protected", () => {
   });
 
   it("GET /api/catalog/products serves a member", async () => {
-    const res = await SELF.fetch("http://localhost/api/catalog/products", {
-      headers: { Cookie: memberCookie },
-    });
+    const res = await exports.default.fetch(
+      "http://localhost/api/catalog/products",
+      {
+        headers: { Cookie: memberCookie },
+      }
+    );
     expect(res.status).toBe(200);
   });
 
   it("GET /api/catalog/products 401s an anonymous caller (auth runs before the org check)", async () => {
-    const res = await SELF.fetch("http://localhost/api/catalog/products");
+    const res = await exports.default.fetch(
+      "http://localhost/api/catalog/products"
+    );
     expect(res.status).toBe(401);
   });
 });

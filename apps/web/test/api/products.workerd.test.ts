@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestSessionWithOrg } from "../helpers/auth";
 
@@ -15,7 +15,7 @@ async function createProduct(body: object): Promise<{
   id: string;
   status: number;
 }> {
-  const res = await SELF.fetch(API, {
+  const res = await exports.default.fetch(API, {
     method: "POST",
     headers: { Cookie: cookie, "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -25,7 +25,7 @@ async function createProduct(body: object): Promise<{
 
 describe("GET /api/catalog/products", () => {
   it("returns empty paginated product list", async () => {
-    const res = await SELF.fetch(API, {
+    const res = await exports.default.fetch(API, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(200);
@@ -44,7 +44,7 @@ describe("GET /api/catalog/products", () => {
   it("returns created products in paginated response", async () => {
     await createProduct({ name: "Test Product" });
 
-    const res = await SELF.fetch(API, {
+    const res = await exports.default.fetch(API, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(200);
@@ -53,7 +53,7 @@ describe("GET /api/catalog/products", () => {
       total: number;
     };
     expect(data.data).toHaveLength(1);
-    expect(data.data[0].name).toBe("Test Product");
+    expect(data.data[0]?.name).toBe("Test Product");
     expect(data.total).toBe(1);
   });
 
@@ -62,7 +62,7 @@ describe("GET /api/catalog/products", () => {
       await createProduct({ name: `Product ${i}` });
     }
 
-    const res = await SELF.fetch(`${API}?page=1&pageSize=2`, {
+    const res = await exports.default.fetch(`${API}?page=1&pageSize=2`, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(200);
@@ -85,7 +85,7 @@ describe("GET /api/catalog/products", () => {
       description: "UNIQUE-DESC phrase",
     });
 
-    const byName = await SELF.fetch(`${API}?search=Alpha`, {
+    const byName = await exports.default.fetch(`${API}?search=Alpha`, {
       headers: { Cookie: cookie },
     });
     const nameData = (await byName.json()) as {
@@ -93,21 +93,24 @@ describe("GET /api/catalog/products", () => {
       total: number;
     };
     expect(nameData.data).toHaveLength(1);
-    expect(nameData.data[0].name).toBe("Alpha Widget");
+    expect(nameData.data[0]?.name).toBe("Alpha Widget");
     expect(nameData.total).toBe(1);
 
-    const byDescription = await SELF.fetch(`${API}?search=UNIQUE-DESC`, {
-      headers: { Cookie: cookie },
-    });
+    const byDescription = await exports.default.fetch(
+      `${API}?search=UNIQUE-DESC`,
+      {
+        headers: { Cookie: cookie },
+      }
+    );
     const descData = (await byDescription.json()) as {
       data: { name: string }[];
     };
     expect(descData.data).toHaveLength(1);
-    expect(descData.data[0].name).toBe("Beta Gadget");
+    expect(descData.data[0]?.name).toBe("Beta Gadget");
   });
 
   it("rejects an invalid query with the validation error shape", async () => {
-    const res = await SELF.fetch(`${API}?pageSize=0`, {
+    const res = await exports.default.fetch(`${API}?pageSize=0`, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(400);
@@ -122,7 +125,7 @@ describe("GET /api/catalog/products", () => {
 
 describe("POST /api/catalog/products", () => {
   it("creates a product and returns 201 with the created row", async () => {
-    const res = await SELF.fetch(API, {
+    const res = await exports.default.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -142,7 +145,7 @@ describe("POST /api/catalog/products", () => {
   });
 
   it("rejects invalid payload with the validation error shape", async () => {
-    const res = await SELF.fetch(API, {
+    const res = await exports.default.fetch(API, {
       method: "POST",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
       body: JSON.stringify({ name: "X" }), // Name too short
@@ -152,7 +155,7 @@ describe("POST /api/catalog/products", () => {
       error: { code: string; message: string; issues: { path: string }[] };
     };
     expect(body.error.code).toBe("validation");
-    expect(body.error.issues[0].path).toBe("name");
+    expect(body.error.issues[0]?.path).toBe("name");
   });
 });
 
@@ -160,7 +163,7 @@ describe("GET /api/catalog/products/:id", () => {
   it("returns a specific product", async () => {
     const created = await createProduct({ name: "Find Me" });
 
-    const res = await SELF.fetch(`${API}/${created.id}`, {
+    const res = await exports.default.fetch(`${API}/${created.id}`, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(200);
@@ -169,7 +172,7 @@ describe("GET /api/catalog/products/:id", () => {
   });
 
   it("returns 404 with the error shape for a non-existent product", async () => {
-    const res = await SELF.fetch(`${API}/non-existent`, {
+    const res = await exports.default.fetch(`${API}/non-existent`, {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(404);
@@ -187,7 +190,7 @@ describe("PATCH /api/catalog/products/:id", () => {
       description: "Keep me",
     });
 
-    const res = await SELF.fetch(`${API}/${created.id}`, {
+    const res = await exports.default.fetch(`${API}/${created.id}`, {
       method: "PATCH",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Updated" }),
@@ -202,7 +205,7 @@ describe("PATCH /api/catalog/products/:id", () => {
   });
 
   it("returns 404 when updating a non-existent product", async () => {
-    const res = await SELF.fetch(`${API}/non-existent`, {
+    const res = await exports.default.fetch(`${API}/non-existent`, {
       method: "PATCH",
       headers: { Cookie: cookie, "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Nope" }),
@@ -215,21 +218,21 @@ describe("DELETE /api/catalog/products/:id", () => {
   it("deletes a product and returns 204 with no body", async () => {
     const created = await createProduct({ name: "Delete Me" });
 
-    const deleteRes = await SELF.fetch(`${API}/${created.id}`, {
+    const deleteRes = await exports.default.fetch(`${API}/${created.id}`, {
       method: "DELETE",
       headers: { Cookie: cookie },
     });
     expect(deleteRes.status).toBe(204);
     expect(await deleteRes.text()).toBe("");
 
-    const getRes = await SELF.fetch(`${API}/${created.id}`, {
+    const getRes = await exports.default.fetch(`${API}/${created.id}`, {
       headers: { Cookie: cookie },
     });
     expect(getRes.status).toBe(404);
   });
 
   it("returns 404 when deleting a non-existent product", async () => {
-    const res = await SELF.fetch(`${API}/non-existent`, {
+    const res = await exports.default.fetch(`${API}/non-existent`, {
       method: "DELETE",
       headers: { Cookie: cookie },
     });

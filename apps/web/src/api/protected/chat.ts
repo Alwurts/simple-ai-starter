@@ -1,7 +1,4 @@
-import {
-  type OrgInferenceEnv,
-  resolveOrgChatCapabilities,
-} from "@workspace/agent/inference";
+import { resolveOrgChatCapabilities } from "@workspace/agent/inference";
 import { Hono } from "hono";
 import type { HonoContextWithAuth } from "../types";
 
@@ -13,9 +10,7 @@ import type { HonoContextWithAuth } from "../types";
 export const chatRoutes = new Hono<HonoContextWithAuth>().get(
   "/capabilities",
   (c) => {
-    const capabilities = resolveOrgChatCapabilities(
-      c.env as unknown as OrgInferenceEnv
-    );
+    const capabilities = resolveOrgChatCapabilities(c.env);
     return c.json(capabilities);
   }
 );

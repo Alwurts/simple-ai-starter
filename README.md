@@ -18,7 +18,7 @@ cd simple-ai-starter
 pnpm install
 ```
 
-You need Node 20+ and pnpm 11+ (this repo pins `packageManager:
+You need Node 22+ and pnpm 11+ (this repo pins `packageManager:
 pnpm@11.5.2`; run `corepack enable` if needed).
 
 Copy the example env file and set a `BETTER_AUTH_SECRET` (see
@@ -30,10 +30,12 @@ cp apps/web/.dev.vars.example apps/web/.dev.vars
 ```
 
 The org agent needs one inference provider. The default is
-[Vercel AI Gateway](https://vercel.com/docs/ai-gateway): set
-`AI_GATEWAY_API_KEY` and it uses `google/gemini-3-flash` unless
-`ORG_CHAT_MODEL` says otherwise. Alternatives: Cloudflare Workers AI,
-[z.ai](https://z.ai/), or any OpenAI-compatible endpoint — see
+[Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/): set
+`CF_ACCOUNT_ID` + `WORKERS_AI_API_TOKEN` and it uses
+`@cf/meta/llama-3.3-70b-instruct-fp8-fast` unless `ORG_CHAT_MODEL` says
+otherwise. Alternative: any OpenAI-compatible endpoint
+(`ORG_CHAT_PROVIDER=openai-compatible` + `OPENAI_COMPATIBLE_BASE_URL` +
+`OPENAI_COMPATIBLE_API_KEY` + `ORG_CHAT_MODEL`) — see
 [`docs/guides/org-agent-inference-providers.md`](docs/guides/org-agent-inference-providers.md).
 Sign-in works without a provider; chat does not.
 
@@ -102,9 +104,16 @@ Deploying needs Cloudflare resources first:
 2. `wrangler d1 create simple-ai-starter`, then paste the id into
    `apps/web/wrangler.jsonc` (`database_id` is
    `placeholder-replace-before-deploy` until you do).
-3. Set the Worker secrets (`wrangler secret put`): `BETTER_AUTH_SECRET`, your
-   provider key (`AI_GATEWAY_API_KEY` by default), and `RESEND_API_KEY` if you
-   send real email.
+3. Set the Worker secrets (`wrangler secret put`). **Required:**
+   `BETTER_AUTH_SECRET`, plus your provider's keys — Workers AI (the default):
+   `CF_ACCOUNT_ID` + `WORKERS_AI_API_TOKEN`, or OpenAI-compatible:
+   `OPENAI_COMPATIBLE_BASE_URL` + `OPENAI_COMPATIBLE_API_KEY` +
+   `ORG_CHAT_MODEL` (with `ORG_CHAT_PROVIDER=openai-compatible`).
+   **Optional:** `ORG_CHAT_PROVIDER`/`ORG_CHAT_MODEL` (defaults:
+   workers-ai / its catalog model), `BETTER_AUTH_URL` (set it to your public
+   URL), `RESEND_API_KEY` + `EMAIL_SENDER` + `MOCK_SEND_EMAIL` (only to send
+   real email). Absent secrets simply leave that feature off; nothing fails at
+   deploy time.
 4. Migrate the remote database: `pnpm db:migrate:prod`.
 5. Build and deploy: `pnpm --filter web deploy`.
 
@@ -116,8 +125,12 @@ on `/api/auth/*` (for example 10 requests / 10 minutes per IP on the
 sign-up, sign-in and reset-password endpoints); no application code involved.
 
 Deploys can also run from GitHub Actions —
-`.github/workflows/deploy.yml` is manual (`workflow_dispatch`) and never runs
-on push.
+`.github/workflows/deploy.yml` is manual (`workflow_dispatch`, `main` only)
+and never runs on push. The job targets the `production` GitHub environment:
+after creating the repo's environments, add **required reviewers** on
+`production` in the GitHub settings (Settings → Environments → production →
+Required reviewers) so every deploy needs an approval; that protection is
+owner-managed in GitHub, not in this repo.
 
 ## Tests
 

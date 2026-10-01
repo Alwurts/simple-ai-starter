@@ -58,7 +58,7 @@ test("nothing under packages/ui imports a router", () => {
   }
 });
 
-test("shadcn/ stays registry stock: only shadcn/lib/hooks subpaths or packages", () => {
+test("shadcn/ never imports brand/, data-table/, or app code", () => {
   const shadcnDir = join(COMPONENTS, "shadcn");
   for (const file of filesIn(shadcnDir)) {
     for (const match of sourceOf(file).matchAll(IMPORT_SPECIFIER)) {

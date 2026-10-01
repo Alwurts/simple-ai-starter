@@ -10,6 +10,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-24.04
@@ -27,6 +30,8 @@ jobs:
 
       - run: pnpm lint:check
 
+      - run: pnpm check:dead-code
+
   typecheck:
     runs-on: ubuntu-24.04
     steps:
@@ -42,6 +47,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm typecheck
+
+      # The committed env types must match wrangler.jsonc — `pnpm build` no
+      # longer regenerates them, so this is what catches drift.
+      - run: pnpm --filter web types:check
 
   test:
     runs-on: ubuntu-24.04

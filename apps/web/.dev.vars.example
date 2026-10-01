@@ -2,51 +2,50 @@
 # .dev.vars is git-ignored and loaded automatically by Wrangler during local dev.
 # In production, set these as Worker secrets: wrangler secret put <NAME>
 #
-# After adding or changing variables here, regenerate shared env types:
-#   pnpm --filter web cf-typegen
+# This file is also the source for the generated env types (`cf-typegen` /
+# `types:check` pass `--env-file .dev.vars.example`), so keep every key the
+# Worker reads listed here, uncommented. Empty values are fine — readers treat
+# them as unset — but a key that is commented out drops out of the types.
+# Your real .dev.vars may add more keys; nothing is filtered.
 
-BETTER_AUTH_SECRET=your-secret-key-at-least-32-characters-long
+# ─── Auth ─────────────────────────────────────────────────────────────────────
+# Required (auth does not work without it). Generate one:
+# https://www.better-auth.com/docs/installation
+BETTER_AUTH_SECRET=
+# Required in production (CSRF origin). Local dev default below.
 BETTER_AUTH_URL=http://localhost:4011
 
-# Outbound email (Resend). For local dev set MOCK_SEND_EMAIL=true and leave
-# RESEND_API_KEY empty — emails are logged instead of sent.
+# ─── Email (Resend) ───────────────────────────────────────────────────────────
+# Optional: only needed to send real email. With MOCK_SEND_EMAIL=true emails
+# are logged instead of sent.
 RESEND_API_KEY=
+# Required when sending real email; the From address.
 EMAIL_SENDER=noreply@example.com
+# Required as-is for local dev: true = log emails instead of sending.
 MOCK_SEND_EMAIL=true
 
 # ─── Org agent inference ──────────────────────────────────────────────────────
-# Pick the underlying provider; unset = vercel-gateway (default). Then fill the
-# matching key below. ORG_CHAT_MODEL optionally overrides the model id.
-#   ORG_CHAT_PROVIDER=vercel-gateway | workers-ai | zai-coding-plan | openai-compatible
-# ORG_CHAT_PROVIDER=
-# ORG_CHAT_MODEL=
+# Pick the underlying provider; empty = workers-ai (the default).
+#   ORG_CHAT_PROVIDER=workers-ai | openai-compatible
+ORG_CHAT_PROVIDER=
+# Optional: overrides the provider's default model. Required (non-empty) when
+# ORG_CHAT_PROVIDER=openai-compatible — that provider has no default model.
+ORG_CHAT_MODEL=
 
-# vercel-gateway (default): Vercel AI Gateway key. Required for OrgChat in local dev.
-AI_GATEWAY_API_KEY=
+# workers-ai (default): Cloudflare account id + an API token with Workers AI
+# access. Required for the default provider — chat fails with a clear
+# "requires CF_ACCOUNT_ID" error until both are filled in. Calls the
+# OpenAI-compatible endpoint directly: no `env.AI` binding, plain `wrangler dev`.
+CF_ACCOUNT_ID=
+WORKERS_AI_API_TOKEN=
 
-# zai-coding-plan: z.ai GLM coding-plan key (https://z.ai/manage-apikey/apikey-list).
-# ZAI_API_KEY=
-
-# workers-ai: Cloudflare account id + an API token with Workers AI access.
-# CF_ACCOUNT_ID=
-# WORKERS_AI_API_TOKEN=
-
-# openai-compatible: any OpenAI-compatible endpoint. ORG_CHAT_MODEL is required
-# (no default model) and the base URL is called directly.
-# OPENAI_COMPATIBLE_BASE_URL=
-# OPENAI_COMPATIBLE_API_KEY=
-
-# Cloudflare AI Gateway (optional): fronts the zai-coding-plan and workers-ai
-# providers for caching/observability. Set all three to enable. For a
-# third-party upstream like GLM, first create a Custom Provider in the CF
-# dashboard/API with slug "zai" and base_url "https://api.z.ai" (see
-# docs/guides). Native Workers AI needs no custom provider. The generic
-# openai-compatible provider always calls its base URL directly.
-# CF_ACCOUNT_ID=
-# CF_AIG_GATEWAY_ID=
-# CF_AIG_TOKEN=
+# openai-compatible: any OpenAI-compatible endpoint, called directly. Required
+# (all three non-empty) only when ORG_CHAT_PROVIDER=openai-compatible.
+OPENAI_COMPATIBLE_BASE_URL=
+OPENAI_COMPATIBLE_API_KEY=
 
 # ─── Agent fetch tool ─────────────────────────────────────────────────────────
-# Comma-separated hostnames the chat agent's read-only fetch_url tool may GET
-# (e.g. developers.cloudflare.com,example.com). Empty/unset = no fetch tool.
-FETCH_ALLOWED_HOSTS=
+# Non-secret var; set it in wrangler.jsonc `vars` (or here for a local
+# override). Comma-separated hostnames the chat agent's read-only fetch_url
+# tool may GET. Empty/unset = no fetch tool.
+# FETCH_ALLOWED_HOSTS=

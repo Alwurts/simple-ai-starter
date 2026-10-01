@@ -2,11 +2,17 @@ import { db } from "@workspace/db";
 // biome-ignore lint/performance/noNamespaceImport: Schema barrel export
 import * as schema from "@workspace/db/schema";
 
+/**
+ * Seed helpers for the workerd tests: real inserts through the `db` singleton
+ * against the per-test D1, returning the inserted row. A missing return row
+ * is a broken seed, so each helper throws rather than handing back undefined.
+ */
+
 export async function seedUser(
   overrides?: Partial<typeof schema.user.$inferInsert>
 ) {
   const id = overrides?.id ?? crypto.randomUUID();
-  const [user] = await db
+  const rows = await db
     .insert(schema.user)
     .values({
       id,
@@ -16,6 +22,10 @@ export async function seedUser(
       ...overrides,
     })
     .returning();
+  const user = rows[0];
+  if (!user) {
+    throw new Error("seedUser: insert returned no row");
+  }
   return user;
 }
 
@@ -24,7 +34,7 @@ export async function seedOrganization(
   overrides?: Partial<typeof schema.organization.$inferInsert>
 ) {
   const orgId = overrides?.id ?? crypto.randomUUID();
-  const [org] = await db
+  const rows = await db
     .insert(schema.organization)
     .values({
       id: orgId,
@@ -33,6 +43,10 @@ export async function seedOrganization(
       ...overrides,
     })
     .returning();
+  const org = rows[0];
+  if (!org) {
+    throw new Error("seedOrganization: insert returned no row");
+  }
 
   await db.insert(schema.member).values({
     id: crypto.randomUUID(),
@@ -48,7 +62,7 @@ export async function seedProduct(
   orgId: string,
   overrides?: Partial<typeof schema.products.$inferInsert>
 ) {
-  const [product] = await db
+  const rows = await db
     .insert(schema.products)
     .values({
       organizationId: orgId,
@@ -57,5 +71,9 @@ export async function seedProduct(
       ...overrides,
     })
     .returning();
+  const product = rows[0];
+  if (!product) {
+    throw new Error("seedProduct: insert returned no row");
+  }
   return product;
 }

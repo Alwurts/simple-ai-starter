@@ -6,7 +6,7 @@
  * `cloudflare:workers`. Extend ProvidedEnv so in-workerd tests type-check against
  * our production wrangler bindings (DB).
  *
- * Test-only fixture bindings (TEST_COUNTER) are NOT added here: they live in
+ * Test-only fixture bindings (SESSION_HOST) are NOT added here: they live in
  * wrangler.test.jsonc and are typed locally via test/agent/test-env.ts,
  * keeping them out of the production type graph.
  */

@@ -37,6 +37,15 @@
   "vars": {
     "FETCH_ALLOWED_HOSTS": ""
   }
+  // Secrets are NOT declared here: `secrets.required` would hard-fail
+  // `wrangler deploy` until every name exists on the Worker, and several of
+  // ours are optional by design (provider keys depend on the provider;
+  // RESEND_API_KEY is optional under MOCK_SEND_EMAIL). Instead, `wrangler
+  // types` infers the names from the committed `.dev.vars.example` — both
+  // `cf-typegen` and `types:check` pass `--env-file .dev.vars.example`, so a
+  // developer's real `.dev.vars` never shapes the tracked types. Production
+  // secrets are set with `wrangler secret put` (README › Deploy lists which
+  // are required).
   /**
    * Smart Placement
    * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

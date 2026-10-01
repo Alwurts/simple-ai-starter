@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import {
   createTestSession,
@@ -16,7 +16,7 @@ import {
 const PRODUCTS_API = "http://localhost/api/catalog/products";
 
 function authPost(url: string, body: object, cookie?: string) {
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -48,7 +48,7 @@ describe("removed members lose org access", () => {
     );
     expect(acceptRes.ok).toBe(true);
 
-    const createRes = await SELF.fetch(PRODUCTS_API, {
+    const createRes = await exports.default.fetch(PRODUCTS_API, {
       method: "POST",
       headers: {
         Cookie: owner.cookie,
@@ -59,9 +59,12 @@ describe("removed members lose org access", () => {
     const created = (await createRes.json()) as { id: string };
 
     // Membership is live here, so reads work before removal.
-    const before = await SELF.fetch(`${PRODUCTS_API}/${created.id}`, {
-      headers: { Cookie: invitee.cookie },
-    });
+    const before = await exports.default.fetch(
+      `${PRODUCTS_API}/${created.id}`,
+      {
+        headers: { Cookie: invitee.cookie },
+      }
+    );
     expect(before.status).toBe(200);
 
     const removeRes = await authPost(
@@ -71,18 +74,18 @@ describe("removed members lose org access", () => {
     );
     expect(removeRes.ok).toBe(true);
 
-    const list = await SELF.fetch(PRODUCTS_API, {
+    const list = await exports.default.fetch(PRODUCTS_API, {
       headers: { Cookie: invitee.cookie },
     });
     expect(list.status).toBe(403);
 
-    const byId = await SELF.fetch(`${PRODUCTS_API}/${created.id}`, {
+    const byId = await exports.default.fetch(`${PRODUCTS_API}/${created.id}`, {
       headers: { Cookie: invitee.cookie },
     });
     expect(byId.status).toBe(403);
 
     // The org agent's DO is org-scoped by the same membership check.
-    const orgRes = await SELF.fetch(
+    const orgRes = await exports.default.fetch(
       `http://localhost/agents/org-agent/${owner.orgId}`,
       { headers: { Cookie: invitee.cookie } }
     );

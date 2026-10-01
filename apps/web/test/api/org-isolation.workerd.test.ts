@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestSessionWithOrg } from "../helpers/auth";
 
@@ -13,7 +13,7 @@ beforeEach(async () => {
 });
 
 function post(url: string, cookie: string, body: object) {
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     method: "POST",
     headers: { Cookie: cookie, "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -21,11 +21,11 @@ function post(url: string, cookie: string, body: object) {
 }
 
 function get(url: string, cookie: string) {
-  return SELF.fetch(url, { headers: { Cookie: cookie } });
+  return exports.default.fetch(url, { headers: { Cookie: cookie } });
 }
 
 function patch(url: string, cookie: string, body: object) {
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     method: "PATCH",
     headers: { Cookie: cookie, "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -33,7 +33,7 @@ function patch(url: string, cookie: string, body: object) {
 }
 
 function del(url: string, cookie: string) {
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     method: "DELETE",
     headers: { Cookie: cookie },
   });

@@ -4,7 +4,14 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-const STEPS = ["pnpm lint:check", "pnpm typecheck", "pnpm test", "pnpm build"];
+const STEPS = [
+  "pnpm lint:check",
+  "pnpm check:dead-code",
+  "pnpm typecheck",
+  "pnpm --filter web types:check",
+  "pnpm test",
+  "pnpm build",
+];
 
 // CI-only steps that verify deliberately does not run: e2e needs a
 // browser and stays out of the pre-push hook; run it via

@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
 
 // Must match BETTER_AUTH_URL in .dev.vars for CSRF validation
 export const ORIGIN = "http://localhost:4011";
@@ -14,7 +14,7 @@ function authPost(url: string, body: object, cookie?: string) {
   if (cookie) {
     headers.Cookie = cookie;
   }
-  return SELF.fetch(url, {
+  return exports.default.fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
@@ -57,7 +57,7 @@ export async function createTestSession(overrides?: {
   }
 
   // Extract just the cookie key=value part (before the first ;)
-  const cookieValue = sessionCookie.split(";")[0];
+  const cookieValue = sessionCookie.split(";")[0] ?? sessionCookie;
 
   const body = (await res.json()) as { user: { id: string } };
 
@@ -110,7 +110,7 @@ export async function createTestSessionWithOrg(overrides?: {
 
   // Use the updated cookie if available, otherwise the original
   const finalCookie = updatedSessionCookie
-    ? updatedSessionCookie.split(";")[0]
+    ? (updatedSessionCookie.split(";")[0] ?? cookie)
     : cookie;
 
   // Set active org
@@ -126,7 +126,9 @@ export async function createTestSessionWithOrg(overrides?: {
   );
 
   return {
-    cookie: activeCookie ? activeCookie.split(";")[0] : finalCookie,
+    cookie: activeCookie
+      ? (activeCookie.split(";")[0] ?? finalCookie)
+      : finalCookie,
     userId,
     email,
     orgId,
@@ -163,7 +165,7 @@ export async function createOrgOnSession(
     c.startsWith("better-auth.session_token=")
   );
   const nextCookie = updatedSessionCookie
-    ? updatedSessionCookie.split(";")[0]
+    ? (updatedSessionCookie.split(";")[0] ?? cookie)
     : cookie;
   return { cookie: nextCookie, orgId, orgSlug };
 }

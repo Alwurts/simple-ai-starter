@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "exports": {
@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",
-    "@types/node": "^20.19.43",
+    "@types/node": "^22.20.0",
     "@workspace/env": "workspace:*",
     "@workspace/tsconfig": "workspace:*",
     "typescript": "7.0.2",

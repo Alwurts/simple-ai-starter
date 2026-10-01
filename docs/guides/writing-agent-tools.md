@@ -65,10 +65,10 @@ Script running stays off: no `getSkillScriptRunner` override, so
 directories. `skillWorkspace` stays off too. Add a skill by dropping a
 `skills/<name>/SKILL.md` directory next to `org-chat.ts`; no code changes.
 
-Under vitest, `agents:skills` is a Vite-plugin virtual module the test configs
-do not load, so `apps/web/vitest.config.ts` aliases it to an empty-catalog
-stub (`apps/web/test/agents-skills-shim.ts`); the SKILL.md itself is pinned by
-`skills.test.ts` in packages/agent.
+`agents:skills` is a virtual module the Agents Vite plugin builds from that
+directory — in `vite dev`/`build` and in the workerd tests alike
+(`apps/web/vitest.config.ts` runs the same `agents()` plugin). The SKILL.md
+itself is pinned by `skills.test.ts` in packages/agent.
 
 ## Fetch tool (`FETCH_ALLOWED_HOSTS`, off by default)
 

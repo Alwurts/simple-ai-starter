@@ -13,7 +13,14 @@ concurrency:
 
 jobs:
   deploy:
+    # Dispatches are accepted on any ref but the job only ever deploys what
+    # main holds; the GitHub `production` environment (with its required
+    # reviewers — see README › Deploy) gates the actual run.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     defaults:
@@ -54,7 +61,7 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID absent/empty — wrangler resolves account from the deploy token"
           fi
 
-      # Migrations before deploy: additive-only (ALW-111), so old Worker code on
+      # Migrations before deploy: additive-only, so old Worker code on
       # a new schema is safe; new code on an old schema is not.
       - name: Apply D1 migrations
         run: pnpm exec wrangler d1 migrations apply DB --remote
@@ -67,7 +74,11 @@ jobs:
       # Secrets after deploy: `wrangler secret` 404s before the script exists;
       # secrets persist across deploys — this is first-deploy bootstrap + drift
       # correction. Names match apps/web/.dev.vars.example 1:1 with Actions
-      # secrets (no prefix). Absent/empty Actions secrets are skipped, not failed.
+      # secrets (no prefix). Absent/empty Actions secrets are skipped, not
+      # failed — nothing here is deploy-blocking (no `secrets.required` in
+      # wrangler.jsonc). Required for a working app: BETTER_AUTH_SECRET and the
+      # chosen provider's keys (README › Deploy step 3); the rest are optional
+      # features (email, provider/model overrides).
       - name: Sync Worker secrets
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
@@ -77,14 +88,10 @@ jobs:
           MOCK_SEND_EMAIL: ${{ secrets.MOCK_SEND_EMAIL }}
           ORG_CHAT_PROVIDER: ${{ secrets.ORG_CHAT_PROVIDER }}
           ORG_CHAT_MODEL: ${{ secrets.ORG_CHAT_MODEL }}
-          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
-          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
           OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.OPENAI_COMPATIBLE_BASE_URL }}
           OPENAI_COMPATIBLE_API_KEY: ${{ secrets.OPENAI_COMPATIBLE_API_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           WORKERS_AI_API_TOKEN: ${{ secrets.WORKERS_AI_API_TOKEN }}
-          CF_AIG_GATEWAY_ID: ${{ secrets.CF_AIG_GATEWAY_ID }}
-          CF_AIG_TOKEN: ${{ secrets.CF_AIG_TOKEN }}
         run: |
           node --input-type=commonjs <<'NODE'
           const { writeFileSync, unlinkSync } = require("node:fs");
@@ -97,14 +104,10 @@ jobs:
             "MOCK_SEND_EMAIL",
             "ORG_CHAT_PROVIDER",
             "ORG_CHAT_MODEL",
-            "AI_GATEWAY_API_KEY",
-            "ZAI_API_KEY",
             "OPENAI_COMPATIBLE_BASE_URL",
             "OPENAI_COMPATIBLE_API_KEY",
             "CF_ACCOUNT_ID",
             "WORKERS_AI_API_TOKEN",
-            "CF_AIG_GATEWAY_ID",
-            "CF_AIG_TOKEN",
           ];
           const payload = {};
           for (const name of names) {

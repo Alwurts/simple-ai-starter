@@ -22,15 +22,9 @@ const config: KnipConfig = {
       ignoreDependencies: [
         // Tailwind v4 via `@import` in CSS (imported as `?url` / side-effect).
         "tailwindcss",
-        // Pulled in by vite/tanstack plugin tooling; not always a direct import.
+        // Config-only: resolved by the TanStack Start plugin, never imported.
         "@tanstack/router-plugin",
         "@tanstack/react-router-ssr-query",
-        // Opt-in vitest UI assertions.
-        "@testing-library/dom",
-        "@testing-library/react",
-        // Agent model + sandbox shell — wired via config / dynamic provider paths.
-        "@ai-sdk/google",
-        "@cloudflare/shell",
       ],
     },
     "packages/agent": {
@@ -66,24 +60,11 @@ const config: KnipConfig = {
     "packages/ui": {
       entry: ["src/**/*.tsx", "src/**/*.ts"],
       project: ["src/**/*.{ts,tsx}"],
-      ignoreDependencies: [
-        // peerDependencies.next mirror for local peer/typecheck resolution.
-        "next",
-        // Scaffolding / form / tippy paths not always statically reached.
-        "@turbo/gen",
-        "@hookform/resolvers",
-        "nanoid",
-        "tippy.js",
-      ],
     },
   },
-  ignore: [
-    // Agent skills / procedural docs — not part of the app graph.
-    ".agents/**",
-  ],
   // `cloudflare:workers` is Cloudflare's built-in module; Knip normalizes the
   // `:` specifier to `cloudflare`.
-  ignoreDependencies: ["cloudflare", "postcss-load-config"],
+  ignoreDependencies: ["cloudflare"],
   // CI deploy workflow invokes the wrangler CLI; not always a root package bin.
   ignoreBinaries: ["wrangler"],
   ignoreExportsUsedInFile: true,
