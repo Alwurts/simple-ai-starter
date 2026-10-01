@@ -23,6 +23,7 @@ import {
   getPlatformNavigationItems,
   isPlatformNavActive,
 } from "@/components/layout/platform-navigation";
+import { OrgSwitcher } from "@/components/organization/org-switcher";
 import { SearchCommand } from "@/components/search/search-command";
 
 export function AppSidebar() {
@@ -31,6 +32,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
+        <OrgSwitcher />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
