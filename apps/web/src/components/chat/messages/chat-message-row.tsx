@@ -41,7 +41,7 @@ import {
   RefreshCwIcon,
   ShieldAlertIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { OrgChatMessage } from "@/lib/chat/ai-types";
 import { ProductListCard } from "./product-list-card";
@@ -166,6 +166,22 @@ function isPermissionDenied(part: ToolUIPart | DynamicToolUIPart): boolean {
   );
 }
 
+// Base UI ignores a changed `defaultOpen` on an uncontrolled Collapsible.
+function ApprovalTool({
+  needsApproval,
+  children,
+}: {
+  needsApproval: boolean;
+  children: ReactNode;
+}) {
+  const [userOpen, setUserOpen] = useState(false);
+  return (
+    <Tool onOpenChange={setUserOpen} open={needsApproval || userOpen}>
+      {children}
+    </Tool>
+  );
+}
+
 function DefaultToolPart({
   part,
   messageId,
@@ -182,9 +198,9 @@ function DefaultToolPart({
     part.state === "approval-requested" ? part.approval?.id : undefined;
 
   return (
-    <Tool
-      defaultOpen={part.state === "approval-requested"}
+    <ApprovalTool
       key={`${messageId}-tool-${partIndex}`}
+      needsApproval={part.state === "approval-requested"}
     >
       <ToolHeader
         input={part.input}
@@ -215,7 +231,7 @@ function DefaultToolPart({
         ) : null}
         <ToolBody part={part} />
       </ToolContent>
-    </Tool>
+    </ApprovalTool>
   );
 }
 
@@ -470,9 +486,9 @@ function ToolPartSwitch({
       );
     }
     return (
-      <Tool
-        defaultOpen={part.state === "approval-requested"}
+      <ApprovalTool
         key={`${messageId}-tool-${partIndex}`}
+        needsApproval={part.state === "approval-requested"}
       >
         <ToolHeader
           input={part.input}
@@ -483,7 +499,7 @@ function ToolPartSwitch({
         <ToolContent>
           <ExecuteToolBody part={part} />
         </ToolContent>
-      </Tool>
+      </ApprovalTool>
     );
   }
   return (
