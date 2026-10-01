@@ -27,6 +27,8 @@ jobs:
 
       - run: pnpm lint:check
 
+      - run: pnpm check:dead-code
+
   typecheck:
     runs-on: ubuntu-24.04
     steps:

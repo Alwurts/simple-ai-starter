@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 
 const STEPS = [
   "pnpm lint:check",
+  "pnpm check:dead-code",
   "pnpm typecheck",
   "pnpm --filter web types:check",
   "pnpm test",
