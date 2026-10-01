@@ -101,7 +101,7 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
 
   return (
     <CommandDialog
-      description="Search chats, pages and products"
+      description="Search the org: chats, pages and products"
       onOpenChange={handleOpenChange}
       open={open}
       title="Search"
@@ -111,7 +111,7 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
           setQuery(value);
           debouncedSetQuery(value);
         }}
-        placeholder="Search chats, pages, products…"
+        placeholder="Search everything…"
         value={query}
       />
 

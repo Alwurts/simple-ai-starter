@@ -38,7 +38,7 @@ test.describe("sidebar", () => {
     await page.keyboard.press("ControlOrMeta+k");
     const paletteInput = page
       .getByRole("dialog")
-      .getByPlaceholder("Search chats, pages, products…");
+      .getByPlaceholder("Search everything…");
     await expect(paletteInput).toBeVisible();
     await paletteInput.fill(title);
     await page.keyboard.press("Enter");
