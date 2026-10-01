@@ -138,14 +138,10 @@ test.describe("sidebar", () => {
       fresh.getByRole("link", { name: followUp, exact: true })
     ).toBeVisible({ timeout: 15_000 });
 
-    await expect(async () => {
-      const hrefs = await fresh
-        .locator("a")
-        .evaluateAll((els) => els.map((el) => el.getAttribute("href") ?? ""));
-      expect(hrefs.some((href) => href.includes(`/chat/${chatId}`))).toBe(
-        false
-      );
-    }).toPass({ timeout: 5000 });
+    const hrefs = await fresh
+      .locator("a")
+      .evaluateAll((els) => els.map((el) => el.getAttribute("href") ?? ""));
+    expect(hrefs.some((href) => href.includes(`/chat/${chatId}`))).toBe(false);
     await fresh.close();
   });
 
