@@ -12,7 +12,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  useSidebar,
 } from "@workspace/ui/components/shadcn/sidebar";
 import { MessageSquarePlusIcon, Search } from "lucide-react";
 import { useState } from "react";
@@ -24,6 +23,7 @@ import {
 } from "@/components/layout/platform-navigation";
 import { OrgSwitcher } from "@/components/organization/org-switcher";
 import { SearchCommand } from "@/components/search/search-command";
+import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile-sidebar-on-navigate";
 
 export function AppSidebar() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -71,16 +71,6 @@ export function AppSidebar() {
       <SearchCommand open={searchOpen} setOpen={setSearchOpen} />
     </Sidebar>
   );
-}
-
-/** The mobile sidebar is a sheet; navigating must dismiss it. */
-export function useCloseMobileSidebarOnNavigate() {
-  const { isMobile, setOpenMobile } = useSidebar();
-  return () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
 }
 
 function AppSidebarMainNavigation() {

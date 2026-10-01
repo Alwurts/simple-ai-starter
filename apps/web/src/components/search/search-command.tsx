@@ -13,6 +13,7 @@ import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { SearchCommandList } from "@/components/search/search-command-list";
 import { useCatalogSearch } from "@/hooks/catalog/use-catalog-search";
 import { useChatSearch } from "@/hooks/chat/use-chat-search";
+import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile-sidebar-on-navigate";
 import { currentPaletteShortcutLabel } from "@/lib/search/command-shortcut";
 
 /** Below this the record searches (messages, products) are noise. */
@@ -31,6 +32,7 @@ interface SearchCommandProps {
  */
 export function SearchCommand({ open, setOpen }: SearchCommandProps) {
   const router = useRouter();
+  const closeMobileSidebar = useCloseMobileSidebarOnNavigate();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -73,18 +75,20 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
     (path: string) => {
       setOpen(false);
       resetQuery();
+      closeMobileSidebar();
       router.navigate({ to: path });
     },
-    [resetQuery, router, setOpen]
+    [closeMobileSidebar, resetQuery, router, setOpen]
   );
 
   const navigateToChat = useCallback(
     (chatId: string) => {
       setOpen(false);
       resetQuery();
+      closeMobileSidebar();
       router.navigate({ params: { chatId }, to: "/chat/$chatId" });
     },
-    [resetQuery, router, setOpen]
+    [closeMobileSidebar, resetQuery, router, setOpen]
   );
 
   return (

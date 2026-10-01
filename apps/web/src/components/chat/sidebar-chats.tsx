@@ -36,7 +36,7 @@ import {
 import { useState } from "react";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { RenameChatDialog } from "@/components/chat/rename-chat-dialog";
-import { useCloseMobileSidebarOnNavigate } from "@/components/layout/app-sidebar";
+import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile-sidebar-on-navigate";
 
 /**
  * The org's Chats group (`OrgAgent.listChats`, newest first). Text-only —
@@ -57,6 +57,7 @@ export function SidebarChats() {
       return; // deleteChat already toasted the failure.
     }
     if (pathname === `/chat/${chatId}`) {
+      closeOnNavigate();
       await navigate({ to: "/chat/new" });
     }
   };
