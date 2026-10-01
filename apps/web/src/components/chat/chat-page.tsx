@@ -33,6 +33,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@workspace/ui/components/shadcn/resizable";
+import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { useAgent } from "agents/react";
 import { isTextUIPart } from "ai";
@@ -63,13 +64,25 @@ import { chatRouteState } from "@/lib/chat/chat-route";
 import { defaultNewChatTitle } from "@/lib/chat/chat-titles";
 import { firstSendPlan } from "@/lib/chat/first-send";
 import { ChatComposer, type PromptMessage } from "./input/chat-composer";
-import {
-  EmptyConversation,
-  HydratingSkeleton,
-  MessageListOrEmpty,
-} from "./messages/message-list";
+import { EmptyConversation } from "./messages/empty-conversation";
+import { MessageListOrEmpty } from "./messages/message-list";
 import { TurnErrorBanner } from "./messages/turn-error-banner";
 import { ChatSidePanel } from "./side-panel/chat-side-panel";
+
+/** Transcript placeholder while the chat socket hydrates its history. */
+function HydratingSkeleton() {
+  return (
+    <div className="flex flex-col gap-6" data-slot="chat-hydrating">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+      <div className="flex flex-col items-end gap-2">
+        <Skeleton className="h-4 w-1/3" />
+      </div>
+    </div>
+  );
+}
 
 function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
   if (!chatId) {
@@ -255,15 +268,19 @@ function ChatView({ chatId, title }: ChatViewProps) {
   // Invalidate React Query when agent write tools complete.
   useAgentToolMutationInvalidation({ messages: helpers.messages });
 
-  // Flush the draft message bridged from `/` once the socket is identified and
-  // the hook is ready to send — but only into the chat it was created for.
-  // Deduped by object identity (strict-mode safe).
+  // Flush the draft message bridged from `/` once the socket is identified
+  // and the hook is ready to send — but only into the chat it was created
+  // for. Identification is part of the guard: a frame buffered on a
+  // still-connecting socket would be dropped if the user switches chats
+  // before it opens. Deduped by object identity (strict-mode safe).
   const lastSentRef = useRef<OutgoingUserMessage | null>(null);
   const { sendMessage } = helpers;
+  const identified = chatAgent.identified;
   // biome-ignore lint/plugin/no-use-effect: flush the bridged draft once the connection is ready
   useEffect(() => {
     if (
       pendingMessage?.chatId !== chatId ||
+      !identified ||
       helpers.status !== "ready" ||
       lastSentRef.current === pendingMessage.message
     ) {
@@ -272,10 +289,11 @@ function ChatView({ chatId, title }: ChatViewProps) {
     lastSentRef.current = pendingMessage.message;
     const message = pendingMessage.message;
     clearPendingMessage();
-    // Never rejects — failures arrive as the hook's `error` (B3 banner).
+    // Never rejects — failures arrive as the hook's `error`.
     sendMessage(toSendableMessage(message));
   }, [
     chatId,
+    identified,
     pendingMessage,
     helpers.status,
     sendMessage,
@@ -295,9 +313,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   // Codemode executions (the `execute` tool) pause durably instead of using
   // the AI SDK approval flow: Think resolves them via these callables, replays
-  // the run and auto-continues the chat. Both callables return
-  // `{ status: "error", error }` instead of throwing when the run is stale or
-  // already resolved — surface that as a toast, never an unhandled rejection.
+  // the run and auto-continues the chat.
   const [resolvingExecutions, setResolvingExecutions] = useState(
     () => new Set<string>()
   );
@@ -353,11 +369,17 @@ function ChatView({ chatId, title }: ChatViewProps) {
     [chatAgent]
   );
 
-  // `call()`/stubs queue behind the connection and time out (30s default), so
-  // no ready-wait or manual retry is needed.
+  // Calls queue behind the connection and time out (30s default), but an
+  // in-flight call is rejected when the socket closes. `ready` re-settles
+  // when the socket re-identifies, so retrying after it reloads the paused
+  // card on reconnect; a terminal close unmounts the list (ChatUnavailable)
+  // before a hung wait could matter.
   const handleLoadPendingExecution = useCallback(
     (executionId: string): Promise<PendingAction[]> =>
-      chatAgent.stub.pendingExecutions(executionId),
+      chatAgent.stub
+        .pendingExecutions(executionId)
+        .catch(() => chatAgent.ready)
+        .then(() => chatAgent.stub.pendingExecutions(executionId)),
     [chatAgent]
   );
 

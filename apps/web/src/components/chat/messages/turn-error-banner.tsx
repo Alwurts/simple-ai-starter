@@ -4,9 +4,12 @@ import { Button } from "@workspace/ui/components/shadcn/button";
 import { AlertCircleIcon, RotateCcwIcon, XIcon } from "lucide-react";
 
 /**
- * A failed turn (the AI SDK surfaces it as `error` + `status: "error"`
- * instead of rejecting `sendMessage`/`regenerate`). Retry re-runs the turn
- * via the hook's `regenerate`; dismiss clears the hook's error state.
+ * A failed turn this client started — a send or regenerate, including its
+ * tool-approval continuations. The AI SDK surfaces those as `error` +
+ * `status: "error"` instead of rejecting. Errors in server-driven
+ * continuations (another tab's turn, resume/recovery) do not pass through
+ * the hook's error and only surface in the transcript; Retry re-runs the
+ * turn via the hook's `regenerate`, dismiss clears the hook's error state.
  */
 export function TurnErrorBanner({
   message,
