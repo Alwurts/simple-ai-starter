@@ -13,9 +13,6 @@ test.describe("tool approval", () => {
   test("approves update_product and keeps the tool result", async ({
     page,
   }) => {
-    // Expected failure until resumeStream keeps the assistant message: https://github.com/vercel/ai/issues/21916
-    test.fail();
-
     const productName = `E2E Approval ${Date.now()}`;
     const created = await page.request.post("/api/catalog/products", {
       data: { name: productName, price: 1000 },
@@ -59,16 +56,29 @@ test.describe("tool approval", () => {
       )
       .toBe(true);
 
+    // Expected failure until resumeStream keeps the assistant message: https://github.com/vercel/ai/issues/21916
+    test.fail();
     await expect(banner).toHaveCount(0);
 
     const output = page.locator('[data-slot="tool-output"]');
     if (!(await output.isVisible())) {
       const worked = page.locator('[data-slot="worked-trigger"]');
-      if ((await worked.count()) > 0) {
+      if (
+        (await worked.count()) > 0 &&
+        (await worked.first().getAttribute("aria-expanded")) !== "true"
+      ) {
         await worked.first().click();
       }
     }
-    await expect(page.locator('[data-slot="tool"]')).toBeVisible();
+    if (!(await output.isVisible())) {
+      const header = page.locator('[data-slot="tool-header"]');
+      if (
+        (await header.count()) > 0 &&
+        (await header.first().getAttribute("aria-expanded")) !== "true"
+      ) {
+        await header.first().click();
+      }
+    }
     await expect(output).toContainText(String(UPDATED_PRICE));
 
     const updated = await page.request.get(
