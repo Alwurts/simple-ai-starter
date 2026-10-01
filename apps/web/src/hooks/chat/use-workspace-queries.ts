@@ -3,14 +3,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import type { WorkspaceFileInfo } from "@workspace/agent/types";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
-
-/**
- * Root of every workspace key: `[orgId, "workspace", …]`. Org-scoped so a
- * org switch can never serve another org's tree; the OrgAgent's
- * `workspace-change` broadcast invalidates this prefix.
- */
-export const workspaceQueryKey = (organizationId: string) =>
-  [organizationId, "workspace"] as const;
+import { workspaceQueryKey } from "@/lib/chat/workspace-query-key";
 
 /** Directory entries of the org workspace at `path` (lazy per directory). */
 export function workspaceDirectoryQueryOptions(options: {
@@ -51,15 +44,10 @@ export function useWorkspaceDirectory(path: string) {
   );
 }
 
-/** The open file's text; a null path means no file is open (query disabled). */
-export function useWorkspaceFile(path: string | null) {
+/** The open file's text. */
+export function useWorkspaceFile(path: string) {
   const { organizationId, readWorkspaceFile } = useOrgConnection();
-  return useQuery({
-    ...workspaceFileQueryOptions({
-      organizationId,
-      path: path ?? "",
-      readWorkspaceFile,
-    }),
-    enabled: path !== null,
-  });
+  return useQuery(
+    workspaceFileQueryOptions({ organizationId, path, readWorkspaceFile })
+  );
 }

@@ -9,21 +9,30 @@ import {
   Loader2Icon,
   RotateCcwIcon,
 } from "lucide-react";
-import { useState } from "react";
 import { useWorkspaceDirectory } from "@/hooks/chat/use-workspace-queries";
 
 /**
- * Read-only org workspace file tree. Every directory — root included — loads
- * its entries through its own query (`OrgAgent.listWorkspace`), so expanded
- * folders reopen instantly from cache, the `workspace-change` broadcast
- * invalidates them, and a failed root load shows Retry instead of spinning.
+ * Read-only org workspace file tree. The root loads when the panel opens; an
+ * expanded folder fetches its children only while mounted (first expand),
+ * cached by TanStack Query and invalidated by the `workspace-change`
+ * broadcast, so re-expanding is instant and failures can be retried.
+ * Expansion state lives in the caller so it survives the panel's layout
+ * switches.
  */
 export function FileExplorerTree({
   onOpenFile,
+  expandedDirs,
+  onToggleDir,
+  selectedPath,
   className,
 }: {
   /** Notified alongside opening a file (e.g. to open a panel tab). */
   onOpenFile?: (path: string, name: string) => void;
+  /** Expanded directory paths, held above the tree. */
+  expandedDirs: ReadonlySet<string>;
+  onToggleDir: (path: string) => void;
+  /** Active tab path — the selected file row is highlighted. */
+  selectedPath: string | null;
   className?: string;
 }) {
   const root = useWorkspaceDirectory("/");
@@ -34,22 +43,11 @@ export function FileExplorerTree({
 
   if (root.isError) {
     return (
-      <div
-        className={cn(
-          "flex flex-col items-start gap-2 px-3 py-6 text-sm",
-          className
-        )}
-      >
-        <p className="text-destructive">Couldn't load the workspace.</p>
-        <button
-          className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-foreground text-xs hover:bg-muted"
-          onClick={() => root.refetch()}
-          type="button"
-        >
-          <RotateCcwIcon className="size-3" />
-          Retry
-        </button>
-      </div>
+      <TreeError
+        className={className}
+        message="Couldn't load the workspace."
+        onRetry={() => root.refetch()}
+      />
     );
   }
 
@@ -78,8 +76,11 @@ export function FileExplorerTree({
       {sortEntries(root.data).map((entry) => (
         <FileExplorerTreeNode
           entry={entry}
+          expandedDirs={expandedDirs}
           key={entry.path}
           onOpenFile={onOpenFile}
+          onToggleDir={onToggleDir}
+          selectedPath={selectedPath}
         />
       ))}
     </div>
@@ -89,28 +90,55 @@ export function FileExplorerTree({
 function FileExplorerTreeNode({
   entry,
   depth = 0,
+  expandedDirs,
+  onToggleDir,
   onOpenFile,
+  selectedPath,
 }: {
   entry: WorkspaceFileInfo;
   depth?: number;
+  expandedDirs: ReadonlySet<string>;
+  onToggleDir: (path: string) => void;
   onOpenFile?: (path: string, name: string) => void;
+  selectedPath: string | null;
 }) {
   if (entry.type !== "directory") {
-    return <FileNode entry={entry} onOpenFile={onOpenFile} />;
+    return (
+      <FileNode
+        entry={entry}
+        selected={selectedPath === entry.path}
+        onOpenFile={onOpenFile}
+      />
+    );
   }
-  return <DirectoryNode depth={depth} entry={entry} onOpenFile={onOpenFile} />;
+  return (
+    <DirectoryNode
+      depth={depth}
+      entry={entry}
+      expanded={expandedDirs.has(entry.path)}
+      expandedDirs={expandedDirs}
+      onToggleDir={onToggleDir}
+      onOpenFile={onOpenFile}
+      selectedPath={selectedPath}
+    />
+  );
 }
 
 function FileNode({
   entry,
+  selected,
   onOpenFile,
 }: {
   entry: WorkspaceFileInfo;
+  selected: boolean;
   onOpenFile?: (path: string, name: string) => void;
 }) {
   return (
     <button
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:bg-muted hover:text-foreground"
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted hover:text-foreground",
+        selected ? "bg-muted text-foreground" : "text-muted-foreground"
+      )}
       data-slot="file-explorer-tree-file"
       onClick={() => onOpenFile?.(entry.path, entry.name)}
       type="button"
@@ -124,39 +152,45 @@ function FileNode({
 function DirectoryNode({
   entry,
   depth,
+  expanded,
+  expandedDirs,
+  onToggleDir,
   onOpenFile,
+  selectedPath,
 }: {
   entry: WorkspaceFileInfo;
   depth: number;
+  expanded: boolean;
+  expandedDirs: ReadonlySet<string>;
+  onToggleDir: (path: string) => void;
   onOpenFile?: (path: string, name: string) => void;
+  selectedPath: string | null;
 }) {
-  const [open, setOpen] = useState(false);
-  // Fetches on first expand; cached afterwards and invalidated on
-  // `workspace-change`, so re-expanding never re-hits the socket when fresh.
-  const children = useWorkspaceDirectory(entry.path);
-
   return (
     <div data-slot="file-explorer-tree-folder">
       <button
         className="group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left hover:bg-muted"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => onToggleDir(entry.path)}
         type="button"
       >
         <ChevronRightIcon
           className={cn(
             "size-3.5 shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-90"
+            expanded && "rotate-90"
           )}
         />
         <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="truncate font-medium">{entry.name}</span>
       </button>
-      {open ? (
+      {expanded ? (
         <div className="ml-3.5 flex flex-col gap-0.5 border-border/60 border-l pl-1.5">
           <DirectoryChildren
             depth={depth}
+            dir={entry.path}
+            expandedDirs={expandedDirs}
             onOpenFile={onOpenFile}
-            query={children}
+            onToggleDir={onToggleDir}
+            selectedPath={selectedPath}
           />
         </div>
       ) : null}
@@ -164,15 +198,24 @@ function DirectoryNode({
   );
 }
 
+/** Children of one expanded directory; mounted only while expanded. */
 function DirectoryChildren({
+  dir,
   depth,
-  query,
+  expandedDirs,
+  onToggleDir,
   onOpenFile,
+  selectedPath,
 }: {
+  dir: string;
   depth: number;
-  query: ReturnType<typeof useWorkspaceDirectory>;
+  expandedDirs: ReadonlySet<string>;
+  onToggleDir: (path: string) => void;
   onOpenFile?: (path: string, name: string) => void;
+  selectedPath: string | null;
 }) {
+  const query = useWorkspaceDirectory(dir);
+
   if (query.isPending) {
     return (
       <span className="flex items-center gap-1.5 px-2 py-1.5 text-muted-foreground text-xs">
@@ -183,9 +226,11 @@ function DirectoryChildren({
   }
   if (query.isError) {
     return (
-      <span className="px-2 py-1.5 text-destructive text-xs">
-        Couldn't load this folder.
-      </span>
+      <TreeError
+        className="px-2 py-1.5 text-xs"
+        message="Couldn't load this folder."
+        onRetry={() => query.refetch()}
+      />
     );
   }
   if (query.data.length === 0) {
@@ -199,11 +244,40 @@ function DirectoryChildren({
         <FileExplorerTreeNode
           depth={depth + 1}
           entry={child}
+          expandedDirs={expandedDirs}
           key={child.path}
           onOpenFile={onOpenFile}
+          onToggleDir={onToggleDir}
+          selectedPath={selectedPath}
         />
       ))}
     </>
+  );
+}
+
+function TreeError({
+  message,
+  onRetry,
+  className,
+}: {
+  message: string;
+  onRetry: () => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn("flex flex-col items-start gap-2 py-2 text-sm", className)}
+    >
+      <p className="text-destructive">{message}</p>
+      <button
+        className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-foreground text-xs hover:bg-muted"
+        onClick={onRetry}
+        type="button"
+      >
+        <RotateCcwIcon className="size-3" />
+        Retry
+      </button>
+    </div>
   );
 }
 

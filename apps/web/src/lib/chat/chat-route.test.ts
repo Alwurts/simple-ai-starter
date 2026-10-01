@@ -1,6 +1,6 @@
 import type { ChatSummary } from "@workspace/agent/types";
 import { describe, expect, it } from "vitest";
-import { chatRouteState } from "./chat-route";
+import { chatRouteState, deriveChatsLoadState } from "./chat-route";
 
 const chats: ChatSummary[] = [
   { id: "a", title: "A", createdAt: 1, updatedAt: 2 },
@@ -19,5 +19,20 @@ describe("chatRouteState", () => {
 
   it("marks an unknown id once the list is loaded", () => {
     expect(chatRouteState("zzz", "ready", chats)).toBe("not-found");
+  });
+});
+
+describe("deriveChatsLoadState", () => {
+  it("stays loading until the state frame arrives (identity alone is not ready)", () => {
+    expect(deriveChatsLoadState(null, undefined)).toBe("loading");
+  });
+
+  it("turns ready once the state frame arrives, even when the list is empty", () => {
+    expect(deriveChatsLoadState(null, { chats: [] })).toBe("ready");
+  });
+
+  it("a terminal connection error wins over any state", () => {
+    expect(deriveChatsLoadState(new Error("closed"), undefined)).toBe("error");
+    expect(deriveChatsLoadState(new Error("closed"), { chats })).toBe("error");
   });
 });

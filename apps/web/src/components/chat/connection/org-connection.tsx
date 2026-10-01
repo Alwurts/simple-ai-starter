@@ -18,8 +18,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import { workspaceQueryKey } from "@/hooks/chat/use-workspace-queries";
 import type { OutgoingUserMessage } from "@/lib/chat/ai-types";
+import { deriveChatsLoadState } from "@/lib/chat/chat-route";
+import { workspaceQueryKey } from "@/lib/chat/workspace-query-key";
 
 interface OrgConnectionValue {
   /** All chats of the active org, newest first (OrgAgent state order). */
@@ -47,21 +48,6 @@ interface OrgConnectionValue {
 }
 
 const OrgConnectionContext = createContext<OrgConnectionValue | null>(null);
-
-/**
- * Agents delivers the identity frame before the state frame, so readiness
- * waits for state — `ready` with an empty list would redirect `/` to the
- * draft and flash "Chat not found" on real chats. A terminal close wins.
- */
-function deriveChatsLoadState(
-  connectionError: unknown,
-  state: OrgAgentState | undefined
-): "loading" | "ready" | "error" {
-  if (connectionError) {
-    return "error";
-  }
-  return state === undefined ? "loading" : "ready";
-}
 
 export function useOrgConnection() {
   const ctx = useContext(OrgConnectionContext);
@@ -145,12 +131,9 @@ export function OrgConnection({
 
   const createChat = useCallback(
     async (opts?: { title?: string }) => {
-      const chat = await orgAgent.stub.createChat(opts);
-      if (!chat) {
-        throw new Error("createChat returned no chat");
-      }
       // Trust the create response: hold the chat locally so the route check
       // accepts the immediate navigation before the state broadcast lands.
+      const chat = await orgAgent.stub.createChat(opts);
       setOptimisticChats((prev) => [...prev, chat]);
       return chat;
     },
@@ -184,10 +167,7 @@ export function OrgConnection({
   }, [orgAgent]);
 
   const searchChats = useCallback(
-    async (query: string): Promise<ChatSearchHit[]> => {
-      const hits = await orgAgent.stub.searchChats(query);
-      return Array.isArray(hits) ? hits : [];
-    },
+    (query: string) => orgAgent.stub.searchChats(query),
     [orgAgent]
   );
 

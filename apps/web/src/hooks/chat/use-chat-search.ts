@@ -19,5 +19,9 @@ export function useChatSearch(debouncedQuery: string) {
     queryKey: [organizationId, "chats", "search", trimmed],
     queryFn: () => searchChats(trimmed),
     enabled: active,
+    // Nothing invalidates search results, so cached hits would go stale as
+    // chats change — retype the same query and you'd get an old transcript
+    // snapshot. Always refetch.
+    staleTime: 0,
   });
 }

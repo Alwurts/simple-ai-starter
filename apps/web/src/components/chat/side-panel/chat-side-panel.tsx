@@ -6,8 +6,10 @@ import {
   FileIcon,
   Loader2Icon,
   PanelRightCloseIcon,
+  RotateCcwIcon,
   XIcon,
 } from "lucide-react";
+import { useCallback, useState } from "react";
 import { useWorkspaceFile } from "@/hooks/chat/use-workspace-queries";
 import { isTextFile } from "@/lib/chat/workspace-files";
 import { FileExplorerTree } from "./file-explorer-tree";
@@ -16,7 +18,9 @@ import { FileExplorerTree } from "./file-explorer-tree";
  * Read-only view over the org's shared workspace (`OrgAgent.listWorkspace` /
  * `readWorkspaceFile`). The open tab's file is shown; every directory and file
  * is a TanStack Query invalidated by the `workspace-change` broadcast (see
- * `use-workspace-queries.ts`).
+ * `use-workspace-queries.ts`). Expansion lives here so it survives the
+ * layout switch between the tab-split and empty views (which mount the tree
+ * in different spots).
  */
 export function ChatSidePanel({
   tabs,
@@ -35,6 +39,21 @@ export function ChatSidePanel({
   onSelectTab: (tabId: string) => void;
   onOpenFile: (path: string, name: string) => void;
 }) {
+  const [expandedDirs, setExpandedDirs] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const toggleDir = useCallback((path: string) => {
+    setExpandedDirs((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div
       className="flex h-full min-h-0 flex-col bg-muted/15"
@@ -98,7 +117,12 @@ export function ChatSidePanel({
           >
             <div className="grid h-full min-h-0 @min-[36rem]/files:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)] @min-[36rem]/files:grid-rows-1 grid-rows-[minmax(9rem,40%)_minmax(0,1fr)]">
               <div className="min-h-0 overflow-auto @min-[36rem]/files:border-r border-b @min-[36rem]/files:border-b-0 bg-background">
-                <FileExplorerTree onOpenFile={onOpenFile} />
+                <FileExplorerTree
+                  expandedDirs={expandedDirs}
+                  onOpenFile={onOpenFile}
+                  onToggleDir={toggleDir}
+                  selectedPath={activeTab.path}
+                />
               </div>
               <div className="min-h-0 overflow-hidden">
                 <FileContent name={activeTab.name} path={activeTab.path} />
@@ -117,7 +141,12 @@ export function ChatSidePanel({
               </p>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-              <FileExplorerTree onOpenFile={onOpenFile} />
+              <FileExplorerTree
+                expandedDirs={expandedDirs}
+                onOpenFile={onOpenFile}
+                onToggleDir={toggleDir}
+                selectedPath={null}
+              />
             </div>
           </div>
         )}
@@ -150,9 +179,23 @@ function FileContent({ path, name }: { path: string; name: string }) {
       <div className="border-b px-3 py-2 text-muted-foreground text-xs">
         {path}
       </div>
-      <pre className="min-h-0 flex-1 overflow-auto p-3 font-mono text-xs leading-relaxed">
-        {file.isError ? "// Couldn't load this file." : (file.data ?? "")}
-      </pre>
+      {file.isError ? (
+        <div className="flex flex-col items-start gap-2 p-3">
+          <p className="text-destructive text-xs">Couldn't load this file.</p>
+          <button
+            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-foreground text-xs hover:bg-muted"
+            onClick={() => file.refetch()}
+            type="button"
+          >
+            <RotateCcwIcon className="size-3" />
+            Retry
+          </button>
+        </div>
+      ) : (
+        <pre className="min-h-0 flex-1 overflow-auto p-3 font-mono text-xs leading-relaxed">
+          {file.data ?? ""}
+        </pre>
+      )}
     </div>
   );
 }
