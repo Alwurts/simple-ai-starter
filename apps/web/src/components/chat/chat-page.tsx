@@ -453,17 +453,18 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   const handleDelete = useCallback(async () => {
     helpers.stop();
-    try {
-      await deleteChat(chatId);
-    } catch {
-      return; // deleteChat already toasted the failure.
-    }
+    // Leave this chat before delete so its socket closes first.
     const next = chats.find((chat) => chat.id !== chatId)?.id;
-    navigate(
+    await navigate(
       next
         ? { params: { chatId: next }, to: "/chat/$chatId" }
         : { to: "/chat/new" }
     );
+    try {
+      await deleteChat(chatId);
+    } catch {
+      // deleteChat already toasted the failure.
+    }
   }, [chatId, chats, deleteChat, helpers, navigate]);
 
   const hydrating = !(chatAgent.identified || chatAgent.connectionError);

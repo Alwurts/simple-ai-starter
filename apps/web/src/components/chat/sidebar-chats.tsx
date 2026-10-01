@@ -51,14 +51,15 @@ export function SidebarChats() {
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
 
   const onDelete = async (chatId: string) => {
-    try {
-      await deleteChat(chatId);
-    } catch {
-      return; // deleteChat already toasted the failure.
-    }
+    // Leave the open chat before delete so its socket closes first.
     if (pathname === `/chat/${chatId}`) {
       closeOnNavigate();
       await navigate({ to: "/chat/new" });
+    }
+    try {
+      await deleteChat(chatId);
+    } catch {
+      // deleteChat already toasted the failure.
     }
   };
 
