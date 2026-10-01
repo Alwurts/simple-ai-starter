@@ -200,6 +200,33 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
     expect(result.listedAfterSweep).toEqual([]);
   });
 
+  it("leaves no chat when facet spawn throws", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-create-throw"));
+
+    const { listed, metaCount, rejected } = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        (o.dynamicAgents as { get: () => Promise<never> }).get = () =>
+          Promise.reject(new Error("facet unavailable"));
+        let rejected: string | null = null;
+        try {
+          await o.createChat({ title: "Never" });
+        } catch (error) {
+          rejected = error instanceof Error ? error.message : String(error);
+        }
+        const metaCount = [
+          ...state.storage.sql.exec("SELECT id FROM chat_meta"),
+        ].length;
+        return { listed: o.listChats(), metaCount, rejected };
+      }
+    );
+
+    expect(rejected).toBe("facet unavailable");
+    expect(metaCount).toBe(0);
+    expect(listed).toEqual([]);
+  });
+
   it("caps a rename and does not recreate a chat from a long title", async () => {
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-rename-cap"));
 

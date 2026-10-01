@@ -174,17 +174,13 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
     const now = Date.now();
     const title = capChatTitle(opts?.title?.trim() || defaultChatTitle(now));
 
+    // get() before the row: a throw writes nothing listable, and a restart
+    // before the insert is an orphan onStart sweeps. That hook holds
+    // blockConcurrencyWhile, and the client connects only after this returns.
+    await this.dynamicAgents.get(OrgChat, id);
     this.ensureChatMeta();
-    // Meta before get() yields. get() records the registry row after an
-    // await, and a restart there runs the orphan sweep.
     this.sql`INSERT INTO chat_meta (id, title, created_at, updated_at)
       VALUES (${id}, ${title}, ${now}, ${now})`;
-    try {
-      await this.dynamicAgents.get(OrgChat, id);
-    } catch (error) {
-      this.sql`DELETE FROM chat_meta WHERE id = ${id}`;
-      throw error;
-    }
     this.refreshChatState();
 
     return { id, title, createdAt: now, updatedAt: now };
