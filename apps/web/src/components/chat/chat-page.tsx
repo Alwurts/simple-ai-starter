@@ -33,8 +33,16 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@workspace/ui/components/shadcn/resizable";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@workspace/ui/components/shadcn/sheet";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile";
 import { useAgent } from "agents/react";
 import { isTextUIPart } from "ai";
 import {
@@ -238,6 +246,9 @@ function ChatView({ chatId, title }: ChatViewProps) {
   } = useOrgConnection();
   const navigate = useNavigate();
   const sidePanel = useChatSidePanel();
+  // Below md the panel is a sheet instead of a split — a 390 px screen
+  // cannot give both the transcript and the files readable columns.
+  const isMobile = useIsMobile();
 
   const chatAgent = useAgent<OrgChat, unknown>({
     agent: "OrgAgent",
@@ -552,7 +563,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
           />
         }
       />
-      {sidePanel.panelOpen ? (
+      {sidePanel.panelOpen && !isMobile ? (
         <>
           <ResizableHandle className="bg-transparent" />
           <ResizablePanel
@@ -573,6 +584,40 @@ function ChatView({ chatId, title }: ChatViewProps) {
           </ResizablePanel>
         </>
       ) : null}
+      <Sheet
+        onOpenChange={(open) => {
+          if (!open) {
+            sidePanel.closePanel();
+          }
+        }}
+        open={isMobile && sidePanel.panelOpen}
+      >
+        <SheetContent
+          className="w-full gap-0 p-0 sm:max-w-full"
+          showCloseButton={false}
+          side="right"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Files</SheetTitle>
+            <SheetDescription>
+              Read-only view of the org's shared workspace.
+            </SheetDescription>
+          </SheetHeader>
+          {isMobile && sidePanel.panelOpen ? (
+            <div className="min-h-0 flex-1">
+              <ChatSidePanel
+                activeTab={sidePanel.activeTab}
+                activeTabId={sidePanel.activeTabId}
+                onClosePanel={sidePanel.closePanel}
+                onCloseTab={sidePanel.closeTab}
+                onOpenFile={sidePanel.openFileTab}
+                onSelectTab={sidePanel.setActiveTabId}
+                tabs={sidePanel.tabs}
+              />
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

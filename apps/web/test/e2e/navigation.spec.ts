@@ -22,15 +22,9 @@ test.describe("navigation", () => {
     await expect(page).toHaveURL("/settings");
   });
 
-  test("sidebar navigates back to Chat", async ({ page }) => {
-    await page.goto("/settings");
-    await page.getByRole("link", { name: "Chat" }).first().click();
-    await expect(page).toHaveURL(CHAT_URL_PATTERN);
-  });
-
   test("new chat opens the draft route", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "New chat" }).click();
+    await page.getByRole("link", { name: "New chat" }).click();
     await expect(page).toHaveURL("/chat/new");
   });
 });

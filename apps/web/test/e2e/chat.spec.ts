@@ -27,11 +27,14 @@ test.describe("chat turn", () => {
     // The draft is replaced by a persisted chat on send.
     await expect(page).toHaveURL(CHAT_ID_URL_PATTERN, { timeout: 15_000 });
 
-    // The user bubble and the streamed assistant reply.
+    // The user bubble and the streamed assistant reply. Messages are ordered,
+    // so the first exact match is the user bubble — the assistant text can
+    // briefly equal the user message mid-stream.
     await expect(
       page
         .locator('[data-slot="bubble-content"]')
         .getByText(USER_MESSAGE, { exact: true })
+        .first()
     ).toBeVisible({ timeout: 15_000 });
     await expect(
       page.locator('[data-slot="bubble-content"]').getByText(ASSISTANT_REPLY)

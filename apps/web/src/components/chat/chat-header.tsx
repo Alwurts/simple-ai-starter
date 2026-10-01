@@ -8,6 +8,11 @@ import {
   ShellHeaderTitle,
 } from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/shadcn/tooltip";
 import { BotIcon, PanelRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -35,16 +40,23 @@ export function ChatHeader({
       </div>
       {panelOpen || !onTogglePanel ? null : (
         <ShellHeaderActions>
-          <Button
-            className="size-7 shrink-0"
-            onClick={onTogglePanel}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <PanelRightIcon />
-            <span className="sr-only">Open side panel</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  className="size-7 shrink-0"
+                  onClick={onTogglePanel}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                />
+              }
+            >
+              <PanelRightIcon />
+              <span className="sr-only">Files</span>
+            </TooltipTrigger>
+            <TooltipContent>Files</TooltipContent>
+          </Tooltip>
         </ShellHeaderActions>
       )}
     </ShellHeader>

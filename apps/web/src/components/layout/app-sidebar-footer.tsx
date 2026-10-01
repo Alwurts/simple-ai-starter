@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
 import {
@@ -11,9 +11,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/shadcn/dropdown-menu";
@@ -24,20 +22,14 @@ import {
   useSidebar,
 } from "@workspace/ui/components/shadcn/sidebar";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
-import { toast } from "@workspace/ui/components/shadcn/sonner";
-import { AlertCircle, ChevronsUpDown, LogOut, Plus } from "lucide-react";
+import { AlertCircle, ChevronsUpDown, LogOut, Settings } from "lucide-react";
 import { ThemeMenuItem } from "@/components/common/theme-toggle";
-import { isOrgDataQueryKey } from "@/lib/query";
-
-function orgInitials(name: string | undefined) {
-  return name?.slice(0, 2).toUpperCase() ?? "??";
-}
 
 function SidebarFooterSkeleton() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton aria-label="Loading organization" disabled size="lg">
+        <SidebarMenuButton aria-label="Loading user" disabled size="lg">
           <Skeleton className="h-8 w-8 rounded-lg" />
           <div className="grid flex-1 text-left text-sm leading-tight">
             <Skeleton className="mb-1 h-4 w-24" />
@@ -49,6 +41,7 @@ function SidebarFooterSkeleton() {
     </SidebarMenu>
   );
 }
+
 function SidebarFooterError() {
   return (
     <SidebarMenu>
@@ -70,51 +63,19 @@ function SidebarFooterError() {
     </SidebarMenu>
   );
 }
+
+/**
+ * The sidebar footer's nav-user (shadcn pattern): the signed-in user's
+ * avatar, name and email, with the theme toggle, Settings and Sign out in
+ * the menu. The org switch lives in the header's `OrgSwitcher`.
+ */
 export function AppSidebarFooter() {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const {
-    data: session,
-    isPending: isSessionPending,
-    error,
-  } = authClient.useSession();
-  const { data: organizations } = authClient.useListOrganizations();
-  const {
-    data: activeOrganization,
-    refetch: refetchActiveOrganization,
-    isPending: isOrgPending,
-  } = authClient.useActiveOrganization();
+  const { data: session, isPending, error } = authClient.useSession();
   const user = session?.user;
-  const displayOrganization =
-    activeOrganization ??
-    organizations?.find(
-      (organization) =>
-        organization.id === session?.session.activeOrganizationId
-    ) ??
-    organizations?.[0] ??
-    null;
-  const isPending = isSessionPending || (isOrgPending && !displayOrganization);
-  const { mutate: setActiveOrganization } = useMutation({
-    mutationFn: (organizationId: string) =>
-      authClient.organization.setActive({
-        organizationId,
-      }),
-    onSuccess: () => {
-      toast.success("Organization set as active");
-      navigate({
-        to: "/",
-      });
-      refetchActiveOrganization();
-      // Org data keys carry the org id (`lib/<feature>/*-queries.ts`); a
-      // switch invalidates all of it — the old org's cache must not linger
-      // and the new org's stale entries refetch. Better Auth's nanostores
-      // (session/orgs/active-org) refresh themselves.
-      queryClient.invalidateQueries({
-        predicate: (query) => isOrgDataQueryKey(query.queryKey),
-      });
-    },
-  });
+
   const handleSignOut = async () => {
     await authClient.signOut();
     // The next session may be a different user/org — never serve this
@@ -124,12 +85,14 @@ export function AppSidebarFooter() {
       to: "/login",
     });
   };
+
   if (isPending) {
     return <SidebarFooterSkeleton />;
   }
   if (error || !user) {
     return <SidebarFooterError />;
   }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -139,91 +102,40 @@ export function AppSidebarFooter() {
               <SidebarMenuButton
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 size="lg"
+                tooltip={user.name ?? "Account"}
               />
             }
           >
             <Avatar className="h-8 w-8 rounded-lg">
               <AvatarImage
-                alt={displayOrganization?.name ?? "Organization"}
-                src={displayOrganization?.logo ?? undefined}
+                alt={user.name ?? "User"}
+                src={user.image ?? undefined}
               />
               <AvatarFallback className="rounded-lg">
-                {orgInitials(displayOrganization?.name)}
+                {user.name?.slice(0, 2).toUpperCase() ?? "??"}
               </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">
-                {displayOrganization?.name ?? "No Organization"}
+                {user.name ?? "User"}
               </span>
-              <span className="truncate text-xs">{user.email}</span>
+              <span className="truncate text-muted-foreground text-xs">
+                {user.email}
+              </span>
             </div>
             <ChevronsUpDown className="ml-auto size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            className="min-w-56 rounded-lg"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                Organizations
-              </DropdownMenuLabel>
-              {organizations?.map((organization) => (
-                <DropdownMenuItem
-                  className="gap-2 p-2"
-                  key={organization.id}
-                  onClick={() => setActiveOrganization(organization.id)}
-                >
-                  <Avatar className="size-6 rounded-sm">
-                    <AvatarImage src={organization.logo ?? undefined} />
-                    <AvatarFallback className="rounded-sm">
-                      {orgInitials(organization.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {organization.name}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                className="gap-2 p-2"
-                onClick={() =>
-                  navigate({
-                    to: "/onboarding",
-                  })
-                }
-              >
-                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus className="size-4" />
-                </div>
-                <div className="font-medium text-muted-foreground">
-                  Create an organization
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage
-                      alt={user.name ?? "User"}
-                      src={user.image ?? undefined}
-                    />
-                    <AvatarFallback className="rounded-lg">
-                      {user.name?.slice(0, 2).toUpperCase() ?? "??"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
-                      {user.name ?? "User"}
-                    </span>
-                    <span className="truncate text-xs">{user.email}</span>
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
             <ThemeMenuItem />
+            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+              <Settings />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 size-4" />
