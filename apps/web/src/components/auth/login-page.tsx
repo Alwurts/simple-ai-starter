@@ -19,6 +19,7 @@ import { Input } from "@workspace/ui/components/shadcn/input";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 
 interface LoginValues {
   email: string;
@@ -54,10 +55,7 @@ export function LoginPage() {
         authClient.organization.list(),
         authClient.organization.getFullOrganization().catch(() => undefined),
       ]);
-      const next =
-        redirectTo?.startsWith("/") && !redirectTo.startsWith("//")
-          ? redirectTo
-          : "/";
+      const next = safeRedirectPath(redirectTo);
       if (next !== "/") {
         window.location.assign(next);
         return;
@@ -130,6 +128,7 @@ export function LoginPage() {
                 Don't have an account?{" "}
                 <Link
                   className="underline-offset-4 hover:underline"
+                  search={{ redirect: redirectTo }}
                   to="/signup"
                 >
                   Sign up
