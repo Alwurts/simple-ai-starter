@@ -14,14 +14,13 @@ const UNSAFE_TARGET_CHARS = /[\p{Cc}\\]/u;
  */
 export function safeRedirectPath(
   target: string | undefined | null,
-  origin: string = typeof window === "undefined"
-    ? "http://localhost"
-    : window.location.origin,
   fallback = "/"
 ): string {
   if (!target || UNSAFE_TARGET_CHARS.test(target)) {
     return fallback;
   }
+  const origin =
+    typeof window === "undefined" ? "http://localhost" : window.location.origin;
   let url: URL;
   try {
     url = new URL(target, origin);
