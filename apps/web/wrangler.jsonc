@@ -36,6 +36,27 @@
   // `fetch_url` tool may GET; empty disables the fetch tool entirely.
   "vars": {
     "FETCH_ALLOWED_HOSTS": ""
+  },
+  // Declared (not inferred from a developer's `.dev.vars`), so `wrangler types`
+  // emits a deterministic `Cloudflare.Env` — CI (which has no `.dev.vars`) and
+  // local machines generate identical types. Declaring them also switches local
+  // dev to warning about missing secrets instead of silently typing them away.
+  // Values may be empty (e.g. `RESEND_API_KEY=` under `MOCK_SEND_EMAIL=true`).
+  // After changing this list, regenerate the types: `pnpm --filter web cf-typegen`.
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_URL",
+      "RESEND_API_KEY",
+      "EMAIL_SENDER",
+      "MOCK_SEND_EMAIL",
+      "ORG_CHAT_PROVIDER",
+      "ORG_CHAT_MODEL",
+      "WORKERS_AI_API_TOKEN",
+      "CF_ACCOUNT_ID",
+      "OPENAI_COMPATIBLE_BASE_URL",
+      "OPENAI_COMPATIBLE_API_KEY"
+    ]
   }
   /**
    * Smart Placement

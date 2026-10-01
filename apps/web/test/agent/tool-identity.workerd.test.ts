@@ -34,7 +34,10 @@ interface ToolResultLike {
 }
 
 const STUB_ENV = {
-  AI_GATEWAY_API_KEY: "test-key",
+  ORG_CHAT_PROVIDER: "openai-compatible",
+  OPENAI_COMPATIBLE_BASE_URL: "http://localhost:9/v1",
+  OPENAI_COMPATIBLE_API_KEY: "test-key",
+  ORG_CHAT_MODEL: "test-model",
   LOADER: {},
 } as unknown as Cloudflare.Env;
 

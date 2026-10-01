@@ -45,9 +45,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@ai-sdk/google':
-        specifier: 4.0.45
-        version: 4.0.45(zod@4.3.5)
       '@ai-sdk/react':
         specifier: 4.0.71
         version: 4.0.71(react@19.2.7)(zod@4.3.5)
@@ -8280,6 +8277,7 @@ snapshots:
       '@ai-sdk/provider': 4.0.7
       '@ai-sdk/provider-utils': 5.0.27(zod@4.3.5)
       zod: 4.3.5
+    optional: true
 
   '@ai-sdk/mcp@2.0.33(zod@4.3.5)':
     dependencies:

@@ -54,7 +54,7 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID absent/empty — wrangler resolves account from the deploy token"
           fi
 
-      # Migrations before deploy: additive-only (ALW-111), so old Worker code on
+      # Migrations before deploy: additive-only, so old Worker code on
       # a new schema is safe; new code on an old schema is not.
       - name: Apply D1 migrations
         run: pnpm exec wrangler d1 migrations apply DB --remote
@@ -77,14 +77,10 @@ jobs:
           MOCK_SEND_EMAIL: ${{ secrets.MOCK_SEND_EMAIL }}
           ORG_CHAT_PROVIDER: ${{ secrets.ORG_CHAT_PROVIDER }}
           ORG_CHAT_MODEL: ${{ secrets.ORG_CHAT_MODEL }}
-          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
-          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
           OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.OPENAI_COMPATIBLE_BASE_URL }}
           OPENAI_COMPATIBLE_API_KEY: ${{ secrets.OPENAI_COMPATIBLE_API_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           WORKERS_AI_API_TOKEN: ${{ secrets.WORKERS_AI_API_TOKEN }}
-          CF_AIG_GATEWAY_ID: ${{ secrets.CF_AIG_GATEWAY_ID }}
-          CF_AIG_TOKEN: ${{ secrets.CF_AIG_TOKEN }}
         run: |
           node --input-type=commonjs <<'NODE'
           const { writeFileSync, unlinkSync } = require("node:fs");
@@ -97,14 +93,10 @@ jobs:
             "MOCK_SEND_EMAIL",
             "ORG_CHAT_PROVIDER",
             "ORG_CHAT_MODEL",
-            "AI_GATEWAY_API_KEY",
-            "ZAI_API_KEY",
             "OPENAI_COMPATIBLE_BASE_URL",
             "OPENAI_COMPATIBLE_API_KEY",
             "CF_ACCOUNT_ID",
             "WORKERS_AI_API_TOKEN",
-            "CF_AIG_GATEWAY_ID",
-            "CF_AIG_TOKEN",
           ];
           const payload = {};
           for (const name of names) {

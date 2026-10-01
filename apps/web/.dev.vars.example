@@ -2,8 +2,10 @@
 # .dev.vars is git-ignored and loaded automatically by Wrangler during local dev.
 # In production, set these as Worker secrets: wrangler secret put <NAME>
 #
-# After adding or changing variables here, regenerate shared env types:
-#   pnpm --filter web cf-typegen
+# The secret NAMES are declared in apps/web/wrangler.jsonc (`secrets.required`),
+# so `wrangler types` covers them without reading this file. Wrangler warns at
+# local dev startup about any that are missing. Values may be empty (e.g.
+# RESEND_API_KEY under MOCK_SEND_EMAIL=true).
 
 BETTER_AUTH_SECRET=your-secret-key-at-least-32-characters-long
 BETTER_AUTH_URL=http://localhost:4011
@@ -15,19 +17,15 @@ EMAIL_SENDER=noreply@example.com
 MOCK_SEND_EMAIL=true
 
 # ─── Org agent inference ──────────────────────────────────────────────────────
-# Pick the underlying provider; unset = vercel-gateway (default). Then fill the
-# matching key below. ORG_CHAT_MODEL optionally overrides the model id.
-#   ORG_CHAT_PROVIDER=vercel-gateway | workers-ai | zai-coding-plan | openai-compatible
+# Pick the underlying provider; unset = workers-ai (the default). Then fill the
+# matching values below. ORG_CHAT_MODEL optionally overrides the model id.
+#   ORG_CHAT_PROVIDER=workers-ai | openai-compatible
 # ORG_CHAT_PROVIDER=
 # ORG_CHAT_MODEL=
 
-# vercel-gateway (default): Vercel AI Gateway key. Required for OrgChat in local dev.
-AI_GATEWAY_API_KEY=
-
-# zai-coding-plan: z.ai GLM coding-plan key (https://z.ai/manage-apikey/apikey-list).
-# ZAI_API_KEY=
-
-# workers-ai: Cloudflare account id + an API token with Workers AI access.
+# workers-ai (default): Cloudflare account id + an API token with Workers AI
+# access. Calls the OpenAI-compatible endpoint directly — no `env.AI` binding,
+# so it runs under plain `wrangler dev`.
 # CF_ACCOUNT_ID=
 # WORKERS_AI_API_TOKEN=
 
@@ -35,16 +33,6 @@ AI_GATEWAY_API_KEY=
 # (no default model) and the base URL is called directly.
 # OPENAI_COMPATIBLE_BASE_URL=
 # OPENAI_COMPATIBLE_API_KEY=
-
-# Cloudflare AI Gateway (optional): fronts the zai-coding-plan and workers-ai
-# providers for caching/observability. Set all three to enable. For a
-# third-party upstream like GLM, first create a Custom Provider in the CF
-# dashboard/API with slug "zai" and base_url "https://api.z.ai" (see
-# docs/guides). Native Workers AI needs no custom provider. The generic
-# openai-compatible provider always calls its base URL directly.
-# CF_ACCOUNT_ID=
-# CF_AIG_GATEWAY_ID=
-# CF_AIG_TOKEN=
 
 # ─── Agent fetch tool ─────────────────────────────────────────────────────────
 # Comma-separated hostnames the chat agent's read-only fetch_url tool may GET

@@ -11,15 +11,14 @@ import {
 import { describe, expect, it } from "vitest";
 
 /**
- * The provider decision (which provider, model, base URL, key, and
- * whether Cloudflare AI Gateway fronts it) is a pure function, so we assert it
- * directly without touching the network or an SDK client.
+ * The provider decision (which provider, model, base URL, key) is a pure
+ * function, so we assert it directly without touching the network or an SDK
+ * client.
  *
  * Model input capabilities + attachment gating are also pure.
  */
 
 const NEEDS_ACCOUNT_ID = /CF_ACCOUNT_ID/;
-const NEEDS_ZAI_KEY = /ZAI_API_KEY/;
 const NEEDS_WORKERS_AI_TOKEN = /WORKERS_AI_API_TOKEN/;
 const NEEDS_OPENAI_COMPATIBLE_URL = /OPENAI_COMPATIBLE_BASE_URL/;
 const NEEDS_OPENAI_COMPATIBLE_KEY = /OPENAI_COMPATIBLE_API_KEY/;
@@ -32,59 +31,34 @@ function env(overrides: OrgInferenceEnv = {}): OrgInferenceEnv {
 }
 
 describe("resolveOrgChatModelConfig", () => {
-  it("AC-1: defaults to vercel-gateway / gemini-3-flash with no env set", () => {
-    const config = resolveOrgChatModelConfig(env());
-    expect(config.provider).toBe("vercel-gateway");
-    expect(config.kind).toBe("gateway");
-    expect(config.entryId).toBe("google/gemini-3-flash");
-    expect(config.modelId).toBe("vercel-gateway/google/gemini-3-flash");
-    expect(config.contextWindow).toBe(1_000_000);
-  });
-
-  it("AC-1: passes the Vercel gateway key through when set", () => {
-    const config = resolveOrgChatModelConfig(env({ AI_GATEWAY_API_KEY: "vk" }));
-    expect(config).toMatchObject({ kind: "gateway", apiKey: "vk" });
+  it("AC-1: defaults to workers-ai / llama-3.3-70b with no env set", () => {
+    const config = resolveOrgChatModelConfig(
+      env({
+        CF_ACCOUNT_ID: "acct123",
+        WORKERS_AI_API_TOKEN: "cf-token",
+      })
+    );
+    expect(config.provider).toBe("workers-ai");
+    expect(config.entryId).toBe("@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+    expect(config.contextWindow).toBe(128_000);
+    expect(config.baseURL).toBe(
+      "https://api.cloudflare.com/client/v4/accounts/acct123/ai/v1"
+    );
+    expect(config.apiKey).toBe("cf-token");
   });
 
   it("falls back to the default provider for an unknown ORG_CHAT_PROVIDER", () => {
     const config = resolveOrgChatModelConfig(
-      env({ ORG_CHAT_PROVIDER: "nonsense" })
-    );
-    expect(config.provider).toBe("vercel-gateway");
-  });
-
-  it("AC-2: routes GLM through z.ai's openai-compatible endpoint with thinking", () => {
-    const config = resolveOrgChatModelConfig(
-      env({ ORG_CHAT_PROVIDER: "zai-coding-plan", ZAI_API_KEY: "zk" })
-    );
-    expect(config.provider).toBe("zai-coding-plan");
-    if (config.kind !== "openai-compatible") {
-      throw new Error("expected openai-compatible");
-    }
-    expect(config.providerName).toBe("zaiCodingPlan");
-    expect(config.baseURL).toBe("https://api.z.ai/api/coding/paas/v4");
-    expect(config.apiKey).toBe("zk");
-    expect(config.cloudflareGateway).toBe(false);
-    expect(config.entryId).toBe("glm-5.2");
-    expect(config.providerOptions).toMatchObject({
-      zaiCodingPlan: { thinking: { type: "enabled" } },
-    });
-  });
-
-  it("honours an ORG_CHAT_MODEL override within the provider", () => {
-    const config = resolveOrgChatModelConfig(
       env({
-        ORG_CHAT_PROVIDER: "zai-coding-plan",
-        ZAI_API_KEY: "zk",
-        ORG_CHAT_MODEL: "glm-4.6",
+        ORG_CHAT_PROVIDER: "nonsense",
+        CF_ACCOUNT_ID: "acct123",
+        WORKERS_AI_API_TOKEN: "cf-token",
       })
     );
-    expect(config.entryId).toBe("glm-4.6");
-    // An unknown-to-catalog model still carries the provider's thinking options.
-    expect(config.providerOptions).toBeDefined();
+    expect(config.provider).toBe("workers-ai");
   });
 
-  it("AC-3: resolves a Workers AI model via the account-scoped openai endpoint (no binding)", () => {
+  it("AC-2: resolves a Workers AI model via the account-scoped openai endpoint (no binding)", () => {
     const config = resolveOrgChatModelConfig(
       env({
         ORG_CHAT_PROVIDER: "workers-ai",
@@ -92,9 +66,7 @@ describe("resolveOrgChatModelConfig", () => {
         WORKERS_AI_API_TOKEN: "cf-token",
       })
     );
-    if (config.kind !== "openai-compatible") {
-      throw new Error("expected openai-compatible");
-    }
+    expect(config.providerName).toBe("workersAi");
     expect(config.baseURL).toBe(
       "https://api.cloudflare.com/client/v4/accounts/acct123/ai/v1"
     );
@@ -102,77 +74,22 @@ describe("resolveOrgChatModelConfig", () => {
     expect(config.entryId).toBe("@cf/meta/llama-3.3-70b-instruct-fp8-fast");
   });
 
-  it("AC-3: workers-ai without an account id or gateway is a clear error", () => {
-    expect(() =>
-      resolveOrgChatModelConfig(env({ ORG_CHAT_PROVIDER: "workers-ai" }))
-    ).toThrow(NEEDS_ACCOUNT_ID);
-  });
-
-  it("AC-4: routes openai-compatible providers through the Cloudflare AI Gateway when configured", () => {
-    const config = resolveOrgChatModelConfig(
-      env({
-        ORG_CHAT_PROVIDER: "zai-coding-plan",
-        ZAI_API_KEY: "zk",
-        CF_ACCOUNT_ID: "acct123",
-        CF_AIG_GATEWAY_ID: "my-gw",
-        CF_AIG_TOKEN: "aig-token",
-      })
-    );
-    if (config.kind !== "openai-compatible") {
-      throw new Error("expected openai-compatible");
-    }
-    expect(config.cloudflareGateway).toBe(true);
-    expect(config.baseURL).toBe(
-      "https://gateway.ai.cloudflare.com/v1/acct123/my-gw/custom-zai/api/coding/paas/v4"
-    );
-    // The upstream provider key is still carried (Authorization); the gateway
-    // token is attached as the `cf-aig-authorization` header — with the `Bearer`
-    // prefix, per Cloudflare's provider docs.
-    expect(config.apiKey).toBe("zk");
-    expect(config.headers).toEqual({
-      "cf-aig-authorization": "Bearer aig-token",
-    });
-  });
-
-  it("AC-4: workers-ai through the CF gateway uses the native provider path", () => {
+  it("honours an ORG_CHAT_MODEL override within the provider", () => {
     const config = resolveOrgChatModelConfig(
       env({
         ORG_CHAT_PROVIDER: "workers-ai",
+        CF_ACCOUNT_ID: "acct123",
         WORKERS_AI_API_TOKEN: "cf-token",
-        CF_ACCOUNT_ID: "acct123",
-        CF_AIG_GATEWAY_ID: "my-gw",
-        CF_AIG_TOKEN: "aig-token",
+        ORG_CHAT_MODEL: "@cf/meta/llama-3.1-8b-instruct",
       })
     );
-    if (config.kind !== "openai-compatible") {
-      throw new Error("expected openai-compatible");
-    }
-    expect(config.baseURL).toBe(
-      "https://gateway.ai.cloudflare.com/v1/acct123/my-gw/workers-ai/v1"
-    );
+    expect(config.entryId).toBe("@cf/meta/llama-3.1-8b-instruct");
   });
 
-  it("AC-4: a partial CF gateway config does not enable the gateway", () => {
-    const config = resolveOrgChatModelConfig(
-      env({
-        ORG_CHAT_PROVIDER: "zai-coding-plan",
-        ZAI_API_KEY: "zk",
-        CF_ACCOUNT_ID: "acct123",
-        // no CF_AIG_GATEWAY_ID / CF_AIG_TOKEN
-      })
-    );
-    if (config.kind !== "openai-compatible") {
-      throw new Error("expected openai-compatible");
-    }
-    expect(config.cloudflareGateway).toBe(false);
-    expect(config.baseURL).toBe("https://api.z.ai/api/coding/paas/v4");
-    expect(config.headers).toBeUndefined();
-  });
-
-  it("throws a clear error when an explicitly-selected provider's key is missing", () => {
+  it("AC-2: workers-ai without an account id or without a token is a clear error", () => {
     expect(() =>
-      resolveOrgChatModelConfig(env({ ORG_CHAT_PROVIDER: "zai-coding-plan" }))
-    ).toThrow(NEEDS_ZAI_KEY);
+      resolveOrgChatModelConfig(env({ ORG_CHAT_PROVIDER: "workers-ai" }))
+    ).toThrow(NEEDS_ACCOUNT_ID);
     expect(() =>
       resolveOrgChatModelConfig(
         env({ ORG_CHAT_PROVIDER: "workers-ai", CF_ACCOUNT_ID: "acct123" })
@@ -189,38 +106,14 @@ describe("openai-compatible provider (generic OpenAI-compatible endpoint)", () =
     ORG_CHAT_MODEL: "z-ai/glm-5.3-flash",
   };
 
-  it("resolves base URL + key + model from env, calling the origin directly", () => {
+  it("AC-3: resolves base URL + key + model from env, calling the origin directly", () => {
     const config = resolveOrgChatModelConfig(env(baseEnv));
     expect(config.provider).toBe("openai-compatible");
-    if (config.kind !== "openai-compatible") {
-      throw new Error("expected openai-compatible");
-    }
     expect(config.providerName).toBe("openaiCompatible");
     expect(config.baseURL).toBe("https://api.orcarouter.ai/v1");
     expect(config.apiKey).toBe("ok");
-    expect(config.cloudflareGateway).toBe(false);
-    expect(config.headers).toBeUndefined();
     expect(config.entryId).toBe("z-ai/glm-5.3-flash");
-    expect(config.modelId).toBe("openai-compatible/z-ai/glm-5.3-flash");
     expect(config.contextWindow).toBe(1_000_000);
-    expect(config.providerOptions).toBeUndefined();
-  });
-
-  it("is direct-only: CF AI Gateway vars do not rewrite the base URL", () => {
-    const config = resolveOrgChatModelConfig(
-      env({
-        ...baseEnv,
-        CF_ACCOUNT_ID: "acct123",
-        CF_AIG_GATEWAY_ID: "my-gw",
-        CF_AIG_TOKEN: "aig-token",
-      })
-    );
-    if (config.kind !== "openai-compatible") {
-      throw new Error("expected openai-compatible");
-    }
-    expect(config.cloudflareGateway).toBe(false);
-    expect(config.baseURL).toBe("https://api.orcarouter.ai/v1");
-    expect(config.headers).toBeUndefined();
   });
 
   it("fails when the base URL, the key or the model is missing", () => {
@@ -268,41 +161,31 @@ describe("openai-compatible provider (generic OpenAI-compatible endpoint)", () =
 });
 
 describe("buildOrgChatModel", () => {
-  it("constructs the default vercel-gateway model", () => {
-    const model = buildOrgChatModel(resolveOrgChatModelConfig(env()));
-    expect(model).toBeDefined();
-  });
-
-  it("constructs an openai-compatible model (origin and CF-gateway branches)", () => {
-    const direct = buildOrgChatModel(
-      resolveOrgChatModelConfig(
-        env({ ORG_CHAT_PROVIDER: "zai-coding-plan", ZAI_API_KEY: "zk" })
-      )
-    );
-    expect(direct).toBeDefined();
-
-    const gatewayed = buildOrgChatModel(
+  it("constructs a workers-ai model", () => {
+    const model = buildOrgChatModel(
       resolveOrgChatModelConfig(
         env({
-          ORG_CHAT_PROVIDER: "zai-coding-plan",
-          ZAI_API_KEY: "zk",
+          ORG_CHAT_PROVIDER: "workers-ai",
           CF_ACCOUNT_ID: "acct123",
-          CF_AIG_GATEWAY_ID: "my-gw",
-          CF_AIG_TOKEN: "aig-token",
+          WORKERS_AI_API_TOKEN: "cf-token",
         })
       )
     );
-    expect(gatewayed).toBeDefined();
+    expect(model).toBeDefined();
   });
 });
 
 describe("resolveOrgChatModel", () => {
-  it("resolves the bare model id (no provider prefix)", () => {
-    const resolved = resolveOrgChatModel({} as unknown as Cloudflare.Env);
-    expect(resolved.modelId).toBe("google/gemini-3-flash");
+  it("resolves from Cloudflare.Env without a cast", () => {
+    const resolved = resolveOrgChatModel({
+      ORG_CHAT_PROVIDER: "openai-compatible",
+      OPENAI_COMPATIBLE_BASE_URL: "https://api.example.com/v1",
+      OPENAI_COMPATIBLE_API_KEY: "k",
+      ORG_CHAT_MODEL: "z-ai/glm-5.3-flash",
+    } as Cloudflare.Env);
     expect(resolved.contextWindow).toBe(1_000_000);
     expect(resolved.model).toBeDefined();
-    expect(resolved.provider).toBe("vercel-gateway");
+    expect(resolved.provider).toBe("openai-compatible");
     expect(resolved.capabilities.supportsImageInput).toBe(true);
   });
 });
@@ -316,22 +199,14 @@ describe("getCompactionLimit", () => {
 
 describe("org chat model capabilities", () => {
   it("resolves modalities from the active catalog offering per provider", () => {
-    expect(resolveOrgChatCapabilities(env())).toEqual({
-      provider: "vercel-gateway",
-      entryId: "google/gemini-3-flash",
-      inputModalities: ["text", "image"],
-      supportsImageInput: true,
-    });
     expect(
-      resolveOrgChatCapabilities(env({ ORG_CHAT_PROVIDER: "zai-coding-plan" }))
-    ).toEqual({
-      provider: "zai-coding-plan",
-      entryId: "glm-5.2",
-      inputModalities: ["text"],
-      supportsImageInput: false,
-    });
-    expect(
-      resolveOrgChatCapabilities(env({ ORG_CHAT_PROVIDER: "workers-ai" }))
+      resolveOrgChatCapabilities(
+        env({
+          ORG_CHAT_PROVIDER: "workers-ai",
+          CF_ACCOUNT_ID: "acct123",
+          WORKERS_AI_API_TOKEN: "cf-token",
+        })
+      )
     ).toEqual({
       provider: "workers-ai",
       entryId: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
@@ -344,13 +219,15 @@ describe("org chat model capabilities", () => {
     expect(
       resolveOrgChatCapabilities(
         env({
-          ORG_CHAT_PROVIDER: "zai-coding-plan",
-          ORG_CHAT_MODEL: "glm-4.6",
+          ORG_CHAT_PROVIDER: "workers-ai",
+          CF_ACCOUNT_ID: "acct123",
+          WORKERS_AI_API_TOKEN: "cf-token",
+          ORG_CHAT_MODEL: "@cf/meta/llama-3.1-8b-instruct",
         })
       )
     ).toEqual({
-      provider: "zai-coding-plan",
-      entryId: "glm-4.6",
+      provider: "workers-ai",
+      entryId: "@cf/meta/llama-3.1-8b-instruct",
       inputModalities: ["text"],
       supportsImageInput: false,
     });
@@ -359,14 +236,14 @@ describe("org chat model capabilities", () => {
 
 describe("gateChatAttachments", () => {
   const textOnly: OrgChatModelCapabilities = {
-    provider: "zai-coding-plan",
-    entryId: "glm-5.2",
+    provider: "workers-ai",
+    entryId: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
     inputModalities: ["text"],
     supportsImageInput: false,
   };
   const vision: OrgChatModelCapabilities = {
-    provider: "vercel-gateway",
-    entryId: "google/gemini-3-flash",
+    provider: "openai-compatible",
+    entryId: "z-ai/glm-5.3-flash",
     inputModalities: ["text", "image"],
     supportsImageInput: true,
   };

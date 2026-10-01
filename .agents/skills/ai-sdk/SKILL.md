@@ -26,28 +26,28 @@ The `ai` package ships its full documentation and source code inside `node_modul
 4. If something isn't in the bundled docs, search https://ai-sdk.dev/docs. You can append `.md` to any docs page URL to get its markdown, and search via `https://ai-sdk.dev/api/search-docs?q=your_query`.
 5. If you cannot find support for an answer in the docs or source, say so explicitly — do not guess.
 
-## AI Gateway: The Fastest Way to Start
+## Model Providers in This Repo
 
-The Vercel AI Gateway is the fastest way to get started with the AI SDK. It provides access to models from OpenAI, Anthropic, Google, and other providers through a single API, without installing provider packages or managing multiple API keys.
-
-To set it up:
-
-1. Authenticate with OIDC (for Vercel deployments) or get an AI Gateway API key.
-2. Provide it to your app via the `AI_GATEWAY_API_KEY` environment variable.
-3. Reference models with `provider/model` strings.
-
-For exact setup, authentication, and usage, read the bundled guide and the AI Gateway docs.
+This starter routes org-agent inference through `@ai-sdk/openai-compatible`
+(see `packages/agent/src/inference/chat-models.ts`), with two env-selected
+providers: Cloudflare Workers AI (the default — `CF_ACCOUNT_ID` +
+`WORKERS_AI_API_TOKEN`, model `@cf/meta/llama-3.3-70b-instruct-fp8-fast`) and
+one generic OpenAI-compatible example (`ORG_CHAT_PROVIDER=openai-compatible`,
+`OPENAI_COMPATIBLE_BASE_URL`, `OPENAI_COMPATIBLE_API_KEY`, and a required
+`ORG_CHAT_MODEL`). Providers and models are configured in env vars, never
+hard-coded — see `docs/guides/org-agent-inference-providers.md` and
+`.dev.vars.example`.
 
 ### Choosing a Model
 
-Never use model IDs from memory — models are released and retired frequently. Fetch the current list before writing code that references a model. Do not truncate the list (e.g. with `head`) so you can find the newest models:
+Never use model IDs from memory — models are released and retired frequently.
 
 ```bash
-# All available models
-curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '.data[].id'
+# Workers AI models (the default provider's catalog)
+curl -s https://api.cloudflare.com/client/v4/models | jq -r '.result[] | select(.task.name | test("Text Generation")) | .name'
 
-# Filter by provider (e.g. anthropic, openai, google)
-curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '[.data[] | select(.id | startswith("anthropic/")) | .id] | reverse | .[]'
+# Any OpenAI-compatible endpoint's own catalog
+curl -s "$OPENAI_COMPATIBLE_BASE_URL/models" -H "Authorization: Bearer $OPENAI_COMPATIBLE_API_KEY" | jq -r '.data[].id'
 ```
 
 When multiple versions of a model exist, prefer the one with the highest version number.

@@ -59,6 +59,13 @@ const MOCK_MODEL = new MockLanguageModelV3({
   })) as unknown as NonNullable<MockModelOptions["doGenerate"]>,
 });
 
+const STUB_ENV = {
+  ORG_CHAT_PROVIDER: "openai-compatible",
+  OPENAI_COMPATIBLE_BASE_URL: "http://localhost:9/v1",
+  OPENAI_COMPATIBLE_API_KEY: "test-key",
+  ORG_CHAT_MODEL: "test-model",
+} as unknown as Cloudflare.Env;
+
 /**
  * A bare OrgChat prototype instance whose storage-facing seams are stubbed —
  * same technique as org-chat-context.workerd.test.ts. `session` points at the
@@ -74,7 +81,7 @@ function orgChatOverSession(
   const chat = Object.create(OrgChat.prototype) as OrgChat;
   const mutable = chat as unknown as Record<string, unknown>;
   mutable.session = session;
-  mutable.env = { AI_GATEWAY_API_KEY: "test-key" };
+  mutable.env = { ...STUB_ENV };
   mutable.resolveModel = () => MOCK_MODEL;
   // onStart derives the org id from the parent path (a prototype getter on
   // Agent, so it is shadowed with an own property).
@@ -137,10 +144,6 @@ async function seedHistory(
 }
 
 describe("OrgChat compaction wiring", () => {
-  const STUB_ENV = {
-    AI_GATEWAY_API_KEY: "test-key",
-  } as unknown as Cloudflare.Env;
-
   it("configures Think's built-in overflow triggers on the model's window", () => {
     // Reactive backstop + proactive guard at the resolved model's window
     // (Think compacts proactively at maxInputTokens * 90% headroom). The
@@ -191,7 +194,7 @@ describe("OrgChat compaction wiring", () => {
         typeof OrgSubAgent
       >;
       const mutable = subAgent as unknown as Record<string, unknown>;
-      mutable.env = { AI_GATEWAY_API_KEY: "test-key" };
+      mutable.env = { ...STUB_ENV };
       mutable.resolveModel = () => MOCK_MODEL;
       Object.defineProperty(subAgent, "parentPath", {
         value: [
@@ -208,9 +211,7 @@ describe("OrgChat compaction wiring", () => {
       return captured;
     });
 
-    const { contextWindow } = resolveOrgChatModel({
-      AI_GATEWAY_API_KEY: "test-key",
-    } as unknown as Cloudflare.Env);
+    const { contextWindow } = resolveOrgChatModel(STUB_ENV);
     expect(budgets).toHaveLength(1);
     expect(Number.isFinite(budgets[0])).toBe(true);
     expect(budgets[0]).toBe(getCompactionLimit(contextWindow));

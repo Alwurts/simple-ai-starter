@@ -27,7 +27,6 @@
     "db:studio": "pnpm --filter @workspace/db db:studio"
   },
   "dependencies": {
-    "@ai-sdk/google": "4.0.45",
     "@ai-sdk/react": "4.0.71",
     "@cloudflare/codemode": "0.5.2",
     "@cloudflare/shell": "0.4.3",

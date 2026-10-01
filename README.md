@@ -18,7 +18,7 @@ cd simple-ai-starter
 pnpm install
 ```
 
-You need Node 20+ and pnpm 11+ (this repo pins `packageManager:
+You need Node 22+ and pnpm 11+ (this repo pins `packageManager:
 pnpm@11.5.2`; run `corepack enable` if needed).
 
 Copy the example env file and set a `BETTER_AUTH_SECRET` (see
@@ -30,10 +30,12 @@ cp apps/web/.dev.vars.example apps/web/.dev.vars
 ```
 
 The org agent needs one inference provider. The default is
-[Vercel AI Gateway](https://vercel.com/docs/ai-gateway): set
-`AI_GATEWAY_API_KEY` and it uses `google/gemini-3-flash` unless
-`ORG_CHAT_MODEL` says otherwise. Alternatives: Cloudflare Workers AI,
-[z.ai](https://z.ai/), or any OpenAI-compatible endpoint — see
+[Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/): set
+`CF_ACCOUNT_ID` + `WORKERS_AI_API_TOKEN` and it uses
+`@cf/meta/llama-3.3-70b-instruct-fp8-fast` unless `ORG_CHAT_MODEL` says
+otherwise. Alternative: any OpenAI-compatible endpoint
+(`ORG_CHAT_PROVIDER=openai-compatible` + `OPENAI_COMPATIBLE_BASE_URL` +
+`OPENAI_COMPATIBLE_API_KEY` + `ORG_CHAT_MODEL`) — see
 [`docs/guides/org-agent-inference-providers.md`](docs/guides/org-agent-inference-providers.md).
 Sign-in works without a provider; chat does not.
 
@@ -103,8 +105,9 @@ Deploying needs Cloudflare resources first:
    `apps/web/wrangler.jsonc` (`database_id` is
    `placeholder-replace-before-deploy` until you do).
 3. Set the Worker secrets (`wrangler secret put`): `BETTER_AUTH_SECRET`, your
-   provider key (`AI_GATEWAY_API_KEY` by default), and `RESEND_API_KEY` if you
-   send real email.
+   provider keys (Workers AI by default: `CF_ACCOUNT_ID` +
+   `WORKERS_AI_API_TOKEN`; or the `OPENAI_COMPATIBLE_*` pair + model), and
+   `RESEND_API_KEY` if you send real email.
 4. Migrate the remote database: `pnpm db:migrate:prod`.
 5. Build and deploy: `pnpm --filter web deploy`.
 
