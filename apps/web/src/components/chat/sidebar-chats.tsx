@@ -2,16 +2,6 @@
 
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@workspace/ui/components/shadcn/alert-dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,6 +24,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
+import { ChatDeleteDialog } from "@/components/chat/chat-delete-dialog";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { RenameChatDialog } from "@/components/chat/rename-chat-dialog";
 import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile-sidebar-on-navigate";
@@ -51,14 +42,16 @@ export function SidebarChats() {
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
 
   const onDelete = async (chatId: string) => {
-    try {
-      await deleteChat(chatId);
-    } catch {
-      return; // deleteChat already toasted the failure.
-    }
+    // This tab leaves the chat route before the delete RPC. A late
+    // re-register is ignored; chat_meta is the record.
     if (pathname === `/chat/${chatId}`) {
       closeOnNavigate();
       await navigate({ to: "/chat/new" });
+    }
+    try {
+      await deleteChat(chatId);
+    } catch {
+      // deleteChat already toasted the failure.
     }
   };
 
@@ -236,37 +229,5 @@ function ChatListRow({
         open={deleteOpen}
       />
     </SidebarMenuItem>
-  );
-}
-
-function ChatDeleteDialog({
-  chat,
-  open,
-  onConfirm,
-  onOpenChange,
-}: {
-  chat: { title: string };
-  open: boolean;
-  onConfirm: () => void;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <AlertDialog onOpenChange={onOpenChange} open={open}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete chat?</AlertDialogTitle>
-          <AlertDialogDescription>
-            “{chat.title}” and its transcript will be permanently deleted. This
-            cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} variant="destructive">
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }

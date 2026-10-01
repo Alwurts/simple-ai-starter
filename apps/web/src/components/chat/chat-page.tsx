@@ -59,6 +59,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { ChatDeleteDialog } from "@/components/chat/chat-delete-dialog";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { useAgentToolMutationInvalidation } from "@/hooks/chat/use-agent-tool-mutation-invalidation";
@@ -249,6 +250,8 @@ function ChatView({ chatId, title }: ChatViewProps) {
   // Below md the panel is a sheet instead of a split — a 390 px screen
   // cannot give both the transcript and the files readable columns.
   const isMobile = useIsMobile();
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const chatAgent = useAgent<OrgChat, unknown>({
     agent: "OrgAgent",
@@ -453,17 +456,19 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   const handleDelete = useCallback(async () => {
     helpers.stop();
-    try {
-      await deleteChat(chatId);
-    } catch {
-      return; // deleteChat already toasted the failure.
-    }
+    // This tab leaves the chat route before the delete RPC. A late
+    // re-register is ignored; chat_meta is the record.
     const next = chats.find((chat) => chat.id !== chatId)?.id;
-    navigate(
+    await navigate(
       next
         ? { params: { chatId: next }, to: "/chat/$chatId" }
         : { to: "/chat/new" }
     );
+    try {
+      await deleteChat(chatId);
+    } catch {
+      // deleteChat already toasted the failure.
+    }
   }, [chatId, chats, deleteChat, helpers, navigate]);
 
   const hydrating = !(chatAgent.identified || chatAgent.connectionError);
@@ -497,7 +502,10 @@ function ChatView({ chatId, title }: ChatViewProps) {
           Compact conversation
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleDelete} variant="destructive">
+        <DropdownMenuItem
+          onClick={() => setDeleteOpen(true)}
+          variant="destructive"
+        >
           <Trash2Icon />
           Delete conversation
         </DropdownMenuItem>
@@ -618,6 +626,12 @@ function ChatView({ chatId, title }: ChatViewProps) {
           ) : null}
         </SheetContent>
       </Sheet>
+      <ChatDeleteDialog
+        chat={{ title }}
+        onConfirm={handleDelete}
+        onOpenChange={setDeleteOpen}
+        open={deleteOpen}
+      />
     </>
   );
 }

@@ -35,13 +35,8 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
     onChange: (event) => this.broadcastWorkspaceChange(event),
   });
 
-  override onStart(): void {
-    this.sql`CREATE TABLE IF NOT EXISTS chat_meta (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`;
+  override async onStart(): Promise<void> {
+    this.ensureChatMeta();
 
     this.sql`CREATE TABLE IF NOT EXISTS org_memory (
       label TEXT PRIMARY KEY,
@@ -49,18 +44,44 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
       updated_at INTEGER NOT NULL
     )`;
 
+    // A forwarded close re-inserts a deleted facet's registry row.
+    await this.sweepOrphanChats();
     this.refreshChatState();
+  }
+
+  private ensureChatMeta(): void {
+    this.sql`CREATE TABLE IF NOT EXISTS chat_meta (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`;
+  }
+
+  private async sweepOrphanChats(): Promise<void> {
+    const ids = new Set(
+      this.sql<{ id: string }>`SELECT id FROM chat_meta`.map((row) => row.id)
+    );
+    for (const entry of this.dynamicAgents.list(OrgChat)) {
+      if (!ids.has(entry.name)) {
+        await this.dynamicAgents.delete(OrgChat, entry.name);
+      }
+    }
+  }
+
+  private hasChat(id: string): boolean {
+    this.ensureChatMeta();
+    const rows = this.sql<{ id: string }>`
+      SELECT id FROM chat_meta WHERE id = ${id} LIMIT 1`;
+    return rows.length > 0;
   }
 
   override onBeforeSubAgent(
     _req: Request,
     { className, name }: { className: string; name: string }
   ): Promise<Response | undefined> {
-    // Existence is registry-owned: a chat exists iff it is a registered
-    // dynamic agent (spawned by `createChat`). Gate unknown children with a
-    // 404 — this hook never creates. Mirrors the examples/assistant reference;
-    // the client creates a chat explicitly before connecting to it.
-    if (!this.dynamicAgents.has(className, name)) {
+    // A chat exists iff its chat_meta row does; this hook never creates.
+    if (className !== OrgChat.name || !this.hasChat(name)) {
       return Promise.resolve(
         new Response(`${className} "${name}" not found`, { status: 404 })
       );
@@ -121,7 +142,7 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
   }
 
   /**
-   * The chat list is server-derived (registry + chat_meta) and org-wide, so a
+   * The chat list is server-derived from chat_meta and org-wide, so a
    * client must never be able to push one — reject any connection-sourced
    * update (agents state.md › Validating State Updates).
    */
@@ -136,32 +157,28 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
 
   @callable()
   listChats(): ChatSummary[] {
-    const registry = this.dynamicAgents.list(OrgChat);
-    const metaRows = this.sql<ChatRow>`
-      SELECT id, title, created_at, updated_at FROM chat_meta`;
-    const metaById = new Map(metaRows.map((row) => [row.id, row]));
-
-    return registry
-      .map((entry) => {
-        const meta = metaById.get(entry.name);
-        const createdAt = meta?.created_at ?? entry.createdAt;
-        return {
-          id: entry.name,
-          title: meta?.title ?? defaultChatTitle(createdAt),
-          createdAt,
-          updatedAt: meta?.updated_at ?? createdAt,
-        };
-      })
-      .sort((a, b) => b.updatedAt - a.updatedAt);
+    this.ensureChatMeta();
+    return this.sql<ChatRow>`
+      SELECT id, title, created_at, updated_at FROM chat_meta
+      ORDER BY updated_at DESC`.map((row) => ({
+      id: row.id,
+      title: row.title,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
   }
 
   @callable()
   async createChat(opts?: { title?: string }): Promise<ChatSummary> {
     const id = generateChatId();
     const now = Date.now();
-    const title = opts?.title?.trim() || defaultChatTitle(now);
+    const title = capChatTitle(opts?.title?.trim() || defaultChatTitle(now));
 
+    // get() before the row: a throw writes nothing listable, and a restart
+    // before the insert is an orphan onStart sweeps. That hook holds
+    // blockConcurrencyWhile, and the client connects only after this returns.
     await this.dynamicAgents.get(OrgChat, id);
+    this.ensureChatMeta();
     this.sql`INSERT INTO chat_meta (id, title, created_at, updated_at)
       VALUES (${id}, ${title}, ${now}, ${now})`;
     this.refreshChatState();
@@ -171,27 +188,28 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
 
   @callable()
   renameChat(id: string, title: string): Promise<void> {
-    const trimmed = title.trim();
+    const trimmed = capChatTitle(title.trim());
     if (!trimmed) {
       return Promise.resolve();
     }
-    this.sql`INSERT INTO chat_meta (id, title, created_at, updated_at)
-      VALUES (${id}, ${trimmed}, ${Date.now()}, ${Date.now()})
-      ON CONFLICT(id) DO UPDATE SET
-        title = excluded.title,
-        updated_at = excluded.updated_at`;
+    this.ensureChatMeta();
+    this.sql`UPDATE chat_meta SET title = ${trimmed}, updated_at = ${Date.now()}
+      WHERE id = ${id}`;
     this.refreshChatState();
     return Promise.resolve();
   }
 
   @callable()
   async deleteChat(id: string): Promise<void> {
-    // Registry is authoritative: drop the dynamic agent first, then its
-    // decoration row. No re-seed — an org with zero chats is a valid state; the
-    // client creates the next chat on demand (draft → createChat).
-    await this.dynamicAgents.delete(OrgChat, id);
+    this.ensureChatMeta();
+    // Meta first, so the chat is already gone if facet deletion fails or a
+    // late forward re-registers it. No re-seed — zero chats is valid.
     this.sql`DELETE FROM chat_meta WHERE id = ${id}`;
-    this.refreshChatState();
+    try {
+      await this.dynamicAgents.delete(OrgChat, id);
+    } finally {
+      this.refreshChatState();
+    }
   }
 
   /**
@@ -321,6 +339,15 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
   readlink(path: string) {
     return this.workspace.readlink(path);
   }
+}
+
+// No title limit in the contract; this only stops an unbounded rename.
+const CHAT_TITLE_MAX_LENGTH = 200;
+
+function capChatTitle(title: string): string {
+  return title.length <= CHAT_TITLE_MAX_LENGTH
+    ? title
+    : title.slice(0, CHAT_TITLE_MAX_LENGTH);
 }
 
 function generateChatId(): string {
