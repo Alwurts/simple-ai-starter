@@ -22,7 +22,8 @@ describe("firstSendPlan", () => {
     const file = {
       type: "file" as const,
       mediaType: "image/png",
-      url: "blob:img",
+      filename: "chart.png",
+      url: "data:image/png;base64,ZmFrZQ==",
     };
     const plan = firstSendPlan({ text: "", files: [file] });
     expect(plan?.title).toBe("Sent with attachments");

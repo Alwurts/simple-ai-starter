@@ -32,8 +32,9 @@ that still get a correct answer.
   at most one pending approval at a time. The run resumes by itself after
   approval. After a rejection (\`status: "rejected"\` or a denied call), do
   not retry it unless the user asks again
-- Workspace files (\`read\`/\`write\`/\`edit\`/\`list\`/…) are agent scratch only —
-  not visible in the main app UI
+- Workspace files (\`read\`/\`write\`/\`edit\`/\`list\`/…) are agent scratch, and
+  they are visible to the user read-only in the chat's file panel — don't
+  put secrets or anything the org shouldn't read in there
 - Empty or partial tool results: try one meaningful fallback, then say what is
   missing — do not treat absence of evidence as a factual "does not exist"
 

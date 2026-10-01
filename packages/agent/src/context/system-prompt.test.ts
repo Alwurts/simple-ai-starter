@@ -35,4 +35,12 @@ describe("buildOrgHeader", () => {
   it("identifies the org once, up front", () => {
     expect(header).toContain("Assistant for Acme (slug: acme, id: org_1)");
   });
+
+  it("tells the model workspace files are user-visible (chat file panel)", () => {
+    const flat = header.replace(/\s+/g, " ");
+    expect(flat).toContain(
+      "visible to the user read-only in the chat's file panel"
+    );
+    expect(flat).not.toContain("not visible in the main app UI");
+  });
 });

@@ -8,8 +8,8 @@ export type DisplayToolName =
   (typeof DISPLAY_TOOL_NAMES)[keyof typeof DISPLAY_TOOL_NAMES];
 
 /**
- * Mutating top-level org-agent tools. Keep in sync with the web invalidation
- * registry (`agent-tool-invalidation-registry.ts`).
+ * Mutating top-level org-agent tools. The web chat invalidates its products
+ * queries when one of these settles (or when a codemode run applied one).
  */
 export const AGENT_WRITE_TOOL_NAMES = [
   "create_product",

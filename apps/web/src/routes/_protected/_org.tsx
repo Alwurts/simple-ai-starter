@@ -68,7 +68,10 @@ function OrgLayout() {
     return null;
   }
   return (
-    <OrgConnection organizationId={organizationId}>
+    // Keyed by org so a switch remounts the connection — without it the old
+    // org's socket (and its chat list) lingers into the new org until state
+    // happens to catch up, 404-reconnecting all the while.
+    <OrgConnection key={organizationId} organizationId={organizationId}>
       <Shell sidebar={<AppSidebar />}>
         <ShellInset>
           <Outlet />

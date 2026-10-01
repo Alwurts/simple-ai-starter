@@ -3,14 +3,8 @@
 import type { PendingAction } from "@cloudflare/codemode";
 import { useAgentChat } from "@cloudflare/think/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import type { OrgChat } from "@workspace/agent/org/chat";
 import type { ChatSummary } from "@workspace/agent/types";
-import {
-  ShellHeader,
-  ShellHeaderActions,
-  ShellHeaderIcon,
-  ShellHeaderSidebarTrigger,
-  ShellHeaderTitle,
-} from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
   DropdownMenu,
@@ -31,7 +25,6 @@ import {
   MessageScroller,
   MessageScrollerButton,
   MessageScrollerContent,
-  MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@workspace/ui/components/shadcn/message-scroller";
@@ -45,11 +38,9 @@ import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { useAgent } from "agents/react";
 import { isTextUIPart } from "ai";
 import {
-  BotIcon,
   ClipboardCopyIcon,
   MessageCircleDashedIcon,
   MoreHorizontalIcon,
-  PanelRightIcon,
   ShrinkIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -60,10 +51,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { ChatHeader } from "@/components/chat/chat-header";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { useAgentToolMutationInvalidation } from "@/hooks/chat/use-agent-tool-mutation-invalidation";
 import { useChatSidePanel } from "@/hooks/chat/use-chat-side-panel";
-import { useWorkspaceTree } from "@/hooks/chat/use-workspace-tree";
 import {
   type OrgChatMessage,
   type OutgoingUserMessage,
@@ -73,23 +64,23 @@ import { chatRouteState } from "@/lib/chat/chat-route";
 import { defaultNewChatTitle } from "@/lib/chat/chat-titles";
 import { firstSendPlan } from "@/lib/chat/first-send";
 import { ChatComposer, type PromptMessage } from "./input/chat-composer";
-import { ChatMessageRow } from "./messages/chat-message-row";
+import { EmptyConversation } from "./messages/empty-conversation";
+import { MessageListOrEmpty } from "./messages/message-list";
+import { TurnErrorBanner } from "./messages/turn-error-banner";
 import { ChatSidePanel } from "./side-panel/chat-side-panel";
 
-function EmptyConversation() {
+/** Transcript placeholder while the chat socket hydrates its history. */
+function HydratingSkeleton() {
   return (
-    <Empty className="h-full border-0">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <MessageCircleDashedIcon />
-        </EmptyMedia>
-        <EmptyTitle>How can I help?</EmptyTitle>
-        <EmptyDescription>
-          Ask about your products, or have the assistant work in the org
-          workspace.
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+    <div className="flex flex-col gap-6" data-slot="chat-hydrating">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+      <div className="flex flex-col items-end gap-2">
+        <Skeleton className="h-4 w-1/3" />
+      </div>
+    </div>
   );
 }
 
@@ -102,16 +93,6 @@ function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
 
 /** Short, model-facing reason sent with `rejectExecution`. */
 const REJECT_REASON = "Denied by the user";
-
-function errorMessageFrom(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (typeof error === "string" && error) {
-    return error;
-  }
-  return "Couldn't send your message. Please try again.";
-}
 
 /**
  * The chat page. `/chat/new` is the draft: nothing connects until the first
@@ -195,7 +176,7 @@ function DraftView({ title }: { title: string }) {
         const chat = await createChat(
           plan.title ? { title: plan.title } : undefined
         );
-        setPendingMessage(plan.outgoing);
+        setPendingMessage(chat.id, plan.outgoing);
         navigate({
           params: { chatId: chat.id },
           replace: true,
@@ -257,9 +238,8 @@ function ChatView({ chatId, title }: ChatViewProps) {
   } = useOrgConnection();
   const navigate = useNavigate();
   const sidePanel = useChatSidePanel();
-  const [sendError, setSendError] = useState<string | null>(null);
 
-  const chatAgent = useAgent({
+  const chatAgent = useAgent<OrgChat, unknown>({
     agent: "OrgAgent",
     name: organizationId,
     sub: [{ agent: "OrgChat", name: chatId }],
@@ -288,30 +268,34 @@ function ChatView({ chatId, title }: ChatViewProps) {
   // Invalidate React Query when agent write tools complete.
   useAgentToolMutationInvalidation({ messages: helpers.messages });
 
-  // Flush the draft message bridged from `/` once the socket is identified and
-  // the hook is ready to send. Deduped by object identity (strict-mode safe).
+  // Flush the draft message bridged from `/` once the socket is identified
+  // and the hook is ready to send — but only into the chat it was created
+  // for. Identification is part of the guard: a frame buffered on a
+  // still-connecting socket would be dropped if the user switches chats
+  // before it opens. Deduped by object identity (strict-mode safe).
   const lastSentRef = useRef<OutgoingUserMessage | null>(null);
   const { sendMessage } = helpers;
+  const identified = chatAgent.identified;
   // biome-ignore lint/plugin/no-use-effect: flush the bridged draft once the connection is ready
   useEffect(() => {
-    if (!pendingMessage || helpers.status !== "ready" || sendError !== null) {
+    if (
+      pendingMessage?.chatId !== chatId ||
+      !identified ||
+      helpers.status !== "ready" ||
+      lastSentRef.current === pendingMessage.message
+    ) {
       return;
     }
-    if (lastSentRef.current === pendingMessage) {
-      return;
-    }
-    lastSentRef.current = pendingMessage;
-    const message = pendingMessage;
+    lastSentRef.current = pendingMessage.message;
+    const message = pendingMessage.message;
     clearPendingMessage();
-    sendMessage(toSendableMessage(message)).catch((error: unknown) => {
-      console.error("[ChatConnection] sendMessage failed", error);
-      lastSentRef.current = null;
-      setSendError(errorMessageFrom(error));
-    });
+    // Never rejects — failures arrive as the hook's `error`.
+    sendMessage(toSendableMessage(message));
   }, [
+    chatId,
+    identified,
     pendingMessage,
     helpers.status,
-    sendError,
     sendMessage,
     clearPendingMessage,
   ]);
@@ -329,9 +313,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   // Codemode executions (the `execute` tool) pause durably instead of using
   // the AI SDK approval flow: Think resolves them via these callables, replays
-  // the run and auto-continues the chat. Both callables return
-  // `{ status: "error", error }` instead of throwing when the run is stale or
-  // already resolved — surface that as a toast, never an unhandled rejection.
+  // the run and auto-continues the chat.
   const [resolvingExecutions, setResolvingExecutions] = useState(
     () => new Set<string>()
   );
@@ -339,19 +321,26 @@ function ChatView({ chatId, title }: ChatViewProps) {
   const handleExecutionApproval = useCallback(
     (executionId: string, approved: boolean) => {
       setResolvingExecutions((prev) => new Set(prev).add(executionId));
-      const call = approved ? "approveExecution" : "rejectExecution";
-      chatAgent
-        .call(call, approved ? [executionId] : [executionId, REJECT_REASON])
+      // Both callables return `{ status: "error", error }` instead of
+      // throwing when the run is stale or already resolved — surface that as
+      // a toast, never an unhandled rejection.
+      const call = approved
+        ? chatAgent.stub.approveExecution(executionId)
+        : chatAgent.stub.rejectExecution(executionId, REJECT_REASON);
+      call
         .then((result) => {
           if (
             result &&
             typeof result === "object" &&
             "status" in result &&
-            (result as { status: unknown }).status === "error"
+            result.status === "error"
           ) {
             const errorText =
-              (result as { error?: unknown }).error ?? "Unknown error";
-            console.error(`[ChatPage] ${call} failed:`, errorText);
+              ("error" in result ? result.error : undefined) ?? "Unknown error";
+            console.error(
+              `[ChatPage] ${approved ? "approveExecution" : "rejectExecution"} failed:`,
+              errorText
+            );
             toast.error(
               `Couldn't ${approved ? "approve" : "reject"}: this run already moved on.`,
               {
@@ -361,7 +350,10 @@ function ChatView({ chatId, title }: ChatViewProps) {
           }
         })
         .catch((error: unknown) => {
-          console.error(`[ChatPage] ${call} failed`, error);
+          console.error(
+            `[ChatPage] ${approved ? "approveExecution" : "rejectExecution"} failed`,
+            error
+          );
           toast.error("Couldn't resolve the execution. Please try again.", {
             position: "top-center",
           });
@@ -377,25 +369,17 @@ function ChatView({ chatId, title }: ChatViewProps) {
     [chatAgent]
   );
 
-  // Upstream PausedExecutionCard contract: wait for the socket to be
-  // identified before calling (an RPC issued during connect/reconnect churn
-  // can be dropped with its promise pending forever) and retry once with a
-  // timeout for the same reason.
+  // An in-flight call is rejected when its socket closes mid-flight. The
+  // retry below is safe rather than clever: calls made while the socket is
+  // closed are queued and flushed on open (30s timeout), and a reconnect
+  // remounts the list anyway — so the paused card reloads instead of
+  // sticking on "unavailable".
   const handleLoadPendingExecution = useCallback(
-    async (executionId: string): Promise<PendingAction[]> => {
-      await chatAgent.ready;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          return (await chatAgent.call("pendingExecutions", [executionId], {
-            timeout: 10_000,
-          })) as PendingAction[];
-        } catch (error) {
-          console.error("[ChatPage] pendingExecutions failed", error);
-          await chatAgent.ready;
-        }
-      }
-      return [];
-    },
+    (executionId: string): Promise<PendingAction[]> =>
+      chatAgent.stub
+        .pendingExecutions(executionId)
+        .catch(() => chatAgent.ready)
+        .then(() => chatAgent.stub.pendingExecutions(executionId)),
     [chatAgent]
   );
 
@@ -406,14 +390,19 @@ function ChatView({ chatId, title }: ChatViewProps) {
       if (chatBusy) {
         return;
       }
-      setSendError(null);
-      helpers.regenerate({ messageId }).catch((error: unknown) => {
-        console.error("[ChatConnection] regenerate failed", error);
-        setSendError(errorMessageFrom(error));
-      });
+      return helpers.regenerate({ messageId });
     },
     [chatBusy, helpers]
   );
+
+  const handleRetryTurn = useCallback(() => {
+    if (chatBusy) {
+      return;
+    }
+    // The AI SDK's documented retry for a failed turn: regenerate the last
+    // assistant message (docs › Error Handling › Error Helper Object).
+    return helpers.regenerate();
+  }, [chatBusy, helpers]);
 
   const handleCopyConversation = useCallback(() => {
     const text = helpers.messages
@@ -432,16 +421,13 @@ function ChatView({ chatId, title }: ChatViewProps) {
     const pending = toast.loading("Compacting conversation…", {
       position: "top-center",
     });
-    return chatAgent
-      .call("compactNow", [])
+    return chatAgent.stub
+      .compactNow()
       .then((result) => {
-        const compacted =
-          typeof result === "object" &&
-          result !== null &&
-          "compacted" in result &&
-          result.compacted === true;
         toast.success(
-          compacted ? "Conversation compacted" : "Nothing to compact yet",
+          result.compacted
+            ? "Conversation compacted"
+            : "Nothing to compact yet",
           { id: pending, position: "top-center" }
         );
       })
@@ -531,8 +517,12 @@ function ChatView({ chatId, title }: ChatViewProps) {
                       onToolApproval={handleToolApproval}
                     />
                   )}
-                  {sendError ? (
-                    <p className="text-destructive text-sm">{sendError}</p>
+                  {helpers.error ? (
+                    <TurnErrorBanner
+                      message={helpers.error.message}
+                      onDismiss={helpers.clearError}
+                      onRetry={handleRetryTurn}
+                    />
                   ) : null}
                 </MessageScrollerContent>
               </MessageScrollerViewport>
@@ -548,14 +538,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
               if (!plan) {
                 return;
               }
-              // The composer swallows rejections; surface send failures the
-              // same way the bridged-draft flush does.
-              return sendMessage(toSendableMessage(plan.outgoing))
-                .then(() => undefined)
-                .catch((error: unknown) => {
-                  console.error("[ChatConnection] sendMessage failed", error);
-                  setSendError(errorMessageFrom(error));
-                });
+              return sendMessage(toSendableMessage(plan.outgoing));
             }}
             onStop={helpers.stop}
           />
@@ -578,7 +561,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
             maxSize="55%"
             minSize="22%"
           >
-            <ChatSidePanelController
+            <ChatSidePanel
               activeTab={sidePanel.activeTab}
               activeTabId={sidePanel.activeTabId}
               onClosePanel={sidePanel.closePanel}
@@ -590,66 +573,6 @@ function ChatView({ chatId, title }: ChatViewProps) {
           </ResizablePanel>
         </>
       ) : null}
-    </>
-  );
-}
-
-/** Mounts the workspace tree hook only while the panel is open. */
-function ChatSidePanelController({
-  onOpenFile,
-  ...props
-}: {
-  tabs: { id: string; path: string; name: string }[];
-  activeTab: { id: string; path: string; name: string } | null;
-  activeTabId: string | null;
-  onClosePanel: () => void;
-  onCloseTab: (tabId: string) => void;
-  onSelectTab: (tabId: string) => void;
-  onOpenFile: (path: string, name: string) => void;
-}) {
-  const tree = useWorkspaceTree();
-  return <ChatSidePanel {...props} onOpenFile={onOpenFile} tree={tree} />;
-}
-
-function MessageListOrEmpty({
-  messages,
-  streamingMessageId,
-  onRegenerate,
-  onToolApproval,
-  onExecutionApproval,
-  onLoadPendingExecution,
-  resolvingExecutions,
-}: {
-  messages: OrgChatMessage[];
-  streamingMessageId: string | null;
-  onRegenerate: (messageId: string) => void;
-  onToolApproval: (id: string, approved: boolean) => void;
-  onExecutionApproval: (executionId: string, approved: boolean) => void;
-  onLoadPendingExecution: (executionId: string) => Promise<PendingAction[]>;
-  resolvingExecutions: ReadonlySet<string>;
-}) {
-  if (messages.length === 0) {
-    return <EmptyConversation />;
-  }
-  return (
-    <>
-      {messages.map((message) => (
-        <MessageScrollerItem
-          key={message.id}
-          messageId={message.id}
-          scrollAnchor={message.role === "user"}
-        >
-          <ChatMessageRow
-            isStreaming={streamingMessageId === message.id}
-            message={message}
-            onExecutionApproval={onExecutionApproval}
-            onLoadPendingExecution={onLoadPendingExecution}
-            onRegenerate={onRegenerate}
-            onToolApproval={onToolApproval}
-            resolvingExecutions={resolvingExecutions}
-          />
-        </MessageScrollerItem>
-      ))}
     </>
   );
 }
@@ -673,45 +596,6 @@ function ChatColumn({
       {body}
       {footer}
     </ResizablePanel>
-  );
-}
-
-function ChatHeader({
-  title,
-  menu,
-  panelOpen,
-  onTogglePanel,
-}: {
-  title: string;
-  menu: ReactNode;
-  panelOpen: boolean;
-  onTogglePanel?: () => void;
-}) {
-  return (
-    <ShellHeader className="px-3" data-slot="full-screen-chat-header">
-      <ShellHeaderSidebarTrigger className="-ml-1" />
-      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-        <ShellHeaderIcon>
-          <BotIcon />
-        </ShellHeaderIcon>
-        <ShellHeaderTitle>{title}</ShellHeaderTitle>
-        {menu}
-      </div>
-      {panelOpen || !onTogglePanel ? null : (
-        <ShellHeaderActions>
-          <Button
-            className="size-7 shrink-0"
-            onClick={onTogglePanel}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <PanelRightIcon />
-            <span className="sr-only">Open side panel</span>
-          </Button>
-        </ShellHeaderActions>
-      )}
-    </ShellHeader>
   );
 }
 
@@ -739,19 +623,5 @@ function ChatUnavailable({
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
-  );
-}
-
-function HydratingSkeleton() {
-  return (
-    <div className="flex flex-col gap-6" data-slot="chat-hydrating">
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-4 w-1/2" />
-      </div>
-      <div className="flex flex-col items-end gap-2">
-        <Skeleton className="h-4 w-1/3" />
-      </div>
-    </div>
   );
 }

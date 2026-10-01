@@ -2,28 +2,16 @@
 
 import type { ToolLogEntry } from "@cloudflare/codemode";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { AGENT_WRITE_TOOL_NAMES } from "@workspace/agent/constants";
 import { getToolName, isToolUIPart } from "ai";
 import { useEffect, useRef } from "react";
-import {
-  AGENT_TOOL_INVALIDATION_REGISTRY,
-  type AgentAppliedWrite,
-  invalidateForAgentWrite,
-} from "@/lib/chat/agent-tool-invalidation-registry";
+import { getProductsKey } from "@/hooks/catalog/use-products";
 import type { OrgChatMessage } from "@/lib/chat/ai-types";
 
-function isRegisteredWrite(method: string | undefined): method is string {
-  return Boolean(method && method in AGENT_TOOL_INVALIDATION_REGISTRY);
-}
+const WRITE_TOOLS: ReadonlySet<string> = new Set(AGENT_WRITE_TOOL_NAMES);
 
-function isWriteToolPart(part: OrgChatMessage["parts"][number]): boolean {
-  // `ai`'s guard covers dynamic-tool parts too — no separate type check.
-  if (!isToolUIPart(part)) {
-    return false;
-  }
-  if (!isRegisteredWrite(getToolName(part))) {
-    return false;
-  }
-  return typeof part.toolCallId === "string" && part.toolCallId.length > 0;
+function isWriteTool(method: string | undefined): boolean {
+  return Boolean(method && WRITE_TOOLS.has(method));
 }
 
 function isSuccessfulToolOutput(output: unknown): boolean {
@@ -38,138 +26,115 @@ function isSuccessfulToolOutput(output: unknown): boolean {
 
 /**
  * Writes applied by sandboxed `execute` code, read from the run's settled
- * output (`calls` tool log). Only `applied` entries count — `pending` and
- * `executing` never ran, `reverted` was undone, `error` failed.
+ * output (`calls` tool log). Only `applied` entries ran — `pending` and
+ * `executing` did not, `reverted` was undone, `error` failed.
  */
-function executeAppliedWrites(
-  toolCallId: string,
-  output: unknown
-): { eventId: string; writes: AgentAppliedWrite[] } | null {
-  if (!output || typeof output !== "object") {
-    return null;
+function executeAppliedWrite(settledOutput: unknown): boolean {
+  if (!settledOutput || typeof settledOutput !== "object") {
+    return false;
   }
-  const status = (output as { status?: unknown }).status;
+  const status = (settledOutput as { status?: unknown }).status;
   if (status !== "completed" && status !== "error") {
-    return null;
+    return false;
   }
-  const calls = (output as { calls?: ToolLogEntry[] }).calls;
+  const calls = (settledOutput as { calls?: ToolLogEntry[] }).calls;
   if (!Array.isArray(calls)) {
-    return null;
+    return false;
   }
-  const writes: AgentAppliedWrite[] = [];
-  for (const call of calls) {
-    if (call?.state !== "applied") {
-      continue;
-    }
-    if (isRegisteredWrite(call.method)) {
-      writes.push({ method: call.method, args: call.args });
-    }
-  }
-  if (writes.length === 0) {
-    return null;
-  }
-  return { eventId: `${toolCallId}:calls`, writes };
+  return calls.some(
+    (call) => call?.state === "applied" && isWriteTool(call.method)
+  );
 }
 
-export interface WriteToolCompletionEvent {
-  eventId: string;
-  writes: AgentAppliedWrite[];
-}
-
-/**
- * Scan one assistant message part for a completed write: a top-level write
- * tool or a settled codemode run that applied sandboxed writes.
- */
-function writeEventForPart(
+/** Completion id for one assistant part, or null when it isn't a new write. */
+function writeCompletionIdForPart(
   part: OrgChatMessage["parts"][number],
   alreadyHandled: ReadonlySet<string>
-): WriteToolCompletionEvent | null {
-  if (!isToolUIPart(part)) {
-    return null;
-  }
-  const toolCallId = part.toolCallId;
-  if (typeof toolCallId !== "string" || toolCallId.length === 0) {
+): string | null {
+  if (
+    !isToolUIPart(part) ||
+    typeof part.toolCallId !== "string" ||
+    part.toolCallId.length === 0
+  ) {
     return null;
   }
   if (part.state !== "output-available") {
+    // Approval-gated writes pause with `approval-requested` until the
+    // user responds — a part is only read once it settles.
     return null;
   }
-
-  if (isWriteToolPart(part)) {
-    if (alreadyHandled.has(toolCallId)) {
-      return null;
-    }
-    if (!isSuccessfulToolOutput(part.output)) {
-      return null;
-    }
-    return {
-      eventId: toolCallId,
-      writes: [{ method: getToolName(part), args: part.input }],
-    };
+  const toolCallId = part.toolCallId;
+  const method = getToolName(part);
+  if (isWriteTool(method)) {
+    return isSuccessfulToolOutput(part.output) &&
+      !alreadyHandled.has(toolCallId)
+      ? toolCallId
+      : null;
   }
-
-  // Codemode: the run's recorded tool calls applied inside the sandbox.
-  if (getToolName(part) === "execute") {
-    const applied = executeAppliedWrites(toolCallId, part.output);
-    if (applied && !alreadyHandled.has(applied.eventId)) {
-      return { eventId: applied.eventId, writes: applied.writes };
-    }
+  if (method === "execute") {
+    const eventId = `${toolCallId}:calls`;
+    return executeAppliedWrite(part.output) && !alreadyHandled.has(eventId)
+      ? eventId
+      : null;
   }
   return null;
 }
 
 /**
- * Scan assistant message tool parts for successful top-level write tools and
- * for writes applied inside settled codemode runs (`execute` output `calls`).
- * Pure helper — exported for unit tests.
+ * Ids of write completions not yet handled: a settled top-level write tool
+ * (its toolCallId) or a settled codemode run that applied a sandboxed write
+ * (`<toolCallId>:calls`). Pure helper — exported for unit tests.
  */
-export function collectWriteToolCompletionEvents(
+export function collectWriteToolCompletionIds(
   messages: OrgChatMessage[],
   alreadyHandled: ReadonlySet<string>
-): WriteToolCompletionEvent[] {
-  const events: WriteToolCompletionEvent[] = [];
-
+): string[] {
+  const ids: string[] = [];
   for (const message of messages) {
     if (message.role !== "assistant") {
       continue;
     }
     for (const part of message.parts) {
-      const event = writeEventForPart(part, alreadyHandled);
-      if (event) {
-        events.push(event);
+      const id = writeCompletionIdForPart(part, alreadyHandled);
+      if (id) {
+        ids.push(id);
       }
     }
   }
-
-  return events;
+  return ids;
 }
 
 /**
- * Invalidate React Query for completed write-tool events. Exported for unit tests.
+ * Mark the completion ids handled and invalidate the products queries once
+ * if any were new. Exported for unit tests.
  */
-export function applyWriteToolCompletionInvalidations(options: {
-  events: WriteToolCompletionEvent[];
+export function applyWriteToolInvalidations(options: {
+  ids: string[];
   handled?: Set<string>;
   queryClient: QueryClient;
 }): void {
   const handled = options.handled ?? new Set<string>();
-  for (const event of options.events) {
-    if (handled.has(event.eventId)) {
+  let invalidated = false;
+  for (const id of options.ids) {
+    if (handled.has(id)) {
       continue;
     }
-    handled.add(event.eventId);
-    for (const write of event.writes) {
-      invalidateForAgentWrite(options.queryClient, write);
-    }
+    handled.add(id);
+    invalidated = true;
+  }
+  // Every write tool mutates the catalog, so one prefix invalidation covers
+  // all products queries — list and detail alike.
+  if (invalidated) {
+    options.queryClient.invalidateQueries({ queryKey: getProductsKey() });
   }
 }
 
 /**
- * Watch `messages` for completed agent writes and invalidate matching React
- * Query keys: top-level write tools (`create_product`, …) and writes applied
- * inside the codemode sandbox (settled `execute` output `calls`). Approval
- * gates pause with AI SDK `approval-requested` / the durable pause until the
- * user responds, so a part is only read once it settles.
+ * Invalidate React Query when agent writes settle: top-level write tools
+ * (`create_product`, …) and writes applied inside codemode runs (settled
+ * `execute` output `calls`). Custom because no built-in ties transcript tool
+ * parts to the query cache; "write tool" comes from
+ * `AGENT_WRITE_TOOL_NAMES` (packages/agent), not a web-side list.
  */
 export function useAgentToolMutationInvalidation(options: {
   messages: OrgChatMessage[];
@@ -180,16 +145,12 @@ export function useAgentToolMutationInvalidation(options: {
 
   // biome-ignore lint/plugin/no-use-effect: invalidate react-query when write tool parts complete
   useEffect(() => {
-    const events = collectWriteToolCompletionEvents(
-      messages,
-      handledRef.current
-    );
-    if (events.length === 0) {
+    const ids = collectWriteToolCompletionIds(messages, handledRef.current);
+    if (ids.length === 0) {
       return;
     }
-
-    applyWriteToolCompletionInvalidations({
-      events,
+    applyWriteToolInvalidations({
+      ids,
       handled: handledRef.current,
       queryClient,
     });
