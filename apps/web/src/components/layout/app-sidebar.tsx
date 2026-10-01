@@ -1,10 +1,8 @@
 "use client";
 
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import type { ChatSearchHit } from "@workspace/agent/types";
 import { authClient } from "@workspace/auth/client";
 import { LogoMark } from "@workspace/ui/components/brand/logo-monochrome";
-import { Input } from "@workspace/ui/components/shadcn/input";
 import {
   Sidebar,
   SidebarContent,
@@ -20,15 +18,8 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@workspace/ui/components/shadcn/sidebar";
-import {
-  Loader2Icon,
-  MessageSquarePlusIcon,
-  Search,
-  SearchX,
-  X,
-} from "lucide-react";
+import { Loader2Icon, MessageSquarePlusIcon, Search, X } from "lucide-react";
 import { useState } from "react";
-import { useDebouncedCallback } from "use-debounce";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { AppSidebarFooter } from "@/components/layout/app-sidebar-footer";
 import {
@@ -36,10 +27,6 @@ import {
   isPlatformNavActive,
 } from "@/components/layout/platform-navigation";
 import { SearchCommand } from "@/components/search/search-command";
-import {
-  CHAT_SEARCH_MIN_QUERY,
-  useChatSearch,
-} from "@/hooks/chat/use-chat-search";
 
 export function AppSidebar() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -181,7 +168,6 @@ function AppSidebarChats() {
         <span className="sr-only">New chat</span>
       </SidebarGroupAction>
       <SidebarGroupContent>
-        <ChatSearchBox closeOnNavigate={closeOnNavigate} />
         <SidebarMenu>
           <ChatListGroupRows
             chats={chats}
@@ -194,97 +180,6 @@ function AppSidebarChats() {
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  );
-}
-
-const CHAT_SEARCH_DEBOUNCE_MS = 300;
-
-/**
- * Conversation search in the Chats group: a debounced query fans out
- * to `OrgAgent.searchChats` (FTS over each chat's transcript) and renders
- * matching chats with a snippet. Clicking a hit opens that chat.
- */
-function ChatSearchBox({ closeOnNavigate }: { closeOnNavigate: () => void }) {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const debouncedSetQuery = useDebouncedCallback(
-    setDebouncedQuery,
-    CHAT_SEARCH_DEBOUNCE_MS
-  );
-
-  const search = useChatSearch(debouncedQuery);
-  const trimmed = debouncedQuery.trim();
-  const active = trimmed.length >= CHAT_SEARCH_MIN_QUERY;
-  const hits = active ? (search.data ?? []) : [];
-
-  const clear = () => {
-    setQuery("");
-    setDebouncedQuery("");
-    debouncedSetQuery.cancel();
-  };
-
-  const onOpenHit = (hit: ChatSearchHit) => {
-    clear();
-    closeOnNavigate();
-    navigate({ params: { chatId: hit.chatId }, to: "/chat/$chatId" });
-  };
-
-  return (
-    <div className="mb-1 flex flex-col gap-1 px-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="h-8 bg-sidebar pl-7 text-sidebar-foreground"
-          onChange={(event) => {
-            setQuery(event.target.value);
-            debouncedSetQuery(event.target.value);
-          }}
-          placeholder="Search chats…"
-          value={query}
-        />
-        {query ? (
-          <button
-            aria-label="Clear search"
-            className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground"
-            onClick={clear}
-            type="button"
-          >
-            <X className="size-3.5" />
-          </button>
-        ) : null}
-      </div>
-      {active && search.isPending ? (
-        <span className="flex items-center gap-1.5 px-1 py-0.5 text-muted-foreground text-xs">
-          <Loader2Icon className="size-3 animate-spin" />
-          Searching…
-        </span>
-      ) : null}
-      {search.isError ? (
-        <span className="px-1 py-0.5 text-destructive text-xs">
-          Couldn't search. Try again.
-        </span>
-      ) : null}
-      {active && search.isSuccess && hits.length === 0 ? (
-        <span className="flex items-center gap-1.5 px-1 py-0.5 text-muted-foreground text-xs">
-          <SearchX className="size-3" />
-          No matching messages
-        </span>
-      ) : null}
-      {hits.map((hit) => (
-        <button
-          className="flex flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          key={`${hit.chatId}-${hit.messageId}`}
-          onClick={() => onOpenHit(hit)}
-          type="button"
-        >
-          <span className="truncate font-medium text-xs">{hit.chatTitle}</span>
-          <span className="line-clamp-2 text-muted-foreground text-xs">
-            {hit.snippet}
-          </span>
-        </button>
-      ))}
-    </div>
   );
 }
 

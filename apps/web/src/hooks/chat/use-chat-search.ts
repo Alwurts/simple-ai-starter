@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 
-/** Below this the FTS query is noise; keep in step with the search box UX. */
-export const CHAT_SEARCH_MIN_QUERY = 2;
+/** Below this the FTS query is noise. */
+const CHAT_SEARCH_MIN_QUERY = 2;
 
 /**
  * Org conversation search (`OrgAgent.searchChats`, FTS over each chat's

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "@tanstack/react-router";
-import { Badge } from "@workspace/ui/components/shadcn/badge";
 import {
   CommandDialog,
   CommandEmpty,
@@ -10,17 +9,23 @@ import {
   CommandItem,
   CommandList,
 } from "@workspace/ui/components/shadcn/command";
+import { useCommandPaletteShortcut } from "@workspace/ui/hooks/use-command-palette-shortcut";
 import {
   CornerDownLeft,
   Loader2,
   type LucideIcon,
+  MessageSquareTextIcon,
   Package,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { getPlatformNavigationItems } from "@/components/layout/platform-navigation";
 import { useCatalogSearch } from "@/hooks/catalog/use-catalog-search";
+import { useChatSearch } from "@/hooks/chat/use-chat-search";
+import { currentPaletteShortcutLabel } from "@/lib/search/command-shortcut";
 
+/** Below this the record searches (messages, products) are noise. */
 const MIN_QUERY_LENGTH = 2;
 
 interface SearchCommandProps {
@@ -28,6 +33,12 @@ interface SearchCommandProps {
   setOpen: (open: boolean) => void;
 }
 
+/**
+ * The one search: ⌘K toggles it, the sidebar search button is the mouse
+ * entry. Chats and pages filter client-side in cmdk; message hits and
+ * products arrive pre-filtered from the org agent / catalog search once the
+ * query is long enough.
+ */
 export function SearchCommand({ open, setOpen }: SearchCommandProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -40,56 +51,17 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
   const trimmedDebounced = debouncedQuery.trim();
   const canSearchRecords = open && trimmedDebounced.length >= MIN_QUERY_LENGTH;
 
+  const { chats } = useOrgConnection();
+  const chatSearch = useChatSearch(trimmedDebounced);
   const catalogSearch = useCatalogSearch(trimmedDebounced, canSearchRecords);
 
-  const isSearching = canSearchRecords && catalogSearch.isFetching;
+  const isSearching =
+    canSearchRecords && (chatSearch.isFetching || catalogSearch.isFetching);
 
-  const pages = useMemo(() => {
-    const platformNavigationItems = getPlatformNavigationItems();
-    const q = query.trim().toLowerCase();
-    if (!q) {
-      return platformNavigationItems;
-    }
-    return platformNavigationItems.filter(
-      (page) =>
-        page.title.toLowerCase().includes(q) ||
-        page.url.toLowerCase().includes(q)
-    );
-  }, [query]);
-
+  const messageHits = canSearchRecords ? (chatSearch.data ?? []) : [];
   const products = canSearchRecords ? (catalogSearch.data?.data ?? []) : [];
 
-  const hasResults = pages.length > 0 || products.length > 0;
-
-  const onQueryChange = useCallback(
-    (value: string) => {
-      setQuery(value);
-      debouncedSetQuery(value);
-    },
-    [debouncedSetQuery]
-  );
-
-  // biome-ignore lint/plugin/no-use-effect: document keydown for ⌘K / Ctrl+K / /
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || e.key === "/") {
-        if (
-          (e.target instanceof HTMLElement && e.target.isContentEditable) ||
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement ||
-          e.target instanceof HTMLSelectElement
-        ) {
-          return;
-        }
-
-        e.preventDefault();
-        setOpen(!open);
-      }
-    };
-
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, [open, setOpen]);
+  useCommandPaletteShortcut(useCallback(() => setOpen(!open), [open, setOpen]));
 
   const resetQuery = useCallback(() => {
     setQuery("");
@@ -116,59 +88,85 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
     [resetQuery, router, setOpen]
   );
 
-  let emptyMessage = `Type at least ${MIN_QUERY_LENGTH} characters to search records…`;
-  if (query.trim().length === 0) {
-    emptyMessage = "Search pages, products…";
-  } else if (isSearching) {
-    emptyMessage = "Searching…";
-  } else if (!hasResults) {
-    emptyMessage = "No results found.";
-  }
+  const navigateToChat = useCallback(
+    (chatId: string) => {
+      setOpen(false);
+      resetQuery();
+      router.navigate({ params: { chatId }, to: "/chat/$chatId" });
+    },
+    [resetQuery, router, setOpen]
+  );
+
+  const pages = getPlatformNavigationItems();
 
   return (
     <CommandDialog
-      description="Search pages and products"
+      description="Search chats, pages and products"
       onOpenChange={handleOpenChange}
       open={open}
-      shouldFilter={false}
-      title="Global Search"
+      title="Search"
     >
       <CommandInput
-        onValueChange={onQueryChange}
-        placeholder="Search pages, products…"
+        onValueChange={(value) => {
+          setQuery(value);
+          debouncedSetQuery(value);
+        }}
+        placeholder="Search chats, pages, products…"
         value={query}
       />
 
       <CommandList className="max-h-[min(28rem,70vh)]">
-        {!hasResults && <CommandEmpty>{emptyMessage}</CommandEmpty>}
+        {messageHits.length === 0 && (
+          <CommandEmpty>No results found.</CommandEmpty>
+        )}
 
-        {pages.length > 0 && (
-          <CommandGroup heading="Pages">
-            {pages.map((page) => (
-              <PaletteItem
-                badge="Page"
-                icon={page.icon}
-                key={page.url}
-                onSelect={() => navigateTo(page.url)}
-                subtitle={page.url}
-                title={page.title}
-                value={`page:${page.url}`}
+        {chats.length > 0 && (
+          <CommandGroup heading="Chats">
+            {chats.map((chat) => (
+              <PaletteRow
+                icon={MessageSquareTextIcon}
+                key={chat.id}
+                onSelect={() => navigateToChat(chat.id)}
+                title={chat.title}
+                value={chat.title}
+              />
+            ))}
+            {messageHits.map((hit) => (
+              <PaletteRow
+                description={hit.snippet}
+                forceMount
+                icon={MessageSquareTextIcon}
+                key={`${hit.chatId}-${hit.messageId}`}
+                onSelect={() => navigateToChat(hit.chatId)}
+                title={hit.chatTitle}
+                value={hit.chatTitle}
               />
             ))}
           </CommandGroup>
         )}
 
+        <CommandGroup heading="Pages">
+          {pages.map((page) => (
+            <PaletteRow
+              icon={page.icon}
+              key={page.url}
+              onSelect={() => navigateTo(page.url)}
+              title={page.title}
+              value={page.title}
+            />
+          ))}
+        </CommandGroup>
+
         {products.length > 0 && (
           <CommandGroup heading="Products">
             {products.map((product) => (
-              <PaletteItem
-                badge="Product"
+              <PaletteRow
+                description={product.description ?? undefined}
                 icon={Package}
                 key={product.id}
                 onSelect={() => navigateTo(`/catalog/${product.id}`)}
-                subtitle={product.description || product.name}
                 title={product.name}
-                value={`product:${product.id}`}
+                value={`${product.name} ${product.description ?? ""}`}
               />
             ))}
           </CommandGroup>
@@ -181,50 +179,47 @@ export function SearchCommand({ open, setOpen }: SearchCommandProps) {
         </span>
         <span className="flex items-center gap-2">
           {isSearching && <Loader2 className="size-3 animate-spin" />}
-          <span>⌘K</span>
+          <span>{currentPaletteShortcutLabel()}</span>
         </span>
       </div>
     </CommandDialog>
   );
 }
 
-function PaletteItem({
+function PaletteRow({
   title,
-  subtitle,
-  badge,
+  description,
   icon: Icon,
   value,
+  forceMount = false,
   onSelect,
 }: {
   title: string;
-  subtitle: string;
-  badge: string;
+  description?: string;
   icon: LucideIcon;
   value: string;
+  /**
+   * Message hits are filtered server-side (FTS over the transcripts);
+   * cmdk's substring score can zero a row the server already matched.
+   */
+  forceMount?: boolean;
   onSelect: () => void;
 }) {
   return (
     <CommandItem
-      className="flex items-start gap-3 px-3 py-2.5"
+      className="px-3 py-2"
+      forceMount={forceMount || undefined}
       onSelect={onSelect}
       value={value}
     >
-      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground">
-        <Icon className="size-4" />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 overflow-hidden">
-        <div className="flex items-center gap-2">
-          <span className="truncate font-medium">{title}</span>
-          <Badge
-            className="h-5 shrink-0 px-1.5 font-medium text-[10px] capitalize"
-            variant="outline"
-          >
-            {badge}
-          </Badge>
-        </div>
-        <span className="truncate text-muted-foreground text-xs">
-          {subtitle}
-        </span>
+      <Icon className="size-4 shrink-0 text-muted-foreground" />
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate">{title}</span>
+        {description ? (
+          <span className="truncate text-muted-foreground text-xs">
+            {description}
+          </span>
+        ) : null}
       </div>
     </CommandItem>
   );
