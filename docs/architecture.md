@@ -227,6 +227,21 @@ each `api/<scope>/index.ts` is the exception that isn't one: it **composes**
   `resource-table`, `sortable-header`, the filter-toolbar chips,
   `table-filter-types`, `data-table-features`).
 
+**shadcn provenance & drift.** The stock files come from the
+[`base-vega`](https://ui.shadcn.com) style via the registries in
+`components.json` — shadcn's own (`button`, `card`, …) plus `@simple-ai`
+(`https://www.simple-ai.dev/r/{name}.json`) for the chat block — installed
+with the CLI pinned as a devDependency of `packages/ui` (`shadcn@4.20.1`,
+config in `packages/ui/components.json`). To check a component for drift
+against its registry item, run the CLI's diff manually:
+
+```bash
+pnpm --filter @workspace/ui exec shadcn add <component> --diff
+```
+
+A non-empty diff means the file was hand-edited or the registry moved —
+re-add with `--overwrite` (or update the pin) instead of patching by hand.
+
 Anything router- or app-aware is **not** in `packages/ui`: e.g. breadcrumbs
 live in `apps/web/src/components/layout/` because they render router `Link`s.
 `packages/ui` has no workspace dependencies and imports no router.
