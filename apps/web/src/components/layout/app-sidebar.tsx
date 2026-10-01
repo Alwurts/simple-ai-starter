@@ -1,21 +1,18 @@
 "use client";
 
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { authClient } from "@workspace/auth/client";
-import { LogoMark } from "@workspace/ui/components/brand/logo-monochrome";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
+  SidebarRail,
   useSidebar,
 } from "@workspace/ui/components/shadcn/sidebar";
 import { Loader2Icon, MessageSquarePlusIcon, Search, X } from "lucide-react";
@@ -30,45 +27,11 @@ import { SearchCommand } from "@/components/search/search-command";
 
 export function AppSidebar() {
   const [searchOpen, setSearchOpen] = useState(false);
-  const { data: activeOrganization } = authClient.useActiveOrganization();
-  const appName = activeOrganization?.name ?? "App";
+  const closeOnNavigate = useCloseMobileSidebarOnNavigate();
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <LogoMark className="h-5 w-5" />
-            </div>
-
-            <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-              <span className="block truncate font-semibold">{appName}</span>
-              <span className="block truncate text-muted-foreground text-xs">
-                Starter
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
-              <SidebarMenuButton
-                className="h-8 w-8"
-                onClick={() => setSearchOpen(true)}
-                size="sm"
-                tooltip="Search"
-                variant="default"
-              >
-                <Search className="size-4" />
-                <span className="sr-only">Search</span>
-              </SidebarMenuButton>
-
-              <SidebarTrigger className="hidden h-8 w-8 md:flex" />
-            </div>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
-        <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
-          <SidebarMenuItem>
-            <SidebarTrigger className="h-8 w-8" />
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setSearchOpen(true)}
@@ -81,6 +44,20 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className="overflow-x-hidden">
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                render={<Link onClick={closeOnNavigate} to="/chat/new" />}
+                tooltip="New chat"
+                variant="outline"
+              >
+                <MessageSquarePlusIcon />
+                <span>New chat</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
         <AppSidebarMainNavigation />
         <AppSidebarChats />
       </SidebarContent>
@@ -88,6 +65,7 @@ export function AppSidebar() {
         <AppSidebarFooter />
       </SidebarFooter>
 
+      <SidebarRail />
       <SearchCommand open={searchOpen} setOpen={setSearchOpen} />
     </Sidebar>
   );
@@ -130,15 +108,16 @@ function AppSidebarMainNavigation() {
   );
 }
 
-/** Org thread list (`OrgAgent.listChats`, newest first) with New chat + delete. */
+/**
+ * Org thread list (`OrgAgent.listChats`, newest first). Text-only (the rows
+ * are titles), so the whole group steps aside in the collapsed icon sidebar.
+ */
 function AppSidebarChats() {
   const { chats, chatsLoadState, deleteChat, retryConnection } =
     useOrgConnection();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
-
-  const onNewChat = () => navigate({ to: "/chat/new" });
 
   const onDelete = async (chatId: string) => {
     try {
@@ -161,12 +140,8 @@ function AppSidebarChats() {
   };
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Chats</SidebarGroupLabel>
-      <SidebarGroupAction onClick={onNewChat} title="New chat">
-        <MessageSquarePlusIcon />
-        <span className="sr-only">New chat</span>
-      </SidebarGroupAction>
       <SidebarGroupContent>
         <SidebarMenu>
           <ChatListGroupRows
