@@ -263,9 +263,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
 
   override beforeTurn(_ctx: TurnContext) {
     // Reject unsupported attachment parts on the inbound user turn before the
-    // provider call so text-only models (e.g. zai-coding-plan) never surface an
-    // opaque content-type error. Only the latest user message is gated — older
-    // history is left alone so a prior failed attach cannot block later text.
+    // provider call so text-only models (e.g. the Workers AI default) never
+    // surface an opaque content-type error. Only the latest user message is
+    // gated — older history is left alone so a prior failed attach cannot
+    // block later text.
     const latestUser = [...this.messages]
       .reverse()
       .find((message) => message.role === "user");
