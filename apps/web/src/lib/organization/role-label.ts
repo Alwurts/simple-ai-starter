@@ -1,13 +1,13 @@
 import type { RoleName } from "@workspace/auth/access-control";
 
 /**
- * English role labels — the one role-label map. `member` surfaces as
- * "Operator", a copy-only rename; the stored value remains `member`.
+ * English role labels — the one role-label map. Plain words, keyed by the
+ * value stored in `member.role`.
  */
 export const ROLE_LABELS: Record<RoleName, string> = {
   owner: "Owner",
-  admin: "Administrator",
-  member: "Operator",
+  admin: "Admin",
+  member: "Member",
 };
 
 /** Label for a known role key. */

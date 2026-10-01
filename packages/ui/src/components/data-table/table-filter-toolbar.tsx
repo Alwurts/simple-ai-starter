@@ -101,37 +101,6 @@ function EnumFilterSection({
     </div>
   );
 }
-function TextFilterSection({
-  definition,
-  value,
-  onChange,
-}: {
-  definition: Extract<
-    TableFilterDefinition,
-    {
-      type: "text";
-    }
-  >;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label className="font-medium text-sm" htmlFor={definition.id}>
-        {definition.label}
-      </Label>
-      <Input
-        id={definition.id}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={
-          definition.placeholder ??
-          `Filter by ${definition.label.toLowerCase()}…`
-        }
-        value={value}
-      />
-    </div>
-  );
-}
 export function TableFilterToolbar({
   definitions,
   columnFilters,
@@ -141,6 +110,20 @@ export function TableFilterToolbar({
   className,
 }: TableFilterToolbarProps) {
   const activeCount = countActiveFilters(columnFilters, definitions);
+  // Text filters are the table's search: always visible in the toolbar,
+  // not hidden behind the "Filters" popover (enum filters stay there).
+  const textDefinitions = definitions.filter(
+    (
+      definition
+    ): definition is Extract<TableFilterDefinition, { type: "text" }> =>
+      definition.type === "text"
+  );
+  const popoverDefinitions = definitions.filter(
+    (
+      definition
+    ): definition is Extract<TableFilterDefinition, { type: "enum" }> =>
+      definition.type !== "text"
+  );
   const activeChips = useMemo(
     () =>
       definitions.flatMap((definition) => {
@@ -172,52 +155,61 @@ export function TableFilterToolbar({
       )}
       data-slot="table-filter-toolbar"
     >
-      <Popover>
-        <PopoverTrigger
-          render={
-            <Button
-              aria-label={
-                activeCount > 0 ? `Filters (${activeCount} active)` : "Filters"
-              }
-              className="relative shrink-0"
-              size="icon-xs"
-              variant="outline"
-            />
+      {textDefinitions.map((definition) => (
+        <Input
+          aria-label={definition.label}
+          className="h-8 w-52 bg-background"
+          key={definition.id}
+          onChange={(event) =>
+            updateFilter(definition.columnId, event.target.value)
           }
-        >
-          <ListFilter />
-          {activeCount > 0 ? (
-            <Badge
-              className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] leading-none"
-              variant="secondary"
-            >
-              {activeCount}
-            </Badge>
-          ) : null}
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-80 gap-0 p-0">
-          <div className="px-4 py-3">
-            <p className="font-medium text-sm">Filters</p>
-          </div>
-          <Separator />
-          <div className="max-h-[min(24rem,60vh)] space-y-4 overflow-y-auto p-4">
-            {definitions.map((definition, index) => (
-              <div key={definition.id}>
-                {index > 0 ? <Separator className="mb-4" /> : null}
-                {definition.type === "text" ? (
-                  <TextFilterSection
-                    definition={definition}
-                    onChange={(value) =>
-                      updateFilter(definition.columnId, value)
-                    }
-                    value={
-                      (getColumnFilterValue(
-                        columnFilters,
-                        definition.columnId
-                      ) as string | undefined) ?? ""
-                    }
-                  />
-                ) : (
+          placeholder={
+            definition.placeholder ??
+            `Search ${definition.label.toLowerCase()}…`
+          }
+          value={
+            (getColumnFilterValue(columnFilters, definition.columnId) as
+              | string
+              | undefined) ?? ""
+          }
+        />
+      ))}
+
+      {popoverDefinitions.length > 0 ? (
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                aria-label={
+                  activeCount > 0
+                    ? `Filters (${activeCount} active)`
+                    : "Filters"
+                }
+                className="relative shrink-0"
+                size="icon-xs"
+                variant="outline"
+              />
+            }
+          >
+            <ListFilter />
+            {activeCount > 0 ? (
+              <Badge
+                className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] leading-none"
+                variant="secondary"
+              >
+                {activeCount}
+              </Badge>
+            ) : null}
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-80 gap-0 p-0">
+            <div className="px-4 py-3">
+              <p className="font-medium text-sm">Filters</p>
+            </div>
+            <Separator />
+            <div className="max-h-[min(24rem,60vh)] space-y-4 overflow-y-auto p-4">
+              {popoverDefinitions.map((definition, index) => (
+                <div key={definition.id}>
+                  {index > 0 ? <Separator className="mb-4" /> : null}
                   <EnumFilterSection
                     definition={definition}
                     onChange={(values) =>
@@ -230,12 +222,12 @@ export function TableFilterToolbar({
                       ) as string[] | undefined) ?? []
                     }
                   />
-                )}
-              </div>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      ) : null}
 
       {activeChips.map((chip) => (
         <FilterChip

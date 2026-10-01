@@ -107,7 +107,9 @@ export function MembersTable({ members }: MembersTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Avatar</TableHead>
+            <TableHead className="w-12">
+              <span className="sr-only">Avatar</span>
+            </TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
@@ -118,7 +120,7 @@ export function MembersTable({ members }: MembersTableProps) {
           {members.map((member) => {
             const isCurrentUser = session?.user?.id === member.userId;
             const isLoading = removingMemberId === member.id;
-            // Operators can leave, but not remove others (honest-disabled).
+            // Members can leave, but not remove others (honest-disabled).
             const canAct = isCurrentUser || canManageMembers;
             const isSoleOwner =
               isCurrentUser && member.role === "owner" && ownerCount < 2;

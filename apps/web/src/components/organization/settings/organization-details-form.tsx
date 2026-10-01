@@ -55,7 +55,7 @@ export function OrganizationDetailsForm({
 }: OrganizationDetailsFormProps) {
   const updateOrganization = useUpdateOrganization();
   const { data: activeMember } = authClient.useActiveMember();
-  // Editing org settings is admin+; operators see the values read-only.
+  // Editing org settings is admin+; members see the values read-only.
   const canEditSettings = can("org:settings", {
     role: activeMember?.role ?? null,
   });
@@ -120,7 +120,6 @@ export function OrganizationDetailsForm({
         />
         <Field>
           <Button
-            className="w-full"
             disabled={!canEditSettings || updateOrganization.isPending}
             type="submit"
           >

@@ -23,7 +23,7 @@ import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useInviteMember } from "@/hooks/organization/use-organization";
-import { roleMessage } from "@/lib/organization/role-label";
+import { ROLE_LABELS, roleMessage } from "@/lib/organization/role-label";
 
 interface InviteMemberData {
   email: string;
@@ -43,7 +43,7 @@ export function InviteMemberForm({
   const { data: activeMember } = authClient.useActiveMember();
   const currentRole = activeMember?.role ?? null;
 
-  // RBAC seam: member management is admin+. Operators see an honest, explained
+  // RBAC seam: member management is admin+. Non-admins see an honest, explained
   // disabled state rather than a control that silently 403s on submit.
   const canManageMembers = can("member:manage", { role: currentRole });
   // Handing out the owner role is owner-only; admins invite admin/member.
@@ -139,10 +139,10 @@ export function InviteMemberForm({
                   </SelectTrigger>
                   <SelectContent>
                     {canInviteOwner && (
-                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
                     )}
-                    <SelectItem value="admin">Administrator</SelectItem>
-                    <SelectItem value="member">Operator</SelectItem>
+                    <SelectItem value="admin">{ROLE_LABELS.admin}</SelectItem>
+                    <SelectItem value="member">{ROLE_LABELS.member}</SelectItem>
                   </SelectContent>
                 </Select>
                 {fieldState.invalid && (
@@ -153,11 +153,7 @@ export function InviteMemberForm({
           />
         </div>
         <Field>
-          <Button
-            className="w-full"
-            disabled={inviteMember.isPending}
-            type="submit"
-          >
+          <Button disabled={inviteMember.isPending} type="submit">
             {inviteMember.isPending ? "Inviting..." : "Send Invitation"}
           </Button>
         </Field>

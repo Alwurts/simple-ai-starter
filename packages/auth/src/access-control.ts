@@ -5,10 +5,8 @@
  * - **Statements, not a rank engine.** Who may do what is expressed by *which
  *   actions each role's statement list contains*, so there is no parallel
  *   hand-rolled engine — we configure better-auth's access-control instead.
- * - **Three fixed tiers.** We reuse better-auth's built-in trio. "operator" is
- *   better-auth's `member` role renamed in **UI copy only** — the stored
- *   `member.role` value stays `"member"` (no migration).
- * - **`dynamicAccessControl` stays OFF** (the plugin default). Orgs assign people
+ * - **Three fixed tiers.** We reuse better-auth's built-in trio (Owner /
+ *   Admin / Member in UI copy). **`dynamicAccessControl` stays OFF** (the plugin default). Orgs assign people
  *   to these fixed roles; they cannot invent roles at runtime.
  * - **Single seam.** Every gate routes through {@link can} so call sites read
  *   `can("catalog:write", ctx)`, never `role === "admin"`. `can` is built on
@@ -39,9 +37,9 @@ export const statement = {
 export const ac = createAccessControl(statement);
 
 /**
- * **operator** — better-auth's `member` baseline (no org/member writes) plus
+ * **member** — better-auth's `member` baseline (no org/member writes) plus
  * low-stakes catalog edits. The role key MUST stay `member`: it is the value
- * stored in `member.role`. "Operator" is a display label only.
+ * stored in `member.role`. ("Member" in UI copy.)
  */
 export const member = ac.newRole({
   ...memberAc.statements,
@@ -75,7 +73,7 @@ export type RoleName = keyof typeof roles;
  * touching call sites.
  */
 export const ACTION_PERMISSIONS = {
-  /** Create/update/delete products. Operator+ (low-stakes). */
+  /** Create/update/delete products. Member+ (low-stakes). */
   "catalog:write": { catalog: ["write"] },
   /** Invite / remove / change a member's role. Admin+. */
   "member:manage": { member: ["create", "update", "delete"] },
