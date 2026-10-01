@@ -41,7 +41,7 @@ import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile
 /**
  * The org's Chats group (`OrgAgent.listChats`, newest first). Text-only —
  * the rows are titles — so the whole group steps aside in the collapsed
- * icon sidebar. Each row carries a hover/focus menu with Rename and Delete.
+ * icon sidebar. Each row's menu shows on hover, focus, and the active row.
  */
 export function SidebarChats() {
   const { chats, chatsLoadState, deleteChat, renameChat, retryConnection } =
@@ -189,7 +189,19 @@ function ChatListRow({
         <span className="truncate">{chat.title}</span>
       </SidebarMenuButton>
       <DropdownMenu onOpenChange={setMenuOpen} open={menuOpen}>
-        <DropdownMenuTrigger render={<SidebarMenuAction showOnHover />}>
+        {/*
+          md:opacity-0 from showOnHover beats a peer-data opacity utility
+          (equal specificity, and the media rule comes later). :has() on the
+          active menu button is specific enough to show the action.
+        */}
+        <DropdownMenuTrigger
+          render={
+            <SidebarMenuAction
+              className="group-has-[[data-sidebar=menu-button][data-active]]/menu-item:opacity-100"
+              showOnHover
+            />
+          }
+        >
           <MoreHorizontalIcon />
           <span className="sr-only">Chat options</span>
         </DropdownMenuTrigger>
