@@ -44,7 +44,7 @@ export function FileExplorerTree({
   if (root.isError) {
     return (
       <TreeError
-        className={className}
+        className={cn("px-3 py-6", className)}
         message="Couldn't load the workspace."
         onRetry={() => root.refetch()}
       />

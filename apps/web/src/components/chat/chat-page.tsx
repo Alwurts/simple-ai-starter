@@ -369,11 +369,11 @@ function ChatView({ chatId, title }: ChatViewProps) {
     [chatAgent]
   );
 
-  // Calls queue behind the connection and time out (30s default), but an
-  // in-flight call is rejected when the socket closes. `ready` re-settles
-  // when the socket re-identifies, so retrying after it reloads the paused
-  // card on reconnect; a terminal close unmounts the list (ChatUnavailable)
-  // before a hung wait could matter.
+  // An in-flight call is rejected when its socket closes mid-flight. The
+  // retry below is safe rather than clever: calls made while the socket is
+  // closed are queued and flushed on open (30s timeout), and a reconnect
+  // remounts the list anyway — so the paused card reloads instead of
+  // sticking on "unavailable".
   const handleLoadPendingExecution = useCallback(
     (executionId: string): Promise<PendingAction[]> =>
       chatAgent.stub

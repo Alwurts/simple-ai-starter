@@ -7,9 +7,11 @@ import { AlertCircleIcon, RotateCcwIcon, XIcon } from "lucide-react";
  * A failed turn this client started — a send or regenerate, including its
  * tool-approval continuations. The AI SDK surfaces those as `error` +
  * `status: "error"` instead of rejecting. Errors in server-driven
- * continuations (another tab's turn, resume/recovery) do not pass through
- * the hook's error and only surface in the transcript; Retry re-runs the
- * turn via the hook's `regenerate`, dismiss clears the hook's error state.
+ * continuations — codemode approve/reject auto-continues, another tab's
+ * turn, resume/recovery — never reach the hook's `error` and are not shown
+ * anywhere; only the partial reply persists (Think `onChatError`,
+ * `@cloudflare/think` docs › lifecycle-hooks). Retry re-runs the turn via
+ * the hook's `regenerate`; dismiss clears the hook's error state.
  */
 export function TurnErrorBanner({
   message,

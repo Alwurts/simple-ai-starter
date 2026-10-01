@@ -9,8 +9,8 @@ import {
 
 // The SDK conversion needs a real `FileList` (jsdom has no `DataTransfer`
 // constructor and no `URL.createObjectURL`), and the read must be gatable so
-// the tests can pin the convert-before-revoke ordering. jsdom's real
-// `File`/`FileReader` handle the rest.
+// the tests can pin the convert-before-revoke ordering: `FileReader` is
+// stubbed with GatedFileReader; jsdom's real `File` handles the rest.
 class FakeFileList extends Array<File> {}
 
 class FakeDataTransfer {
