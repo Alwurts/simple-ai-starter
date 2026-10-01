@@ -11,10 +11,10 @@ import {
 } from "@workspace/ui/components/shadcn/dialog";
 import { DEFAULT_CURRENCY, majorToMinor } from "@workspace/ui/lib/money";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useCreateProduct } from "@/hooks/catalog/use-products";
 import { ProductForm, type ProductFormValues } from "./product-form";
-export function CreateProductDialog() {
+export function CreateProductDialog({ trigger }: { trigger?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const createProduct = useCreateProduct();
   const onSubmit = async (data: ProductFormValues) => {
@@ -27,8 +27,12 @@ export function CreateProductDialog() {
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger render={<Button size="sm" />}>
-        <Plus className="mr-2 h-4 w-4" />
-        Add Product
+        {trigger ?? (
+          <>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>

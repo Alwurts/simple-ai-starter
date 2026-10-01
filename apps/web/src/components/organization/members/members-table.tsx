@@ -107,7 +107,9 @@ export function MembersTable({ members }: MembersTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Avatar</TableHead>
+            <TableHead className="w-12">
+              <span className="sr-only">Avatar</span>
+            </TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
@@ -118,7 +120,7 @@ export function MembersTable({ members }: MembersTableProps) {
           {members.map((member) => {
             const isCurrentUser = session?.user?.id === member.userId;
             const isLoading = removingMemberId === member.id;
-            // Operators can leave, but not remove others (honest-disabled).
+            // Members can leave, but not remove others (honest-disabled).
             const canAct = isCurrentUser || canManageMembers;
             const isSoleOwner =
               isCurrentUser && member.role === "owner" && ownerCount < 2;
@@ -147,11 +149,11 @@ export function MembersTable({ members }: MembersTableProps) {
                 <TableCell>{roleLabel(member.role)}</TableCell>
                 <TableCell className="text-right">
                   <Button
-                    className="h-auto px-2 py-1 text-destructive text-xs underline hover:no-underline"
+                    className="h-auto px-2 py-1 text-xs underline hover:no-underline"
                     disabled={isLoading || !canAct || isSoleOwner}
                     onClick={() => setMemberPendingRemoval(member)}
                     title={actionTitle}
-                    variant="ghost"
+                    variant="destructive"
                   >
                     {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
                     {!isLoading && isCurrentUser && "Leave"}
@@ -190,9 +192,9 @@ export function MembersTable({ members }: MembersTableProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={removeMember.isPending}
               onClick={onConfirmRemove}
+              variant="destructive"
             >
               {removeConfirmLabel}
             </AlertDialogAction>

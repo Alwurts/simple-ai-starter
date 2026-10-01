@@ -62,8 +62,11 @@ export function SortIcon({
 
 export function SortableHeader<TData extends RowData>({
   column,
+  className,
 }: {
   column: Column<DataTableFeatures, TData, unknown>;
+  /** Extra classes, e.g. right-align a header over right-aligned values. */
+  className?: string;
 }) {
   const sorted = column.getIsSorted();
   const label = column.columnDef.meta?.label ?? column.id;
@@ -71,7 +74,11 @@ export function SortableHeader<TData extends RowData>({
   return (
     <Button
       aria-label={sortAriaLabel(label, sorted)}
-      className={cn("h-8 px-0 font-medium", sorted && "text-foreground")}
+      className={cn(
+        "h-8 px-0 font-medium",
+        sorted && "text-foreground",
+        className
+      )}
       onClick={() => column.toggleSorting(sorted === "asc")}
       tabIndex={-1}
       variant="ghost"

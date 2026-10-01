@@ -6,17 +6,14 @@ import { useTheme } from "next-themes";
 import { useCallback } from "react";
 
 export function ThemeMenuItem() {
-  const { theme, setTheme } = useTheme() as {
-    theme: string | undefined;
-    setTheme: (theme: string) => void;
-  };
+  const { resolvedTheme, setTheme } = useTheme();
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "light" ? "dark" : "light");
-  }, [theme, setTheme]);
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  }, [resolvedTheme, setTheme]);
 
   return (
-    <DropdownMenuItem onSelect={toggleTheme}>
+    <DropdownMenuItem onClick={toggleTheme}>
       <SunIcon className="hidden [html.dark_&]:block" />
       <MoonIcon className="hidden [html.light_&]:block" />
       Toggle theme

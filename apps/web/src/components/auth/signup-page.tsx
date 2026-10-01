@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
@@ -19,6 +19,7 @@ import { Input } from "@workspace/ui/components/shadcn/input";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 
 interface SignUpValues {
   name: string;
@@ -26,13 +27,21 @@ interface SignUpValues {
   password: string;
 }
 
+// Better Auth's default minimum (dist/context/create-context.mjs:
+// `minPasswordLength: options.emailAndPassword?.minPasswordLength || 8`).
+const PASSWORD_MIN_LENGTH = 8;
+
 export function SignUpPage() {
   const navigate = useNavigate();
+  const { redirect: redirectTo } = useSearch({ from: "/_auth/signup" });
 
   const signupSchema = z.object({
     name: z.string({ message: "Name" }).min(2),
     email: z.email({ message: "Email" }),
-    password: z.string({ message: "Password" }).min(6).max(100),
+    password: z
+      .string({ message: "Password" })
+      .min(PASSWORD_MIN_LENGTH)
+      .max(100),
   });
 
   const form = useForm<SignUpValues>({
@@ -51,6 +60,13 @@ export function SignUpPage() {
       toast.error(error.message ?? "An error occurred");
     } else {
       toast.success("Account created successfully");
+      // Honour `redirect` (e.g. an invitation link carried through from
+      // login): a fresh full load re-establishes the session nanostores.
+      const next = safeRedirectPath(redirectTo, "/onboarding");
+      if (next !== "/onboarding") {
+        window.location.assign(next);
+        return;
+      }
       await navigate({ to: "/onboarding" });
     }
   };
@@ -132,6 +148,7 @@ export function SignUpPage() {
                 Already have an account?{" "}
                 <Link
                   className="underline-offset-4 hover:underline"
+                  search={{ redirect: redirectTo }}
                   to="/login"
                 >
                   Login

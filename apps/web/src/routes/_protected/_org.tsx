@@ -16,19 +16,35 @@ const ensureActiveOrg = createServerFn({ method: "GET" }).handler(async () => {
     return { session: null, needsOnboarding: false };
   }
 
-  if (!session.session.activeOrganizationId) {
-    const organizations = await auth.api.listOrganizations({ headers });
-    const first = organizations[0];
-
-    if (!first) {
-      return { session, needsOnboarding: true };
+  // Better Auth keeps a stale `activeOrganizationId` after an admin removes
+  // the member, so the session stamp alone would let a removed user into the
+  // org shell (empty data, chats "Loading…" forever). Verify the membership
+  // is live; if not, clear the stale org and fall through to the
+  // list-first-org-or-onboarding logic.
+  if (session.session.activeOrganizationId) {
+    const member = await auth.api
+      .getActiveMember({ headers })
+      .catch(() => null);
+    if (member) {
+      return { session, needsOnboarding: false };
     }
-
     await auth.api.setActiveOrganization({
       headers,
-      body: { organizationId: first.id },
+      body: { organizationId: null },
     });
   }
+
+  const organizations = await auth.api.listOrganizations({ headers });
+  const first = organizations[0];
+
+  if (!first) {
+    return { session, needsOnboarding: true };
+  }
+
+  await auth.api.setActiveOrganization({
+    headers,
+    body: { organizationId: first.id },
+  });
 
   return { session, needsOnboarding: false };
 });

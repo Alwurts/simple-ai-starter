@@ -16,8 +16,7 @@ import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useUpdateOrganization } from "@/hooks/organization/use-organization";
-
-const SLUG_PATTERN = /^[a-z0-9-]+$/;
+import { organizationSlugSchema } from "@/lib/organization/organization-form";
 
 function organizationDetailsSchema() {
   return z.object({
@@ -25,14 +24,7 @@ function organizationDetailsSchema() {
       .string()
       .min(2, { message: "Name must be at least 2 characters" })
       .max(100, { message: "Name must be less than 100 characters" }),
-    slug: z
-      .string()
-      .min(2, { message: "Slug must be at least 2 characters" })
-      .max(50, { message: "Slug must be less than 50 characters" })
-      .regex(SLUG_PATTERN, {
-        message:
-          "Slug can only contain lowercase letters, numbers, and hyphens",
-      }),
+    slug: organizationSlugSchema,
   });
 }
 
@@ -55,7 +47,7 @@ export function OrganizationDetailsForm({
 }: OrganizationDetailsFormProps) {
   const updateOrganization = useUpdateOrganization();
   const { data: activeMember } = authClient.useActiveMember();
-  // Editing org settings is admin+; operators see the values read-only.
+  // Editing org settings is admin+; members see the values read-only.
   const canEditSettings = can("org:settings", {
     role: activeMember?.role ?? null,
   });
@@ -120,7 +112,6 @@ export function OrganizationDetailsForm({
         />
         <Field>
           <Button
-            className="w-full"
             disabled={!canEditSettings || updateOrganization.isPending}
             type="submit"
           >

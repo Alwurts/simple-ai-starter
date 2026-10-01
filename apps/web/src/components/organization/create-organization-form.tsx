@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
 import { Button } from "@workspace/ui/components/shadcn/button";
@@ -13,42 +12,24 @@ import {
 } from "@workspace/ui/components/shadcn/field";
 import { Input } from "@workspace/ui/components/shadcn/input";
 import { toast } from "@workspace/ui/components/shadcn/sonner";
-import { slug as slugify } from "github-slugger";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+  filterName,
+  filterSlug,
+  organizationSlugSchema,
+  slugFromName,
+} from "@/lib/organization/organization-form";
 
-function createOrganizationSchema() {
-  return z.object({
-    name: z
-      .string()
-      .min(3, { message: "Name must be at least 3 characters" })
-      .max(100, { message: "Name must be less than 100 characters" }),
-    slug: z
-      .string()
-      .min(3, { message: "Slug must be at least 3 characters" })
-      .max(50, { message: "Slug must be less than 50 characters" }),
-  });
-}
+const createOrganizationSchema = z.object({
+  name: z
+    .string()
+    .min(3, { message: "Name must be at least 3 characters" })
+    .max(100, { message: "Name must be less than 100 characters" }),
+  slug: organizationSlugSchema,
+});
 
-export type CreateOrganizationData = z.infer<
-  ReturnType<typeof createOrganizationSchema>
->;
-
-const DIACRITICS_REGEX = /\p{Diacritic}/gu;
-const MULTIPLE_HYPHENS_REGEX = /-{2,}/g;
-const TRAILING_HYPHEN_REGEX = /-+$/;
-
-export const filterName = (name: string) =>
-  name
-    .replace(/[^a-zA-Z0-9\s-_']/g, "")
-    .normalize("NFD")
-    .replace(DIACRITICS_REGEX, "");
-
-export const filterSlug = (slug: string) =>
-  slug
-    .replace(/[^a-z0-9-_]/g, "")
-    .replace(MULTIPLE_HYPHENS_REGEX, "-")
-    .replace(TRAILING_HYPHEN_REGEX, "");
+export type CreateOrganizationData = z.infer<typeof createOrganizationSchema>;
 
 export function CreateOrganizationForm({
   className,
@@ -58,10 +39,9 @@ export function CreateOrganizationForm({
   onSuccess?: () => void;
 }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const form = useForm<CreateOrganizationData>({
-    resolver: zodResolver(createOrganizationSchema()),
+    resolver: zodResolver(createOrganizationSchema),
     defaultValues: {
       name: "",
       slug: "",
@@ -92,9 +72,6 @@ export function CreateOrganizationForm({
         await authClient.organization.setActive({
           organizationId: data.id,
         });
-        queryClient.invalidateQueries({ queryKey: ["organizations"] });
-        queryClient.invalidateQueries({ queryKey: ["activeOrganization"] });
-
         navigate({ to: "/" });
         if (onSuccess) {
           onSuccess();
@@ -123,7 +100,7 @@ export function CreateOrganizationForm({
                 onChange={(e) => {
                   const filtered = filterName(e.target.value);
                   field.onChange(filtered);
-                  form.setValue("slug", slugify(filtered));
+                  form.setValue("slug", slugFromName(filtered));
                 }}
                 placeholder="SpaceX"
                 type="text"

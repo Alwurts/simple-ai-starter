@@ -55,9 +55,9 @@ describe("can() — statement authorization", () => {
 });
 
 describe("role labels", () => {
-  it("renames member to Operator in UI copy only", () => {
-    expect(ROLE_LABELS.member).toBe("Operator");
-    expect(ROLE_LABELS.admin).toBe("Administrator");
+  it("labels the three stored roles in plain English", () => {
+    expect(ROLE_LABELS.member).toBe("Member");
+    expect(ROLE_LABELS.admin).toBe("Admin");
     expect(ROLE_LABELS.owner).toBe("Owner");
   });
 });

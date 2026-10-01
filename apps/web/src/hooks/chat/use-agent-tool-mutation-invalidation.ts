@@ -5,7 +5,8 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { AGENT_WRITE_TOOL_NAMES } from "@workspace/agent/constants";
 import { getToolName, isToolUIPart } from "ai";
 import { useEffect, useRef } from "react";
-import { getProductsKey } from "@/hooks/catalog/use-products";
+import { useOrgConnection } from "@/components/chat/connection/org-connection";
+import { productsQueryKey } from "@/lib/catalog/product-queries";
 import type { OrgChatMessage } from "@/lib/chat/ai-types";
 
 const WRITE_TOOLS: ReadonlySet<string> = new Set(AGENT_WRITE_TOOL_NAMES);
@@ -105,12 +106,13 @@ export function collectWriteToolCompletionIds(
 }
 
 /**
- * Mark the completion ids handled and invalidate the products queries once
- * if any were new. Exported for unit tests.
+ * Mark the completion ids handled and invalidate the org's products queries
+ * once if any were new. Exported for unit tests.
  */
 export function applyWriteToolInvalidations(options: {
   ids: string[];
   handled?: Set<string>;
+  organizationId: string;
   queryClient: QueryClient;
 }): void {
   const handled = options.handled ?? new Set<string>();
@@ -123,9 +125,11 @@ export function applyWriteToolInvalidations(options: {
     invalidated = true;
   }
   // Every write tool mutates the catalog, so one prefix invalidation covers
-  // all products queries — list and detail alike.
+  // all products queries — list, detail and search alike.
   if (invalidated) {
-    options.queryClient.invalidateQueries({ queryKey: getProductsKey() });
+    options.queryClient.invalidateQueries({
+      queryKey: productsQueryKey(options.organizationId),
+    });
   }
 }
 
@@ -140,6 +144,7 @@ export function useAgentToolMutationInvalidation(options: {
   messages: OrgChatMessage[];
 }) {
   const { messages } = options;
+  const { organizationId } = useOrgConnection();
   const queryClient = useQueryClient();
   const handledRef = useRef(new Set<string>());
 
@@ -152,7 +157,8 @@ export function useAgentToolMutationInvalidation(options: {
     applyWriteToolInvalidations({
       ids,
       handled: handledRef.current,
+      organizationId,
       queryClient,
     });
-  }, [messages, queryClient]);
+  }, [messages, organizationId, queryClient]);
 }

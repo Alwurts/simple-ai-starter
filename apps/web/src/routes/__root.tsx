@@ -2,12 +2,15 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Toaster } from "@workspace/ui/components/shadcn/sonner";
-
+import { RouteError } from "../components/layout/route-error";
+import { RouteNotFound } from "../components/layout/route-not-found";
 import { QueryProvider } from "../components/providers/query-provider";
 import { ThemeProvider } from "../components/providers/theme-provider";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
+  errorComponent: RouteError,
+  notFoundComponent: RouteNotFound,
   head: () => ({
     links: [
       {

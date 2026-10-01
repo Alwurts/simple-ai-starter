@@ -1,4 +1,4 @@
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
 import {
   ShellContent,
@@ -9,7 +9,10 @@ import {
 } from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
-import { AppBreadcrumbs } from "@/components/layout/app-breadcrumbs";
+import {
+  type AppBreadcrumbItem,
+  AppBreadcrumbs,
+} from "@/components/layout/app-breadcrumbs";
 import {
   type SettingsNavSection,
   SettingsSectionLayout,
@@ -33,25 +36,27 @@ function settingsSections(): SettingsNavSection[] {
   ];
 }
 
+function useSettingsCrumbs(): AppBreadcrumbItem[] {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // `/settings` redirects to General, so the pathname is always a section.
+  const section = pathname.endsWith("/members") ? "Members" : "General";
+  return [{ title: "Settings" }, { title: section }];
+}
+
 export function SettingsLayout() {
   const { data: activeOrganization, isPending } =
     authClient.useActiveOrganization();
   const sections = settingsSections();
+  const crumbs = useSettingsCrumbs();
   if (isPending) {
-    return <SettingsSkeleton sections={sections} />;
+    return <SettingsSkeleton crumbs={crumbs} sections={sections} />;
   }
   if (!activeOrganization) {
     return (
       <ShellPage>
         <ShellHeader>
           <ShellHeaderSidebarTrigger className="-ml-1" />
-          <AppBreadcrumbs
-            items={[
-              {
-                title: "Settings",
-              },
-            ]}
-          />
+          <AppBreadcrumbs items={crumbs} />
           <ShellHeaderActions />
         </ShellHeader>
         <ShellContent>
@@ -69,13 +74,7 @@ export function SettingsLayout() {
     <ShellPage>
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
-        <AppBreadcrumbs
-          items={[
-            {
-              title: "Settings",
-            },
-          ]}
-        />
+        <AppBreadcrumbs items={crumbs} />
         <ShellHeaderActions />
       </ShellHeader>
 
@@ -87,18 +86,18 @@ export function SettingsLayout() {
     </ShellPage>
   );
 }
-function SettingsSkeleton({ sections }: { sections: SettingsNavSection[] }) {
+function SettingsSkeleton({
+  crumbs,
+  sections,
+}: {
+  crumbs: AppBreadcrumbItem[];
+  sections: SettingsNavSection[];
+}) {
   return (
     <ShellPage>
       <ShellHeader>
         <ShellHeaderSidebarTrigger className="-ml-1" />
-        <AppBreadcrumbs
-          items={[
-            {
-              title: "Settings",
-            },
-          ]}
-        />
+        <AppBreadcrumbs items={crumbs} />
         <ShellHeaderActions />
       </ShellHeader>
       <ShellContent>

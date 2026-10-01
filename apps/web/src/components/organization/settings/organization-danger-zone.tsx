@@ -78,7 +78,7 @@ export function OrganizationDangerZone({
           <Button
             onClick={() => setIsDeleteDialogOpen(true)}
             type="button"
-            variant="outline"
+            variant="destructive"
           >
             Delete organization
           </Button>

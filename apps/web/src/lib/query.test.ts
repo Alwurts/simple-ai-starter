@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isNotFoundError, retryUnlessNotFound } from "./query";
+import {
+  isNotFoundError,
+  isOrgDataQueryKey,
+  retryUnlessNotFound,
+} from "./query";
 
 describe("retryUnlessNotFound", () => {
   it("does not retry not-found errors", () => {
@@ -20,5 +24,22 @@ describe("isNotFoundError", () => {
     expect(isNotFoundError(new Error("Document not found"))).toBe(true);
     expect(isNotFoundError(new Error("boom"))).toBe(false);
     expect(isNotFoundError("not found")).toBe(false);
+  });
+});
+
+describe("isOrgDataQueryKey", () => {
+  it("matches org-scoped keys", () => {
+    expect(isOrgDataQueryKey(["org-1", "products", "list", {}])).toBe(true);
+    expect(isOrgDataQueryKey(["org-1", "workspace", "dir", "/"])).toBe(true);
+    expect(isOrgDataQueryKey(["org-1", "chat", "capabilities"])).toBe(true);
+    expect(isOrgDataQueryKey(["org-1", "chats", "search", "kettle"])).toBe(
+      true
+    );
+  });
+
+  it("does not match user-scoped or malformed keys", () => {
+    expect(isOrgDataQueryKey(["invitation", "inv-1"])).toBe(false);
+    expect(isOrgDataQueryKey(["org-1"])).toBe(false);
+    expect(isOrgDataQueryKey([{}, "products"])).toBe(false);
   });
 });

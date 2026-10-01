@@ -20,6 +20,7 @@ import {
   type TableFilterDefinition,
 } from "@workspace/ui/components/data-table/table-filter-types";
 import { DEFAULT_CURRENCY, formatMoneyMinor } from "@workspace/ui/lib/money";
+import { Plus } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { CreateProductDialog } from "@/components/catalog/create-product-dialog";
 import { AppBreadcrumbs } from "@/components/layout/app-breadcrumbs";
@@ -47,11 +48,19 @@ function resolveCollectionEmpty({
 }) {
   if (isTrueEmpty) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
         <p className="font-medium text-sm">No products yet</p>
         <p className="text-muted-foreground text-sm">
           Create a product to populate the catalog.
         </p>
+        <CreateProductDialog
+          trigger={
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Add your first product
+            </>
+          }
+        />
       </div>
     );
   }
@@ -183,7 +192,9 @@ export function CatalogPage() {
       id: "price",
       meta: { label: "Price" },
       accessorKey: "price",
-      header: ({ column }) => <SortableHeader column={column} />,
+      header: ({ column }) => (
+        <SortableHeader className="w-full justify-end" column={column} />
+      ),
       cell: ({ row }) => {
         const price = (row.getValue("price") as number | null) ?? 0;
         return (

@@ -6,6 +6,9 @@ import { fillValue, waitForRouteSettled, waitHydrated } from "./helpers";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const authFile = join(__dirname, "../.auth/user.json");
 const ONBOARDING_URL_PATTERN = /onboarding/;
+// The chat is the signed-in home: `/` immediately redirects to the latest
+// chat or the new-chat draft, so assert on the landed route.
+const HOME_URL_PATTERN = /\/chat\/(new|[0-9a-f]+)/;
 
 setup("create authenticated user", async ({ page }) => {
   // Unique per attempt: a retry after a failed attempt must not collide with
@@ -30,7 +33,7 @@ setup("create authenticated user", async ({ page }) => {
   await page.getByRole("button", { name: "Create Organization" }).click();
 
   // Should redirect to the dashboard
-  await expect(page).toHaveURL("/", { timeout: 15_000 });
+  await expect(page).toHaveURL(HOME_URL_PATTERN, { timeout: 15_000 });
 
   // Save the authenticated state
   await page.context().storageState({ path: authFile });
