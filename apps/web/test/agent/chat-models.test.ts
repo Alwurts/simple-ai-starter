@@ -58,6 +58,32 @@ describe("resolveOrgChatModelConfig", () => {
     expect(config.provider).toBe("workers-ai");
   });
 
+  it("treats empty-string env values as unset (a copied .dev.vars.example)", () => {
+    // `cp .dev.vars.example .dev.vars` leaves every key present with empty
+    // values: selection falls back to the default provider, and resolving a
+    // model fails with the same clear errors as absent keys.
+    const allEmpty = {
+      ORG_CHAT_PROVIDER: "",
+      ORG_CHAT_MODEL: "",
+      CF_ACCOUNT_ID: "",
+      WORKERS_AI_API_TOKEN: "",
+      OPENAI_COMPATIBLE_BASE_URL: "",
+      OPENAI_COMPATIBLE_API_KEY: "",
+    };
+    expect(resolveOrgChatCapabilities(env(allEmpty))).toMatchObject({
+      provider: "workers-ai",
+    });
+    expect(() => resolveOrgChatModelConfig(env(allEmpty))).toThrow(
+      NEEDS_ACCOUNT_ID
+    );
+    expect(() =>
+      resolveOrgChatModelConfig(env({ CF_ACCOUNT_ID: "acct123" }))
+    ).toThrow(NEEDS_WORKERS_AI_TOKEN);
+    expect(() =>
+      resolveOrgChatModelConfig(env({ ORG_CHAT_PROVIDER: "openai-compatible" }))
+    ).toThrow(NEEDS_ORG_CHAT_MODEL);
+  });
+
   it("AC-2: resolves a Workers AI model via the account-scoped openai endpoint (no binding)", () => {
     const config = resolveOrgChatModelConfig(
       env({

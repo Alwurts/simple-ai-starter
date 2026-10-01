@@ -4,12 +4,12 @@ import raw from "./skills/product-copy/SKILL.md?raw";
 /**
  * The one bundled example skill. `OrgChat.getSkills()` returns the
  * `agents:skills` source the Agents Vite plugin builds from
- * `src/org/chat/skills/` (an empty-catalog stub replaces that virtual module
- * under vitest — see apps/web/test/agents-skills-shim.ts), so the contract
- * this test pins is the SKILL.md itself: frontmatter with a name + description
- * (the catalog the model sees) and the memory-first instruction in the body.
- * The file is imported as a string (`?raw`) because packages/agent has no node
- * types, and the no-scripts/no-runner rule is pinned in
+ * `src/org/chat/skills/` (the same plugin runs in the workerd tests — see
+ * apps/web/vitest.config.ts), so the contract this test pins is the SKILL.md
+ * itself: frontmatter with a name + description (the catalog the model sees)
+ * and the memory-first instruction in the body. The file is imported as a
+ * string (`?raw`) because packages/agent has no node types, and the
+ * no-scripts/no-runner rule is pinned in
  * apps/web/test/agent/chat-skills.workerd.test.ts.
  */
 

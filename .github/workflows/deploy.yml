@@ -74,7 +74,11 @@ jobs:
       # Secrets after deploy: `wrangler secret` 404s before the script exists;
       # secrets persist across deploys — this is first-deploy bootstrap + drift
       # correction. Names match apps/web/.dev.vars.example 1:1 with Actions
-      # secrets (no prefix). Absent/empty Actions secrets are skipped, not failed.
+      # secrets (no prefix). Absent/empty Actions secrets are skipped, not
+      # failed — nothing here is deploy-blocking (no `secrets.required` in
+      # wrangler.jsonc). Required for a working app: BETTER_AUTH_SECRET and the
+      # chosen provider's keys (README › Deploy step 3); the rest are optional
+      # features (email, provider/model overrides).
       - name: Sync Worker secrets
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}

@@ -104,10 +104,16 @@ Deploying needs Cloudflare resources first:
 2. `wrangler d1 create simple-ai-starter`, then paste the id into
    `apps/web/wrangler.jsonc` (`database_id` is
    `placeholder-replace-before-deploy` until you do).
-3. Set the Worker secrets (`wrangler secret put`): `BETTER_AUTH_SECRET`, your
-   provider keys (Workers AI by default: `CF_ACCOUNT_ID` +
-   `WORKERS_AI_API_TOKEN`; or the `OPENAI_COMPATIBLE_*` pair + model), and
-   `RESEND_API_KEY` if you send real email.
+3. Set the Worker secrets (`wrangler secret put`). **Required:**
+   `BETTER_AUTH_SECRET`, plus your provider's keys — Workers AI (the default):
+   `CF_ACCOUNT_ID` + `WORKERS_AI_API_TOKEN`, or OpenAI-compatible:
+   `OPENAI_COMPATIBLE_BASE_URL` + `OPENAI_COMPATIBLE_API_KEY` +
+   `ORG_CHAT_MODEL` (with `ORG_CHAT_PROVIDER=openai-compatible`).
+   **Optional:** `ORG_CHAT_PROVIDER`/`ORG_CHAT_MODEL` (defaults:
+   workers-ai / its catalog model), `BETTER_AUTH_URL` (set it to your public
+   URL), `RESEND_API_KEY` + `EMAIL_SENDER` + `MOCK_SEND_EMAIL` (only to send
+   real email). Absent secrets simply leave that feature off; nothing fails at
+   deploy time.
 4. Migrate the remote database: `pnpm db:migrate:prod`.
 5. Build and deploy: `pnpm --filter web deploy`.
 
