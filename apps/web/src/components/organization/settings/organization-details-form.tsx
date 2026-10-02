@@ -22,7 +22,7 @@ function organizationDetailsSchema() {
   return z.object({
     name: z
       .string()
-      .min(2, { message: "Name must be at least 2 characters" })
+      .min(3, { message: "Name must be at least 3 characters" })
       .max(100, { message: "Name must be less than 100 characters" }),
     slug: organizationSlugSchema,
   });
@@ -110,19 +110,18 @@ export function OrganizationDetailsForm({
             </Field>
           )}
         />
-        <Field>
-          <Button
-            disabled={!canEditSettings || updateOrganization.isPending}
-            type="submit"
-          >
-            {updateOrganization.isPending ? "Saving..." : "Save Changes"}
-          </Button>
-          {!canEditSettings && (
-            <FieldDescription>
-              Only administrators can edit organization details.
-            </FieldDescription>
-          )}
-        </Field>
+        <Button
+          className="w-fit"
+          disabled={!canEditSettings || updateOrganization.isPending}
+          type="submit"
+        >
+          {updateOrganization.isPending ? "Saving..." : "Save Changes"}
+        </Button>
+        {!canEditSettings && (
+          <FieldDescription>
+            Only administrators can edit organization details.
+          </FieldDescription>
+        )}
       </FieldGroup>
     </form>
   );

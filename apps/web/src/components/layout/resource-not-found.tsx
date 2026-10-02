@@ -17,7 +17,9 @@ export function ResourceNotFound({
     <ShellPage>
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
         <h2 className="font-semibold text-xl">{title}</h2>
-        <Button render={<Link to={to} />}>{backLabel}</Button>
+        <Button nativeButton={false} render={<Link to={to} />}>
+          {backLabel}
+        </Button>
       </div>
     </ShellPage>
   );

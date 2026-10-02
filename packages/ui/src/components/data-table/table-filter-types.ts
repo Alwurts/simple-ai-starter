@@ -1,25 +1,3 @@
-import type { FilterFn } from "@tanstack/react-table";
-
-/**
- * Exact-membership enum filter for string accessors.
- *
- * TanStack's `arrIncludesSome` uses substring matching on strings — a "blocked"
- * filter also matches "not-blocked". This matches only exact values.
- */
-// biome-ignore lint/suspicious/noExplicitAny: matches TanStack built-in filterFns typing
-export const arrIncludesExact: FilterFn<any, any> = (
-  row,
-  columnId,
-  filterValue
-) => {
-  if (!Array.isArray(filterValue) || filterValue.length === 0) {
-    return true;
-  }
-  return filterValue.includes(row.getValue(columnId));
-};
-arrIncludesExact.autoRemove = (value: unknown) =>
-  !Array.isArray(value) || value.length === 0;
-
 export interface TableFilterOption {
   label: string;
   value: string;

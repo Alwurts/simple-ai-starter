@@ -152,11 +152,13 @@ export function InviteMemberForm({
             )}
           />
         </div>
-        <Field>
-          <Button disabled={inviteMember.isPending} type="submit">
-            {inviteMember.isPending ? "Inviting..." : "Send Invitation"}
-          </Button>
-        </Field>
+        <Button
+          className="w-fit"
+          disabled={inviteMember.isPending}
+          type="submit"
+        >
+          {inviteMember.isPending ? "Inviting..." : "Send Invitation"}
+        </Button>
       </FieldGroup>
     </form>
   );

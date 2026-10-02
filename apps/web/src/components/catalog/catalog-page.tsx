@@ -12,8 +12,8 @@ import {
   ShellHeaderSidebarTrigger,
   ShellPage,
 } from "@workspace/ui/components/brand/shell";
+import { DataTable } from "@workspace/ui/components/data-table/data-table";
 import type { DataTableColumnDef } from "@workspace/ui/components/data-table/data-table-features";
-import { ResourceTable } from "@workspace/ui/components/data-table/resource-table";
 import { SortableHeader } from "@workspace/ui/components/data-table/sortable-header";
 import {
   getColumnFilterValue,
@@ -224,7 +224,7 @@ export function CatalogPage() {
             Loading products...
           </div>
         ) : (
-          <ResourceTable
+          <DataTable
             collectionEmpty={collectionEmpty}
             columnFilters={columnFilters}
             columns={columns}

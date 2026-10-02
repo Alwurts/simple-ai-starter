@@ -36,12 +36,16 @@ export function SignUpPage() {
   const { redirect: redirectTo } = useSearch({ from: "/_auth/signup" });
 
   const signupSchema = z.object({
-    name: z.string({ message: "Name" }).min(2),
-    email: z.email({ message: "Email" }),
+    name: z
+      .string({ message: "Enter your name." })
+      .min(2, { message: "Name must be at least 2 characters." }),
+    email: z.email({ message: "Enter a valid email address." }),
     password: z
-      .string({ message: "Password" })
-      .min(PASSWORD_MIN_LENGTH)
-      .max(100),
+      .string({ message: "Enter a password." })
+      .min(PASSWORD_MIN_LENGTH, {
+        message: "Password must be at least 8 characters.",
+      })
+      .max(100, { message: "Password must be at most 100 characters." }),
   });
 
   const form = useForm<SignUpValues>({
@@ -78,7 +82,7 @@ export function SignUpPage() {
         <CardDescription>Create an account to get started</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form method="post" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
             <Controller
               control={form.control}

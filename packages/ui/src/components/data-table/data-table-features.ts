@@ -1,38 +1,18 @@
 import {
   type ColumnDef,
-  columnFilteringFeature,
-  columnVisibilityFeature,
-  createFilteredRowModel,
-  createPaginatedRowModel,
-  createSortedRowModel,
-  filterFn_includesString,
   type RowData,
   rowPaginationFeature,
-  rowSelectionFeature,
   rowSortingFeature,
-  sortFn_alphanumeric,
-  sortFn_text,
   tableFeatures,
 } from "@tanstack/react-table";
-import { arrIncludesExact } from "./table-filter-types";
 
+/**
+ * Server tables only. Sorting and pagination stay manual, so the client
+ * row models (filter, sort, page, selection, column visibility) are omitted.
+ */
 export const dataTableFeatures = tableFeatures({
-  columnFilteringFeature,
-  columnVisibilityFeature,
   rowPaginationFeature,
-  rowSelectionFeature,
   rowSortingFeature,
-  filteredRowModel: createFilteredRowModel(),
-  sortedRowModel: createSortedRowModel(),
-  paginatedRowModel: createPaginatedRowModel(),
-  filterFns: {
-    arrIncludesExact,
-    includesString: filterFn_includesString,
-  },
-  sortFns: {
-    alphanumeric: sortFn_alphanumeric,
-    text: sortFn_text,
-  },
 });
 
 export type DataTableFeatures = typeof dataTableFeatures;

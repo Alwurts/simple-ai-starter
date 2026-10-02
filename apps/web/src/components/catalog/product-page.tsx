@@ -145,7 +145,9 @@ export function ProductPage() {
             <Button onClick={() => refetchProduct()} variant="outline">
               Retry
             </Button>
-            <Button render={<Link to="/catalog" />}>Back to Catalog</Button>
+            <Button nativeButton={false} render={<Link to="/catalog" />}>
+              Back to Catalog
+            </Button>
           </div>
         </div>
       </ShellPage>

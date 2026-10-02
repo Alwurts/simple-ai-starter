@@ -219,13 +219,16 @@ each `api/<scope>/index.ts` is the exception that isn't one: it **composes**
 `packages/ui/test/taxonomy.test.ts`:
 
 - **`shadcn/`** — exactly what `shadcn add` produced (including the
-  `@simple-ai` registry items), never hand-edited. Re-add a file with the
-  pinned CLI instead of editing it.
+  `@simple-ai` registry items), never hand-edited. Two local patches stay:
+  `command.tsx` keeps the palette title inside `DialogContent` so it
+  unmounts when the dialog closes, and `SidebarMenuButton` in `sidebar.tsx`
+  uses `useButton({ native: render == null })` so link renders are anchors.
+  Re-add any other file with the pinned CLI instead of editing it.
 - **`brand/`** — how we look. The test: *would a rebrand change this file?*
   Today: `shell.tsx`, the logo (`logo-monochrome.tsx`), and the auth page.
-- **`data-table/`** — generic, look-less table composites (`data-table`,
-  `resource-table`, `sortable-header`, the filter-toolbar chips,
-  `table-filter-types`, `data-table-features`).
+- **`data-table/`** — generic, look-less server table (`data-table`,
+  `sortable-header`, the filter-toolbar chips, `table-filter-types`,
+  `data-table-features`).
 
 **shadcn provenance & drift.** The stock files come from the
 [`base-vega`](https://ui.shadcn.com) style via the registries in

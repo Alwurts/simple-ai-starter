@@ -601,7 +601,7 @@ function ChatView({ chatId, title }: ChatViewProps) {
         open={isMobile && sidePanel.panelOpen}
       >
         <SheetContent
-          className="w-full gap-0 p-0 sm:max-w-full"
+          className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-full"
           showCloseButton={false}
           side="right"
         >

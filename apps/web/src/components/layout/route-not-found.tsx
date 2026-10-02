@@ -9,7 +9,9 @@ export function RouteNotFound() {
       <p className="text-muted-foreground">
         The page you're looking for doesn't exist.
       </p>
-      <Button render={<Link to="/" />}>Go Home</Button>
+      <Button nativeButton={false} render={<Link to="/" />}>
+        Go Home
+      </Button>
     </div>
   );
 }

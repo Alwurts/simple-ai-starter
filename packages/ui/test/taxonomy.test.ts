@@ -37,7 +37,6 @@ test("data-table/ is exactly the generic table composites", () => {
   expect(readdirSync(join(COMPONENTS, "data-table")).sort()).toEqual([
     "data-table-features.ts",
     "data-table.tsx",
-    "resource-table.tsx",
     "sortable-header.tsx",
     "table-filter-toolbar.tsx",
     "table-filter-types.ts",

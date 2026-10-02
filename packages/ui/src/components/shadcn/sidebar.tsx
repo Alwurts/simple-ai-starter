@@ -5,6 +5,7 @@
 
 "use client";
 
+import { useButton } from "@base-ui/react/internals/use-button";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { Button } from "@workspace/ui/components/shadcn/button";
@@ -516,8 +517,12 @@ function SidebarMenuButton({
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
   } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const { isMobile, state } = useSidebar();
+  // Link renders are anchors. `native: false` keeps Base UI from expecting a
+  // <button>. The default tag stays a button when `render` is absent.
+  const { buttonRef } = useButton({ native: render == null });
   const comp = useRender({
     defaultTagName: "button",
+    ref: buttonRef,
     props: mergeProps<"button">(
       {
         className: cn(sidebarMenuButtonVariants({ variant, size }), className),

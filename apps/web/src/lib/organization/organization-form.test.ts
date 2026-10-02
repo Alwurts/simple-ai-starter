@@ -34,6 +34,7 @@ describe("filterSlug", () => {
   it("lowercases input is untouched; stray chars collapse", () => {
     expect(filterSlug("my--org--")).toBe("my-org");
     expect(filterSlug("ab#c!d")).toBe("abcd");
+    expect(filterSlug("my_org")).toBe("myorg");
   });
 });
 
