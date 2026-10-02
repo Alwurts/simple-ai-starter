@@ -42,6 +42,11 @@ const config = defineConfig({
     cloudflare({
       viteEnvironment: { name: "ssr" },
       persistState: isE2E ? { path: "test/e2e/.wrangler/state" } : undefined,
+      // The AI binding has no local simulator, so Wrangler opens a remote
+      // proxy session (and CI then demands CLOUDFLARE_API_TOKEN). E2E never
+      // calls Workers AI — it uses the openai-compatible fake model — so
+      // keep that session off. `pnpm dev` leaves it on (`wrangler login`).
+      remoteBindings: !isE2E,
     }),
     tsconfigPaths({ projects: ["./tsconfig.json"] }),
     tailwindcss(),

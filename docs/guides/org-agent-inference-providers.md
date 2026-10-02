@@ -62,3 +62,6 @@ Keys live in `.dev.vars` (see `.dev.vars.example`); in production set them
 with `wrangler secret put <NAME>`. Tests assert the resolved model and never
 call one. The e2e suite points `openai-compatible` at a local fake model
 server (`apps/web/test/e2e/fake-model-server.mjs` via `.dev.vars.e2e`).
+That run sets `remoteBindings: false` on the Cloudflare Vite plugin, because
+the `AI` binding would otherwise open a remote session and CI has no
+Cloudflare token.
