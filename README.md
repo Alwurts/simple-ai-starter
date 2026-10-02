@@ -30,10 +30,12 @@ cp apps/web/.dev.vars.example apps/web/.dev.vars
 ```
 
 The org agent needs one inference provider. The default is
-[Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/): set
-`CF_ACCOUNT_ID` + `WORKERS_AI_API_TOKEN` and it uses
+[Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/) through
+the `AI` binding (`wrangler login` for local dev; no API token). It uses
 `@cf/meta/llama-3.3-70b-instruct-fp8-fast` unless `ORG_CHAT_MODEL` says
-otherwise. Alternative: any OpenAI-compatible endpoint
+otherwise. Alternatives: Vercel AI Gateway
+(`ORG_CHAT_PROVIDER=vercel-ai-gateway` + `AI_GATEWAY_API_KEY` +
+`ORG_CHAT_MODEL`) or any OpenAI-compatible endpoint
 (`ORG_CHAT_PROVIDER=openai-compatible` + `OPENAI_COMPATIBLE_BASE_URL` +
 `OPENAI_COMPATIBLE_API_KEY` + `ORG_CHAT_MODEL`) — see
 [`docs/guides/org-agent-inference-providers.md`](docs/guides/org-agent-inference-providers.md).
@@ -105,12 +107,13 @@ Deploying needs Cloudflare resources first:
    `apps/web/wrangler.jsonc` (`database_id` is
    `placeholder-replace-before-deploy` until you do).
 3. Set the Worker secrets (`wrangler secret put`). **Required:**
-   `BETTER_AUTH_SECRET`, plus your provider's keys — Workers AI (the default):
-   `CF_ACCOUNT_ID` + `WORKERS_AI_API_TOKEN`, or OpenAI-compatible:
-   `OPENAI_COMPATIBLE_BASE_URL` + `OPENAI_COMPATIBLE_API_KEY` +
-   `ORG_CHAT_MODEL` (with `ORG_CHAT_PROVIDER=openai-compatible`).
-   **Optional:** `ORG_CHAT_PROVIDER`/`ORG_CHAT_MODEL` (defaults:
-   workers-ai / its catalog model), `BETTER_AUTH_URL` (set it to your public
+   `BETTER_AUTH_SECRET`. Workers AI (the default) uses the `AI` binding — no
+   extra secret. Vercel AI Gateway needs `AI_GATEWAY_API_KEY` +
+   `ORG_CHAT_MODEL`. OpenAI-compatible needs `OPENAI_COMPATIBLE_BASE_URL` +
+   `OPENAI_COMPATIBLE_API_KEY` + `ORG_CHAT_MODEL`.
+   **Optional:** `ORG_CHAT_PROVIDER` / `ORG_CHAT_MODEL` (defaults: workers-ai /
+   `@cf/meta/llama-3.3-70b-instruct-fp8-fast`), `ORG_CHAT_IMAGE_INPUT`,
+   `ORG_CHAT_CONTEXT_WINDOW`, `BETTER_AUTH_URL` (set it to your public
    URL), `RESEND_API_KEY` + `EMAIL_SENDER` + `MOCK_SEND_EMAIL` (only to send
    real email). Absent secrets simply leave that feature off; nothing fails at
    deploy time.

@@ -15,16 +15,6 @@ function isWriteTool(method: string | undefined): boolean {
   return Boolean(method && WRITE_TOOLS.has(method));
 }
 
-function isSuccessfulToolOutput(output: unknown): boolean {
-  if (!output || typeof output !== "object") {
-    return true;
-  }
-  if ("ok" in output && (output as { ok: unknown }).ok === false) {
-    return false;
-  }
-  return true;
-}
-
 /**
  * Writes applied by sandboxed `execute` code, read from the run's settled
  * output (`calls` tool log). Only `applied` entries ran — `pending` and
@@ -67,10 +57,9 @@ function writeCompletionIdForPart(
   const toolCallId = part.toolCallId;
   const method = getToolName(part);
   if (isWriteTool(method)) {
-    return isSuccessfulToolOutput(part.output) &&
-      !alreadyHandled.has(toolCallId)
-      ? toolCallId
-      : null;
+    // A failed write is `output-error`, not `output-available`, so a settled
+    // write part is a real mutation. The old `{ ok: false }` envelope is gone.
+    return alreadyHandled.has(toolCallId) ? null : toolCallId;
   }
   if (method === "execute") {
     const eventId = `${toolCallId}:calls`;

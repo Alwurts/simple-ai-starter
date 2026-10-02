@@ -1,7 +1,10 @@
 "use client";
 
 import type { PendingAction, ProxyToolOutput } from "@cloudflare/codemode";
-import { PERMISSION_DENIED_MESSAGE } from "@workspace/agent/constants";
+import {
+  DISPLAY_TOOL_NAMES,
+  PERMISSION_DENIED_MESSAGE,
+} from "@workspace/agent/constants";
 import { Bubble, BubbleContent } from "@workspace/ui/components/shadcn/bubble";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import {
@@ -44,6 +47,7 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { OrgChatMessage } from "@/lib/chat/ai-types";
+import { MemoryCard } from "./memory-card";
 import { ProductListCard } from "./product-list-card";
 
 function MarkdownBody({
@@ -108,9 +112,10 @@ export function isPausedExecutionPart(part: {
 }
 
 /**
- * The one custom tool card: a completed `display_product_list` echo renders as
- * a product card; every other tool (incl. `display_memory`, workspace file
- * tools, `set_context`, `delegate`) uses the generic tool row.
+ * Custom cards: a completed `display_product_list` echo, and a completed
+ * `display_memory` echo. An `output-error` part stays on the generic row so
+ * `errorText` is visible. Workspace file tools, `set_context`, and `delegate`
+ * use the generic row too.
  */
 export function isProductListCardPart(
   part: ToolUIPart | DynamicToolUIPart
@@ -121,9 +126,28 @@ export function isProductListCardPart(
   );
 }
 
+function isVisibleCardName(part: { toolName?: string; type: string }): boolean {
+  let name = part.type;
+  if (part.toolName) {
+    name = part.toolName;
+  } else if (part.type.startsWith("tool-")) {
+    name = part.type.slice("tool-".length);
+  }
+  return name === PRODUCT_LIST_TOOL_NAME || name === DISPLAY_TOOL_NAMES.MEMORY;
+}
+
+export function isMemoryCardPart(
+  part: ToolUIPart | DynamicToolUIPart
+): boolean {
+  return (
+    getToolName(part) === DISPLAY_TOOL_NAMES.MEMORY &&
+    part.state === "output-available"
+  );
+}
+
 /**
  * Parts that stay inside the collapsed Worked group. A pending approval, a
- * paused codemode run, and a finished `display_product_list` card stay in the
+ * paused codemode run, and a finished product-list or memory card stay in the
  * message flow so the user can act on them without opening the group. After
  * approve/reject the tool is no longer `approval-requested` / `paused`, so it
  * folds back in.
@@ -143,11 +167,7 @@ export function isCollapsedWorkedPart(part: {
   if (isPausedExecutionPart(part)) {
     return false;
   }
-  if (
-    part.state === "output-available" &&
-    (part.toolName === PRODUCT_LIST_TOOL_NAME ||
-      part.type === `tool-${PRODUCT_LIST_TOOL_NAME}`)
-  ) {
+  if (part.state === "output-available" && isVisibleCardName(part)) {
     return false;
   }
   return true;
@@ -466,6 +486,9 @@ function ToolPartSwitch({
 }) {
   if (isProductListCardPart(part)) {
     return <ProductListCard output={part.output} />;
+  }
+  if (isMemoryCardPart(part)) {
+    return <MemoryCard output={part.output} />;
   }
   if (getToolName(part) === EXECUTE_TOOL_NAME) {
     const paused = executeOutputOf(part);

@@ -19,7 +19,7 @@ import {
 import { agentTool } from "agents/agent-tools";
 import type { ContextConfig } from "agents/context";
 import { createCompactFunction } from "agents/sessions";
-import { generateText, type LanguageModel, type ToolSet } from "ai";
+import { generateText, type ToolSet } from "ai";
 import { z } from "zod";
 import { PERMISSION_DENIED_MESSAGE } from "../../constants";
 import { buildOrgContext } from "../../context/assemble";
@@ -119,7 +119,7 @@ export class OrgChat extends Think<Cloudflare.Env> {
     connection.setState({ userId });
   }
 
-  override getModel(): LanguageModel {
+  override getModel() {
     return this.resolved.model;
   }
 
@@ -176,9 +176,9 @@ export class OrgChat extends Think<Cloudflare.Env> {
       session
         .onCompaction(
           createCompactFunction({
-            // Side inference (outside the turn) resolves through `resolveModel()`
-            // per Think 0.12 — it returns our explicit LanguageModel as-is, and
-            // stays correct if `getModel()` ever returns a model-id string.
+            // Side inference resolves through `resolveModel()`: a LanguageModel
+            // is returned as-is, and a Workers AI model-id string is built off
+            // the `AI` binding.
             summarize: (prompt) =>
               generateText({ model: this.resolveModel(), prompt }).then(
                 (r) => r.text
@@ -407,7 +407,10 @@ export class OrgChat extends Think<Cloudflare.Env> {
       organizationId: this.organizationId,
     };
     const productTools = getOrgAgentTools(toolsCtx);
-    const displayTools = createDisplayTools(toolsCtx);
+    const displayTools = createDisplayTools(toolsCtx, {
+      readMemory: () =>
+        this.getParent().then((parent) => parent.readOrgMemory("org_memory")),
+    });
 
     // The read-only fetch tool is opt-in via FETCH_ALLOWED_HOSTS
     // (comma-separated hostnames). Empty/unset means no fetch tool at all.

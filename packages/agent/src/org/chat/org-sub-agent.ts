@@ -2,7 +2,7 @@ import { type Session, Think } from "@cloudflare/think";
 import { errorMessage, structuredLog } from "@workspace/log";
 import type { ContextConfig } from "agents/context";
 import { createCompactFunction } from "agents/sessions";
-import { generateText, type LanguageModel, type ToolSet } from "ai";
+import { generateText, type ToolSet } from "ai";
 import { buildOrgContext } from "../../context/assemble";
 import { getOrgAgentReadOnlyTools } from "../../in-app/compose-org-tools";
 import {
@@ -64,7 +64,7 @@ export class OrgSubAgent extends Think<Cloudflare.Env> {
     return organizationId;
   }
 
-  override getModel(): LanguageModel {
+  override getModel() {
     return this.resolved.model;
   }
 

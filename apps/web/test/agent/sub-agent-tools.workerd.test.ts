@@ -1,4 +1,5 @@
 import { getOrgAgentReadOnlyTools, getOrgAgentTools } from "@workspace/agent";
+import { DomainError } from "@workspace/core/errors";
 import { db } from "@workspace/db";
 import { member, organization, products, user } from "@workspace/db/schema";
 import { describe, expect, it } from "vitest";
@@ -92,16 +93,11 @@ describe("OrgSubAgent read-only tool composition", () => {
       return tool.execute;
     };
 
-    const list = (await exec("list_products")({})) as {
-      ok: boolean;
-      data?: Array<{ name: string }>;
-    };
-    expect(list.ok).toBe(true);
-    expect((list.data ?? []).map((p) => p.name)).toEqual(["My Product"]);
+    const list = (await exec("list_products")({})) as Array<{ name: string }>;
+    expect(list.map((product) => product.name)).toEqual(["My Product"]);
 
-    const getResult = (await exec("get_product")({
-      id: other.product.id,
-    })) as { ok: boolean };
-    expect(getResult.ok).toBe(false);
+    await expect(exec("get_product")({ id: other.product.id })).rejects.toThrow(
+      new DomainError(`Product not found: ${other.product.id}`, "not_found")
+    );
   });
 });

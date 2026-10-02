@@ -1,28 +1,25 @@
 import {
-  buildOrgChatModel,
+  DEFAULT_WORKERS_AI_MODEL,
   gateChatAttachments,
   getCompactionLimit,
   type OrgChatModelCapabilities,
   type OrgInferenceEnv,
   resolveOrgChatCapabilities,
   resolveOrgChatModel,
-  resolveOrgChatModelConfig,
 } from "@workspace/agent/inference";
 import { describe, expect, it } from "vitest";
 
 /**
- * The provider decision (which provider, model, base URL, key) is a pure
- * function, so we assert it directly without touching the network or an SDK
- * client.
- *
- * Model input capabilities + attachment gating are also pure.
+ * The provider decision is pure. Workers AI returns a model-id string and
+ * does not touch the network. The other branches construct an SDK client
+ * and still do not call it.
  */
 
-const NEEDS_ACCOUNT_ID = /CF_ACCOUNT_ID/;
-const NEEDS_WORKERS_AI_TOKEN = /WORKERS_AI_API_TOKEN/;
+const NEEDS_GATEWAY_KEY = /AI_GATEWAY_API_KEY/;
 const NEEDS_OPENAI_COMPATIBLE_URL = /OPENAI_COMPATIBLE_BASE_URL/;
 const NEEDS_OPENAI_COMPATIBLE_KEY = /OPENAI_COMPATIBLE_API_KEY/;
 const NEEDS_ORG_CHAT_MODEL = /ORG_CHAT_MODEL/;
+const NEEDS_CONTEXT_WINDOW = /ORG_CHAT_CONTEXT_WINDOW/;
 const ONLY_ACCEPTS_TEXT = /only accepts text/i;
 const ONLY_IMAGE = /only image/i;
 
@@ -30,246 +27,172 @@ function env(overrides: OrgInferenceEnv = {}): OrgInferenceEnv {
   return overrides;
 }
 
-describe("resolveOrgChatModelConfig", () => {
-  it("AC-1: defaults to workers-ai / llama-3.3-70b with no env set", () => {
-    const config = resolveOrgChatModelConfig(
-      env({
-        CF_ACCOUNT_ID: "acct123",
-        WORKERS_AI_API_TOKEN: "cf-token",
-      })
-    );
-    expect(config.provider).toBe("workers-ai");
-    expect(config.entryId).toBe("@cf/meta/llama-3.3-70b-instruct-fp8-fast");
-    expect(config.contextWindow).toBe(128_000);
-    expect(config.baseURL).toBe(
-      "https://api.cloudflare.com/client/v4/accounts/acct123/ai/v1"
-    );
-    expect(config.apiKey).toBe("cf-token");
-  });
-
-  it("falls back to the default provider for an unknown ORG_CHAT_PROVIDER", () => {
-    const config = resolveOrgChatModelConfig(
-      env({
-        ORG_CHAT_PROVIDER: "nonsense",
-        CF_ACCOUNT_ID: "acct123",
-        WORKERS_AI_API_TOKEN: "cf-token",
-      })
-    );
-    expect(config.provider).toBe("workers-ai");
-  });
-
-  it("treats empty-string env values as unset (a copied .dev.vars.example)", () => {
-    // `cp .dev.vars.example .dev.vars` leaves every key present with empty
-    // values: selection falls back to the default provider, and resolving a
-    // model fails with the same clear errors as absent keys.
-    const allEmpty = {
-      ORG_CHAT_PROVIDER: "",
-      ORG_CHAT_MODEL: "",
-      CF_ACCOUNT_ID: "",
-      WORKERS_AI_API_TOKEN: "",
-      OPENAI_COMPATIBLE_BASE_URL: "",
-      OPENAI_COMPATIBLE_API_KEY: "",
-    };
-    expect(resolveOrgChatCapabilities(env(allEmpty))).toMatchObject({
+describe("resolveOrgChatModel", () => {
+  it("defaults to the Workers AI model string with no env set", () => {
+    const resolved = resolveOrgChatModel(env());
+    expect(resolved.provider).toBe("workers-ai");
+    expect(resolved.model).toBe(DEFAULT_WORKERS_AI_MODEL);
+    expect(resolved.contextWindow).toBe(128_000);
+    expect(resolved.capabilities).toEqual({
       provider: "workers-ai",
-    });
-    expect(() => resolveOrgChatModelConfig(env(allEmpty))).toThrow(
-      NEEDS_ACCOUNT_ID
-    );
-    expect(() =>
-      resolveOrgChatModelConfig(env({ CF_ACCOUNT_ID: "acct123" }))
-    ).toThrow(NEEDS_WORKERS_AI_TOKEN);
-    expect(() =>
-      resolveOrgChatModelConfig(env({ ORG_CHAT_PROVIDER: "openai-compatible" }))
-    ).toThrow(NEEDS_ORG_CHAT_MODEL);
-  });
-
-  it("AC-2: resolves a Workers AI model via the account-scoped openai endpoint (no binding)", () => {
-    const config = resolveOrgChatModelConfig(
-      env({
-        ORG_CHAT_PROVIDER: "workers-ai",
-        CF_ACCOUNT_ID: "acct123",
-        WORKERS_AI_API_TOKEN: "cf-token",
-      })
-    );
-    expect(config.providerName).toBe("workersAi");
-    expect(config.baseURL).toBe(
-      "https://api.cloudflare.com/client/v4/accounts/acct123/ai/v1"
-    );
-    expect(config.apiKey).toBe("cf-token");
-    expect(config.entryId).toBe("@cf/meta/llama-3.3-70b-instruct-fp8-fast");
-  });
-
-  it("honours an ORG_CHAT_MODEL override within the provider", () => {
-    const config = resolveOrgChatModelConfig(
-      env({
-        ORG_CHAT_PROVIDER: "workers-ai",
-        CF_ACCOUNT_ID: "acct123",
-        WORKERS_AI_API_TOKEN: "cf-token",
-        ORG_CHAT_MODEL: "@cf/meta/llama-3.1-8b-instruct",
-      })
-    );
-    expect(config.entryId).toBe("@cf/meta/llama-3.1-8b-instruct");
-  });
-
-  it("AC-2: workers-ai without an account id or without a token is a clear error", () => {
-    expect(() =>
-      resolveOrgChatModelConfig(env({ ORG_CHAT_PROVIDER: "workers-ai" }))
-    ).toThrow(NEEDS_ACCOUNT_ID);
-    expect(() =>
-      resolveOrgChatModelConfig(
-        env({ ORG_CHAT_PROVIDER: "workers-ai", CF_ACCOUNT_ID: "acct123" })
-      )
-    ).toThrow(NEEDS_WORKERS_AI_TOKEN);
-  });
-});
-
-describe("openai-compatible provider (generic OpenAI-compatible endpoint)", () => {
-  const baseEnv: OrgInferenceEnv = {
-    ORG_CHAT_PROVIDER: "openai-compatible",
-    OPENAI_COMPATIBLE_BASE_URL: "https://api.orcarouter.ai/v1",
-    OPENAI_COMPATIBLE_API_KEY: "ok",
-    ORG_CHAT_MODEL: "z-ai/glm-5.3-flash",
-  };
-
-  it("AC-3: resolves base URL + key + model from env, calling the origin directly", () => {
-    const config = resolveOrgChatModelConfig(env(baseEnv));
-    expect(config.provider).toBe("openai-compatible");
-    expect(config.providerName).toBe("openaiCompatible");
-    expect(config.baseURL).toBe("https://api.orcarouter.ai/v1");
-    expect(config.apiKey).toBe("ok");
-    expect(config.entryId).toBe("z-ai/glm-5.3-flash");
-    expect(config.contextWindow).toBe(1_000_000);
-  });
-
-  it("fails when the base URL, the key or the model is missing", () => {
-    expect(() =>
-      resolveOrgChatModelConfig(
-        env({ ...baseEnv, OPENAI_COMPATIBLE_BASE_URL: undefined })
-      )
-    ).toThrow(NEEDS_OPENAI_COMPATIBLE_URL);
-    expect(() =>
-      resolveOrgChatModelConfig(
-        env({ ...baseEnv, OPENAI_COMPATIBLE_API_KEY: undefined })
-      )
-    ).toThrow(NEEDS_OPENAI_COMPATIBLE_KEY);
-    expect(() =>
-      resolveOrgChatModelConfig(env({ ...baseEnv, ORG_CHAT_MODEL: undefined }))
-    ).toThrow(NEEDS_ORG_CHAT_MODEL);
-  });
-
-  it("constructs a model", () => {
-    const model = buildOrgChatModel(resolveOrgChatModelConfig(env(baseEnv)));
-    expect(model).toBeDefined();
-  });
-
-  it("the catalog entry reports image input on", () => {
-    expect(resolveOrgChatCapabilities(env(baseEnv))).toEqual({
-      provider: "openai-compatible",
-      entryId: "z-ai/glm-5.3-flash",
-      inputModalities: ["text", "image"],
-      supportsImageInput: true,
-    });
-  });
-
-  it("unknown model ids fall back to the conservative defaults", () => {
-    expect(
-      resolveOrgChatCapabilities(
-        env({ ...baseEnv, ORG_CHAT_MODEL: "vendor/other-model" })
-      )
-    ).toEqual({
-      provider: "openai-compatible",
-      entryId: "vendor/other-model",
+      entryId: DEFAULT_WORKERS_AI_MODEL,
       inputModalities: ["text"],
       supportsImageInput: false,
     });
   });
-});
 
-describe("buildOrgChatModel", () => {
-  it("constructs a workers-ai model", () => {
-    const model = buildOrgChatModel(
-      resolveOrgChatModelConfig(
+  it("falls back to workers-ai for an unknown ORG_CHAT_PROVIDER", () => {
+    const resolved = resolveOrgChatModel(
+      env({ ORG_CHAT_PROVIDER: "nonsense" })
+    );
+    expect(resolved.provider).toBe("workers-ai");
+    expect(resolved.model).toBe(DEFAULT_WORKERS_AI_MODEL);
+  });
+
+  it("treats empty-string env values as unset", () => {
+    const resolved = resolveOrgChatModel(
+      env({
+        ORG_CHAT_PROVIDER: "",
+        ORG_CHAT_MODEL: "",
+        ORG_CHAT_IMAGE_INPUT: "",
+        ORG_CHAT_CONTEXT_WINDOW: "",
+        AI_GATEWAY_API_KEY: "",
+        OPENAI_COMPATIBLE_BASE_URL: "",
+        OPENAI_COMPATIBLE_API_KEY: "",
+      })
+    );
+    expect(resolved.provider).toBe("workers-ai");
+    expect(resolved.model).toBe(DEFAULT_WORKERS_AI_MODEL);
+    expect(resolved.capabilities.supportsImageInput).toBe(false);
+  });
+
+  it("honors a Workers AI model override and stays a string", () => {
+    const resolved = resolveOrgChatModel(
+      env({
+        ORG_CHAT_PROVIDER: "workers-ai",
+        ORG_CHAT_MODEL: "@cf/meta/llama-3.1-8b-instruct",
+      })
+    );
+    expect(resolved.model).toBe("@cf/meta/llama-3.1-8b-instruct");
+    expect(resolved.capabilities.entryId).toBe(
+      "@cf/meta/llama-3.1-8b-instruct"
+    );
+  });
+
+  it("reads the context window and image flag", () => {
+    const resolved = resolveOrgChatModel(
+      env({
+        ORG_CHAT_CONTEXT_WINDOW: "1000000",
+        ORG_CHAT_IMAGE_INPUT: "true",
+      })
+    );
+    expect(resolved.contextWindow).toBe(1_000_000);
+    expect(resolved.capabilities.supportsImageInput).toBe(true);
+    expect(resolved.capabilities.inputModalities).toEqual(["text", "image"]);
+    expect(getCompactionLimit(resolved.contextWindow)).toBe(750_000);
+  });
+
+  it("rejects a non-integer context window", () => {
+    expect(() =>
+      resolveOrgChatModel(env({ ORG_CHAT_CONTEXT_WINDOW: "lots" }))
+    ).toThrow(NEEDS_CONTEXT_WINDOW);
+  });
+
+  it("requires a model and a gateway key for vercel-ai-gateway", () => {
+    expect(() =>
+      resolveOrgChatModel(env({ ORG_CHAT_PROVIDER: "vercel-ai-gateway" }))
+    ).toThrow(NEEDS_ORG_CHAT_MODEL);
+    expect(() =>
+      resolveOrgChatModel(
         env({
-          ORG_CHAT_PROVIDER: "workers-ai",
-          CF_ACCOUNT_ID: "acct123",
-          WORKERS_AI_API_TOKEN: "cf-token",
+          ORG_CHAT_PROVIDER: "vercel-ai-gateway",
+          ORG_CHAT_MODEL: "openai/gpt-5.4",
         })
       )
+    ).toThrow(NEEDS_GATEWAY_KEY);
+    const resolved = resolveOrgChatModel(
+      env({
+        ORG_CHAT_PROVIDER: "vercel-ai-gateway",
+        ORG_CHAT_MODEL: "openai/gpt-5.4",
+        AI_GATEWAY_API_KEY: "gw-key",
+      })
     );
-    expect(model).toBeDefined();
+    expect(resolved.provider).toBe("vercel-ai-gateway");
+    expect(typeof resolved.model).toBe("object");
+    expect(resolved.capabilities.entryId).toBe("openai/gpt-5.4");
   });
-});
 
-describe("resolveOrgChatModel", () => {
-  it("resolves from Cloudflare.Env without a cast", () => {
-    const resolved = resolveOrgChatModel({
-      ORG_CHAT_PROVIDER: "openai-compatible",
-      OPENAI_COMPATIBLE_BASE_URL: "https://api.example.com/v1",
-      OPENAI_COMPATIBLE_API_KEY: "k",
-      ORG_CHAT_MODEL: "z-ai/glm-5.3-flash",
-    } as Cloudflare.Env);
-    expect(resolved.contextWindow).toBe(1_000_000);
-    expect(resolved.model).toBeDefined();
+  it("requires url, key, and model for openai-compatible", () => {
+    expect(() =>
+      resolveOrgChatModel(env({ ORG_CHAT_PROVIDER: "openai-compatible" }))
+    ).toThrow(NEEDS_ORG_CHAT_MODEL);
+    expect(() =>
+      resolveOrgChatModel(
+        env({
+          ORG_CHAT_PROVIDER: "openai-compatible",
+          ORG_CHAT_MODEL: "e2e-fake-model",
+        })
+      )
+    ).toThrow(NEEDS_OPENAI_COMPATIBLE_URL);
+    expect(() =>
+      resolveOrgChatModel(
+        env({
+          ORG_CHAT_PROVIDER: "openai-compatible",
+          ORG_CHAT_MODEL: "e2e-fake-model",
+          OPENAI_COMPATIBLE_BASE_URL: "http://127.0.0.1:8799/v1",
+        })
+      )
+    ).toThrow(NEEDS_OPENAI_COMPATIBLE_KEY);
+    const resolved = resolveOrgChatModel(
+      env({
+        ORG_CHAT_PROVIDER: "openai-compatible",
+        ORG_CHAT_MODEL: "e2e-fake-model",
+        OPENAI_COMPATIBLE_BASE_URL: "http://127.0.0.1:8799/v1",
+        OPENAI_COMPATIBLE_API_KEY: "e2e",
+        ORG_CHAT_IMAGE_INPUT: "1",
+      })
+    );
     expect(resolved.provider).toBe("openai-compatible");
+    expect(typeof resolved.model).toBe("object");
     expect(resolved.capabilities.supportsImageInput).toBe(true);
   });
 });
 
-describe("getCompactionLimit", () => {
-  it("is 75% of the context window", () => {
-    expect(getCompactionLimit(1_000_000)).toBe(750_000);
-    expect(getCompactionLimit(128_000)).toBe(96_000);
+describe("resolveOrgChatCapabilities", () => {
+  it("does not require keys, and leaves entryId empty until a model is set", () => {
+    expect(
+      resolveOrgChatCapabilities(
+        env({ ORG_CHAT_PROVIDER: "openai-compatible" })
+      )
+    ).toMatchObject({
+      provider: "openai-compatible",
+      entryId: "",
+      supportsImageInput: false,
+    });
+    expect(resolveOrgChatCapabilities(env())).toMatchObject({
+      provider: "workers-ai",
+      entryId: DEFAULT_WORKERS_AI_MODEL,
+    });
   });
 });
 
-describe("org chat model capabilities", () => {
-  it("resolves modalities from the active catalog offering per provider", () => {
-    expect(
-      resolveOrgChatCapabilities(
-        env({
-          ORG_CHAT_PROVIDER: "workers-ai",
-          CF_ACCOUNT_ID: "acct123",
-          WORKERS_AI_API_TOKEN: "cf-token",
-        })
-      )
-    ).toEqual({
-      provider: "workers-ai",
-      entryId: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-      inputModalities: ["text"],
-      supportsImageInput: false,
-    });
-  });
-
-  it("defaults unknown ORG_CHAT_MODEL overrides to text-only", () => {
-    expect(
-      resolveOrgChatCapabilities(
-        env({
-          ORG_CHAT_PROVIDER: "workers-ai",
-          CF_ACCOUNT_ID: "acct123",
-          WORKERS_AI_API_TOKEN: "cf-token",
-          ORG_CHAT_MODEL: "@cf/meta/llama-3.1-8b-instruct",
-        })
-      )
-    ).toEqual({
-      provider: "workers-ai",
-      entryId: "@cf/meta/llama-3.1-8b-instruct",
-      inputModalities: ["text"],
-      supportsImageInput: false,
-    });
+describe("getCompactionLimit", () => {
+  it("is 75% of the window", () => {
+    expect(getCompactionLimit(1_000_000)).toBe(750_000);
+    expect(getCompactionLimit(128_000)).toBe(96_000);
   });
 });
 
 describe("gateChatAttachments", () => {
   const textOnly: OrgChatModelCapabilities = {
     provider: "workers-ai",
-    entryId: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    entryId: DEFAULT_WORKERS_AI_MODEL,
     inputModalities: ["text"],
     supportsImageInput: false,
   };
   const vision: OrgChatModelCapabilities = {
     provider: "openai-compatible",
-    entryId: "z-ai/glm-5.3-flash",
+    entryId: "e2e-fake-model",
     inputModalities: ["text", "image"],
     supportsImageInput: true,
   };

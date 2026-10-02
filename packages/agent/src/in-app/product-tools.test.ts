@@ -2,12 +2,8 @@ import { DomainError } from "@workspace/core/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PERMISSION_DENIED_MESSAGE } from "../constants";
 import {
-  getProductDescription,
-  getProductExecute,
-  getProductInputSchema,
-  updateProductDescription,
-  updateProductExecute,
-  updateProductInputSchema,
+  getProductPart,
+  updateProductPart,
 } from "../tool-parts/catalog/products";
 import { inAppTool } from "./in-app-tool";
 
@@ -56,65 +52,49 @@ function runTool(
   return executable.execute(input);
 }
 
-describe("product tools — ToolResult contract", () => {
+describe("product tools — thrown errors, no result envelope", () => {
   beforeEach(() => {
     vi.mocked(assertCan).mockResolvedValue(undefined);
   });
 
-  it("get_product returns ok:true with data on hit", async () => {
+  it("get_product returns the product on a hit", async () => {
     const product = { id: "prod_1", name: "Widget" };
     vi.mocked(getProduct).mockResolvedValue(product as never);
 
-    const bind = inAppTool(readOnlyCtx);
-    const getProductTool = bind({
-      description: getProductDescription,
-      inputSchema: getProductInputSchema,
-      execute: getProductExecute,
-    });
+    const getProductTool = inAppTool(readOnlyCtx)(getProductPart);
     const result = await runTool(getProductTool, { id: "prod_1" });
 
-    expect(result).toEqual({ ok: true, data: product });
+    expect(result).toEqual(product);
   });
 
-  it("get_product returns not_found without throwing on miss", async () => {
+  it("get_product throws DomainError not_found on a miss", async () => {
     vi.mocked(getProduct).mockResolvedValue(undefined as never);
 
-    const bind = inAppTool(readOnlyCtx);
-    const getProductTool = bind({
-      description: getProductDescription,
-      inputSchema: getProductInputSchema,
-      execute: getProductExecute,
-    });
-    const result = await runTool(getProductTool, { id: "prod_missing" });
-
-    expect(result).toEqual({
-      ok: false,
-      error: "Product not found: prod_missing",
-      code: "not_found",
-    });
+    const getProductTool = inAppTool(readOnlyCtx)(getProductPart);
+    await expect(
+      runTool(getProductTool, { id: "prod_missing" })
+    ).rejects.toThrow(
+      new DomainError("Product not found: prod_missing", "not_found")
+    );
   });
 
-  it("update_product returns ok:true on success", async () => {
+  it("update_product returns the updated row and is approval-gated", async () => {
     const product = { id: "prod_1", name: "Widget" };
     const updated = { ...product, name: "Widget Pro" };
     vi.mocked(resolveProductRef).mockResolvedValue(product as never);
     vi.mocked(updateProduct).mockResolvedValue(updated as never);
 
-    const bind = inAppTool(ctx);
-    const updateProductTool = bind({
-      description: updateProductDescription,
-      inputSchema: updateProductInputSchema,
-      execute: updateProductExecute,
-    });
+    expect(updateProductPart.needsApproval).toBe(true);
+    const updateProductTool = inAppTool(ctx)(updateProductPart);
     const result = await runTool(updateProductTool, {
       id: "Widget",
       data: { name: "Widget Pro" },
     });
 
-    expect(result).toEqual({ ok: true, data: updated });
+    expect(result).toEqual(updated);
   });
 
-  it("update_product returns not_found without throwing on resolve miss", async () => {
+  it("update_product throws DomainError when the ref misses", async () => {
     vi.mocked(resolveProductRef).mockRejectedValue(
       new DomainError(
         'Product not found: no match for id or name "missing"',
@@ -122,44 +102,31 @@ describe("product tools — ToolResult contract", () => {
       )
     );
 
-    const bind = inAppTool(ctx);
-    const updateProductTool = bind({
-      description: updateProductDescription,
-      inputSchema: updateProductInputSchema,
-      execute: updateProductExecute,
-    });
-    const result = await runTool(updateProductTool, {
-      id: "missing",
-      data: { name: "Nope" },
-    });
-
-    expect(result).toEqual({
-      ok: false,
-      error: 'Product not found: no match for id or name "missing"',
-      code: "not_found",
-    });
+    const updateProductTool = inAppTool(ctx)(updateProductPart);
+    await expect(
+      runTool(updateProductTool, {
+        id: "missing",
+        data: { name: "Nope" },
+      })
+    ).rejects.toThrow(
+      new DomainError(
+        'Product not found: no match for id or name "missing"',
+        "not_found"
+      )
+    );
   });
 
-  it("update_product returns forbidden without throwing on RBAC deny", async () => {
+  it("update_product throws the permission message on RBAC deny", async () => {
     vi.mocked(assertCan).mockRejectedValue(
       new Error(PERMISSION_DENIED_MESSAGE)
     );
 
-    const bind = inAppTool(ctx);
-    const updateProductTool = bind({
-      description: updateProductDescription,
-      inputSchema: updateProductInputSchema,
-      execute: updateProductExecute,
-    });
-    const result = await runTool(updateProductTool, {
-      id: "prod_1",
-      data: { name: "Nope" },
-    });
-
-    expect(result).toEqual({
-      ok: false,
-      error: PERMISSION_DENIED_MESSAGE,
-      code: "forbidden",
-    });
+    const updateProductTool = inAppTool(ctx)(updateProductPart);
+    await expect(
+      runTool(updateProductTool, {
+        id: "prod_1",
+        data: { name: "Nope" },
+      })
+    ).rejects.toThrow(PERMISSION_DENIED_MESSAGE);
   });
 });

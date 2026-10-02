@@ -27,10 +27,7 @@ import { env } from "./test-env";
  */
 
 interface ToolResultLike {
-  ok: boolean;
-  code?: string;
-  error?: string;
-  data?: unknown;
+  name?: string;
 }
 
 const STUB_ENV = {
@@ -166,10 +163,9 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
     const tools = await runAs(chat, connectionFor(viewerId), () =>
       chat.getTools()
     );
-    const result = await createProduct(tools, "Viewer Write");
-    expect(result.ok).toBe(false);
-    expect(result.code).toBe("forbidden");
-    expect(result.error).toBe(PERMISSION_DENIED_MESSAGE);
+    await expect(createProduct(tools, "Viewer Write")).rejects.toThrow(
+      PERMISSION_DENIED_MESSAGE
+    );
     expect(orgId).toBeTruthy();
   });
 
@@ -183,7 +179,7 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
       chat.getTools()
     );
     const result = await createProduct(tools, "Owner Write");
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({ name: "Owner Write" });
 
     const rows = await db.query.products.findMany({
       where: (product, { eq }) => eq(product.organizationId, orgId),
@@ -197,9 +193,9 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
 
     // Built outside any ALS: nothing to bind.
     const tools = chat.getTools();
-    const result = await createProduct(tools, "Ghost Write");
-    expect(result.ok).toBe(false);
-    expect(result.code).toBe("forbidden");
+    await expect(createProduct(tools, "Ghost Write")).rejects.toThrow(
+      PERMISSION_DENIED_MESSAGE
+    );
     expect(orgId).toBeTruthy();
   });
 
@@ -210,11 +206,11 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
     const tools = await runAs(chat, connectionFor(ownerId), () =>
       chat.getTools()
     );
-    const result = await runAs(chat, connectionFor(viewerId), () =>
-      createProduct(tools, "Should Not Exist")
-    );
-    expect(result.ok).toBe(false);
-    expect(result.code).toBe("forbidden");
+    await expect(
+      runAs(chat, connectionFor(viewerId), () =>
+        createProduct(tools, "Should Not Exist")
+      )
+    ).rejects.toThrow(PERMISSION_DENIED_MESSAGE);
   });
 
   it("approveExecution rebuilds the tools under the approver's connection (rebinds this.codemode)", async () => {
