@@ -32,6 +32,9 @@
   // Backs the chat agent's code execution (codemode) sandbox — see
   // docs/guides/writing-agent-tools.md.
   "worker_loaders": [{ "binding": "LOADER" }],
+  // Workers AI. Think resolves a `@cf/...` model id off this binding.
+  // Local calls are remote: `wrangler login` (no account-id token).
+  "ai": { "binding": "AI" },
   // Non-secret vars. Comma-separated hostnames the chat agent's read-only
   // `fetch_url` tool may GET; empty disables the fetch tool entirely.
   "vars": {

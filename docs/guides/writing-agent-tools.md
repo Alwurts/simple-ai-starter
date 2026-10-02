@@ -2,7 +2,7 @@
 
 How to author, compose, and test the snake_case top-level tools the org agent
 exposes via Think. Covers layout, context vs parameters, tool *design*
-principles, the `ToolResult` fail contract, approval gates, and common gotchas.
+principles, the throw-on-miss contract, approval gates, and common gotchas.
 This guide and the approval stub (`agent-tool-approvals.md`) cover the same
 runtime; the authoring detail lives here.
 
@@ -12,11 +12,10 @@ implementation details are specific to this starter + Think stack.
 
 ## Layout: tool-parts + per-surface binders
 
-Tools are **named pieces** (`name` / `description` / `inputSchema` /
-`execute(ctx, input)`) in `tool-parts/<cap>/`. Each surface composes the pieces
-itself and may wrap `execute` differently — `in-app/` today; `mcp/` is
-reserved for the MCP binder + composition (own unit). Do not close over org id
-inside the catalog, and do not loop a catalog array to register tools.
+Tools are **`ToolPart` objects** (`name`, `description`, `inputSchema`,
+`needsApproval`, `execute(ctx, input)`) in `tool-parts/<cap>/`. Each surface
+picks a part list and binds it with `bindAll`. A later MCP binder can wrap
+`execute` on the same objects. Do not close over org id inside the catalog.
 
 ```
 packages/agent/src/
@@ -24,12 +23,12 @@ packages/agent/src/
 │   ├── context.ts              # ToolContext (= AgentToolsContext)
 │   └── catalog/products.ts     # the five product pieces
 ├── in-app/                     # the in-app binder + composition
-│   ├── in-app-tool.ts          # binder: asToolResult + needsApproval
+│   ├── in-app-tool.ts          # ToolPart, inAppTool, bindAll
 │   ├── compose-org-tools.ts    # getOrgAgentTools / getOrgAgentReadOnlyTools
 │   └── display.ts              # display_* (UI echoes — not tool-parts)
 ├── (mcp/)                      # reserved — MCP binder + composition, own unit
 └── tools/
-    ├── tool-result.ts          # ToolResult + requireFound + asToolResult
+    ├── tool-result.ts          # requireFound (throws DomainError)
     └── guard.ts                # assertCan RBAC (called from write execute)
 ```
 
@@ -162,42 +161,22 @@ Not every domain is CRUD. Pick the shape before naming tools:
 generic `update` (e.g. `update(..., deleted: true)`). `delete_product` is a
 separate approval-gated tool for that reason.
 
-## Result contract + `asToolResult`
+## Result contract
 
-Tools return a discriminated union — never throw for expected domain misses:
-
-```ts
-type ToolErrorCode =
-  | "not_found"
-  | "conflict"
-  | "forbidden"
-  | "unprocessable"
-  | "unknown";
-
-type ToolOk<T> = { ok: true; data: T };
-type ToolErr = { ok: false; error: string; code: ToolErrorCode };
-type ToolResult<T> = ToolOk<T> | ToolErr;
-```
-
-`asToolResult(fn)` wraps `execute`:
-
-- `DomainError` → `{ ok: false, error: message, code: the DomainError's code }`
-- `Error` with `PERMISSION_DENIED_MESSAGE` → `{ ok: false, code: "forbidden" }`
-- other `Error` → `{ ok: false, code: "unknown" }`
-- success → `{ ok: true, data }`
+A part returns the value, or throws. There is no `{ ok, data }` envelope.
+The AI SDK turns a thrown error into a tool-error result: the transcript
+part is `output-error` and `errorText` is the message. Cards key off
+`output-available`; an errored part stays on the generic tool row so
+`errorText` shows.
 
 **Getters:** when core returns `null` / `undefined`, call `requireFound(data, detail)`
-inside `execute` — it throws `DomainError("…", "not_found")`, which `asToolResult`
-maps to `{ ok: false, code: "not_found", error: detail }`. **Lists:** empty arrays
-stay `{ ok: true, data: [] }`.
+inside `execute`. It throws `DomainError`. **Lists:** an empty array is a
+successful return (`[]`), not an error.
 
-Prefer `inAppTool` (`in-app/in-app-tool.ts`) to bind a named piece for OrgChat —
-it applies `asToolResult` and `toModelOutput` (`error-text` on fail, `json` on
-success). Author the piece in `tool-parts/`; do not wrap `tool()` in the catalog.
+`needsApproval` lives on the `ToolPart`. `bindAll(ctx, parts)` is the
+composer. Author the part in `tool-parts/`; do not wrap `tool()` in the catalog.
 
-The system prompt tells the model to check `ok` before using `data`.
-
-**Errors are an interface:** the `error` string is what the model reads to
+**Errors are an interface:** the thrown message is what the model reads to
 self-correct. Prefer actionable text with a recovery hint ("Product not found:
 no match for id or name …"; "ambiguous product ref: N matches …") over
 generic "failed". Surface meaningful `DomainError` messages; don't flatten them.
@@ -253,8 +232,9 @@ On `@cloudflare/think` + the AI SDK tool loop:
 - The chat renders Approve/Reject
   (`apps/web/src/components/chat/messages/chat-message-row.tsx` →
   `addToolApprovalResponse`).
-- **Pause happens before `execute`.** After approve, `execute` runs and returns
-  `ToolResult` — a miss is a soft `{ ok: false }`, not a throw.
+- **Pause happens before `execute`.** After approve, `execute` runs and
+  returns the value, or throws. A miss is a tool error (`output-error`),
+  not a `{ ok: false }` payload.
 
 ### Per-tool-class rule
 
@@ -274,7 +254,7 @@ On `@cloudflare/think` + the AI SDK tool loop:
 - **Product refs:** `update_product` / `delete_product` accept id or exact name
   via `resolveProductRef`; ambiguous refs → `conflict` (an **ask-point**:
   don't silently pick one match).
-- **Verify after write:** a successful `{ ok: true }` means the mutation landed;
+- **Verify after write:** a returned row means the mutation landed; a throw
   still re-read (or rely on UI invalidation) before telling the user "done" if
   downstream views can lag.
 
@@ -326,10 +306,9 @@ For day-to-day "add `get_foo`," skip the grill and follow **Adding a new tool**.
 
 ## Tests
 
-- Unit: `packages/agent/src/tools/tool-result.test.ts` — `requireFound` and
-  `asToolResult` mapping.
-- Agent: `packages/agent/src/in-app/product-tools.test.ts` — in-app
-  execute returns `ToolResult`, no throw on miss.
+- Unit: `packages/agent/src/tools/tool-result.test.ts` — `requireFound`.
+- Agent: `packages/agent/src/in-app/product-tools.test.ts` — a hit returns
+  the value; a miss or a refused write throws.
 - Workerd: `apps/web/test/agent/tool-approvals.workerd.test.ts` —
   `needsApproval` on `update_product` / `delete_product`; `sub-agent-tools.workerd.test.ts`
   — read-only composition + org-scoped reads.

@@ -19,7 +19,7 @@ function assistantWithToolPart(
     toolCallId = "tc_1",
     state = "output-available",
     input = { id: "p1" },
-    output = { ok: true, data: null },
+    output = { id: "p1" },
   } = options;
   return {
     id: "m1",
@@ -66,17 +66,18 @@ describe("collectWriteToolCompletionIds", () => {
       assistantWithToolPart("list_products", {
         toolCallId: "tc_list",
         input: {},
-        output: { ok: true, data: [] },
+        output: [],
       }),
     ];
     expect(collectWriteToolCompletionIds(messages, new Set())).toEqual([]);
   });
 
-  it("skips failed write outputs (ok:false)", () => {
+  it("skips a failed write (output-error), which never settled", () => {
     const messages = [
       assistantWithToolPart("delete_product", {
+        state: "output-error",
         input: { id: "missing" },
-        output: { ok: false, error: "not found", code: "not_found" },
+        output: undefined,
       }),
     ];
     expect(collectWriteToolCompletionIds(messages, new Set())).toEqual([]);

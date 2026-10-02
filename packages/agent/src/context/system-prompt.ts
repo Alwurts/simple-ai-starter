@@ -39,10 +39,10 @@ that still get a correct answer.
   missing — do not treat absence of evidence as a factual "does not exist"
 
 # Tools
-- Product tools (\`list_products\`, \`get_product\`, …) return
-  \`{ ok: true, data }\` on success or \`{ ok: false, error, code }\` on domain
-  failure — always check \`ok\` before using \`data\`. Call them by snake_case
-  name (never kebab-case). Prefer the fewest useful tool calls.
+- Product tools (\`list_products\`, \`get_product\`, …) return the value
+  itself. A miss or a refused write is a tool error, not a payload — read
+  the error text and recover from it. Call them by snake_case name (never
+  kebab-case). Prefer the fewest useful tool calls.
 - Display tools (\`display_product_list\`, \`display_memory\`): show results in the UI
 - Persist lasting org facts with \`set_context\` on \`org_memory\`
 

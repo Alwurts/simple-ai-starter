@@ -26,21 +26,25 @@ MOCK_SEND_EMAIL=true
 
 # ─── Org agent inference ──────────────────────────────────────────────────────
 # Pick the underlying provider; empty = workers-ai (the default).
-#   ORG_CHAT_PROVIDER=workers-ai | openai-compatible
+#   ORG_CHAT_PROVIDER=workers-ai | vercel-ai-gateway | openai-compatible
 ORG_CHAT_PROVIDER=
-# Optional: overrides the provider's default model. Required (non-empty) when
-# ORG_CHAT_PROVIDER=openai-compatible — that provider has no default model.
+# workers-ai: optional override of @cf/meta/llama-3.3-70b-instruct-fp8-fast.
+# A non-@cf slug (provider/model) routes through Cloudflare AI Gateway.
+# vercel-ai-gateway and openai-compatible: required.
 ORG_CHAT_MODEL=
+# Optional. "true" or "1" lets the composer attach images. Default is text-only.
+ORG_CHAT_IMAGE_INPUT=
+# Optional positive integer. Default 128000. Drives compaction.
+ORG_CHAT_CONTEXT_WINDOW=
 
-# workers-ai (default): Cloudflare account id + an API token with Workers AI
-# access. Required for the default provider — chat fails with a clear
-# "requires CF_ACCOUNT_ID" error until both are filled in. Calls the
-# OpenAI-compatible endpoint directly: no `env.AI` binding, plain `wrangler dev`.
-CF_ACCOUNT_ID=
-WORKERS_AI_API_TOKEN=
+# workers-ai (default): the `AI` binding in wrangler.jsonc. No API token here.
+# Local Workers AI is remote — `wrangler login` once.
+
+# vercel-ai-gateway: Vercel AI Gateway key. Required only for that provider.
+AI_GATEWAY_API_KEY=
 
 # openai-compatible: any OpenAI-compatible endpoint, called directly. Required
-# (all three non-empty) only when ORG_CHAT_PROVIDER=openai-compatible.
+# (both non-empty, plus ORG_CHAT_MODEL) only when ORG_CHAT_PROVIDER=openai-compatible.
 OPENAI_COMPATIBLE_BASE_URL=
 OPENAI_COMPATIBLE_API_KEY=
 

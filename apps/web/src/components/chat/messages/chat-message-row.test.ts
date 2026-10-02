@@ -3,6 +3,7 @@ import type { ToolUIPart } from "ai";
 import { describe, expect, it } from "vitest";
 import {
   isCollapsedWorkedPart,
+  isMemoryCardPart,
   isPausedExecutionPart,
   isProductListCardPart,
 } from "./chat-message-row";
@@ -31,12 +32,26 @@ describe("isProductListCardPart", () => {
     ).toBe(false);
   });
 
-  it("falls back to the generic row for every other tool", () => {
+  it("falls back to the generic row for every other tool, including an errored card", () => {
     expect(
       isProductListCardPart(
-        toolPart({ type: "tool-display_memory", output: { content: "…" } })
+        toolPart({ state: "output-error", output: undefined })
       )
     ).toBe(false);
+    expect(
+      isMemoryCardPart(
+        toolPart({
+          type: "tool-display_memory",
+          state: "output-error",
+          output: undefined,
+        })
+      )
+    ).toBe(false);
+    expect(
+      isMemoryCardPart(
+        toolPart({ type: "tool-display_memory", output: { content: "…" } })
+      )
+    ).toBe(true);
     expect(
       isProductListCardPart(
         toolPart({ type: "tool-write_workspace_file", output: { ok: true } })
@@ -116,6 +131,24 @@ describe("assistant part grouping", () => {
     ).toEqual([
       { kind: "worked", types: ["tool-list_products"] },
       { kind: "visible", type: "tool-display_product_list" },
+      { kind: "visible", type: "text" },
+    ]);
+  });
+
+  it("renders a display_memory card outside the collapsed group", () => {
+    expect(
+      kindsOf([
+        {
+          type: "tool-display_memory",
+          state: "output-available",
+          toolCallId: "tc_mem",
+          input: {},
+          output: { content: "Ships on Fridays." },
+        },
+        { type: "text", text: "Shown above." },
+      ])
+    ).toEqual([
+      { kind: "visible", type: "tool-display_memory" },
       { kind: "visible", type: "text" },
     ]);
   });

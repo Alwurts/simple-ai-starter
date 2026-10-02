@@ -3,10 +3,18 @@ import { z } from "zod";
 import { DISPLAY_TOOL_NAMES } from "../constants";
 import type { AgentToolsContext } from "../types";
 
+export interface DisplayToolExtras {
+  /** Org shared memory (`org_memory`). Missing reader yields an empty card. */
+  readMemory?: () => Promise<string | null>;
+}
+
 const DISPLAY_NO_DUPLICATE =
   " The UI renders the data — do not repeat it in your reply (no tables or lists).";
 
-export const createDisplayTools = (_ctx: AgentToolsContext): ToolSet => ({
+export const createDisplayTools = (
+  _ctx: AgentToolsContext,
+  extras: DisplayToolExtras = {}
+): ToolSet => ({
   [DISPLAY_TOOL_NAMES.PRODUCT_LIST]: tool({
     description: `Show products as an inline list in the chat. Pass product IDs from list/get tools.${DISPLAY_NO_DUPLICATE}`,
     inputSchema: z.object({
@@ -18,6 +26,8 @@ export const createDisplayTools = (_ctx: AgentToolsContext): ToolSet => ({
     description:
       "Show the organization's shared memory as an inline card. Use when the user asks what you remember about the organization.",
     inputSchema: z.object({}),
-    execute: async () => ({}),
+    execute: async () => ({
+      content: (await extras.readMemory?.()) ?? "",
+    }),
   }),
 });

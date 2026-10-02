@@ -37,10 +37,7 @@ function message(
           toolCallId: "call-1",
           state,
           input: { id: "Widget", data: { price: 4242 } },
-          output:
-            state === "output-available"
-              ? { ok: true, data: { price: 4242 } }
-              : undefined,
+          output: state === "output-available" ? { price: 4242 } : undefined,
           ...approval,
         };
   return {

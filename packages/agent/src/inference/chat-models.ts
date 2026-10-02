@@ -1,135 +1,56 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModel } from "ai";
+import { createGateway, type LanguageModel } from "ai";
 
 /**
- * Env-driven provider registry for org-agent inference.
+ * Three-branch model pick for the org agent. No catalog.
  *
- * The org chat model is selected at runtime from environment variables so the
- * same codebase can route through Cloudflare Workers AI (the default) or any
- * OpenAI-compatible endpoint. Both providers are explicit HTTPS calls built
- * with `@ai-sdk/openai-compatible`, so everything runs under plain
- * `wrangler dev` — there is no `env.AI` binding.
- *
- * The decision (which provider, which model, which URL/key) is a pure function
- * (`resolveOrgChatModelConfig`) so it is directly testable; `resolveOrgChatModel`
- * layers the AI SDK client construction on top.
+ * - `workers-ai` (default): return the model id string. Think resolves a
+ *   `@cf/...` id off the `AI` binding, and any other `provider/model` slug
+ *   through Cloudflare AI Gateway. Local Workers AI is remote (`wrangler login`).
+ * - `vercel-ai-gateway`: `createGateway` from `ai` (re-exports `@ai-sdk/gateway`),
+ *   key `AI_GATEWAY_API_KEY`. `ORG_CHAT_MODEL` is required.
+ * - `openai-compatible`: BYO endpoint (e2e fake model, OrcaRouter smoke).
+ *   Base URL, key, and `ORG_CHAT_MODEL` are required.
  */
 
-/**
- * The env fields this module reads; optional so tests can pass partial envs.
- * Derived from the generated `Cloudflare.Env` (the secrets are declared in
- * `apps/web/wrangler.jsonc`), never restated by hand.
- */
 export type OrgInferenceEnv = Partial<
   Pick<
     Cloudflare.Env,
     | "ORG_CHAT_PROVIDER"
     | "ORG_CHAT_MODEL"
-    | "WORKERS_AI_API_TOKEN"
-    | "CF_ACCOUNT_ID"
+    | "ORG_CHAT_IMAGE_INPUT"
+    | "ORG_CHAT_CONTEXT_WINDOW"
+    | "AI_GATEWAY_API_KEY"
     | "OPENAI_COMPATIBLE_BASE_URL"
     | "OPENAI_COMPATIBLE_API_KEY"
   >
 >;
 
-export type OrgChatProvider = "workers-ai" | "openai-compatible";
+export type OrgChatProvider =
+  | "workers-ai"
+  | "vercel-ai-gateway"
+  | "openai-compatible";
 
-/** Modalities a model accepts on user message content. `text` is always on. */
 export type OrgChatInputModality = "text" | "image";
 
-/**
- * Model-level input capabilities.
- *
- * Documented per catalog offering — not inferred from the SDK — because
- * OpenAI-compatible endpoints advertise the same wire shape while rejecting
- * non-text parts at runtime (`messages.content.type is invalid, allowed
- * values: ['text']`). The same provider can host both text-only and vision
- * models.
- */
 export interface OrgChatModelCapabilities {
   provider: OrgChatProvider;
-  /** Bare model id (e.g. `@cf/meta/llama-3.3-70b-instruct-fp8-fast`). */
+  /** Model id sent to the provider, or the Workers AI string Think resolves. */
   entryId: string;
   inputModalities: readonly OrgChatInputModality[];
   supportsImageInput: boolean;
 }
 
-const PROVIDERS: readonly OrgChatProvider[] = [
-  "workers-ai",
-  "openai-compatible",
-];
-
-const DEFAULT_PROVIDER: OrgChatProvider = "workers-ai";
-
-/**
- * Per-provider client construction: `providerName` labels the client, and the
- * base URL is resolved from env at resolve time (Workers AI derives it from
- * `CF_ACCOUNT_ID`; the generic provider reads `OPENAI_COMPATIBLE_BASE_URL`).
- */
-interface ProviderBuild {
-  providerName: string;
-}
-
-const PROVIDER_BUILD: Record<OrgChatProvider, ProviderBuild> = {
-  "workers-ai": { providerName: "workersAi" },
-  "openai-compatible": { providerName: "openaiCompatible" },
-};
-
-interface ModelOffering {
-  provider: OrgChatProvider;
-  /** Model id sent to the provider (e.g. `@cf/meta/llama-3.3-70b-instruct-fp8-fast`). */
-  entryId: string;
-  /** Total context window (tokens) — drives the compaction budget. */
-  contextWindow: number;
-  /** User-message input modalities this model accepts. */
-  inputModalities: readonly OrgChatInputModality[];
-}
-
-// Update this catalog when a new chat model is adopted. The first entry for a
-// provider is its default when `ORG_CHAT_MODEL` is unset.
-const MODEL_OFFERINGS: readonly ModelOffering[] = [
-  {
-    provider: "workers-ai",
-    entryId: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    contextWindow: 128_000,
-    inputModalities: ["text"],
-  },
-  // Capability row for the generic provider — NOT a default: it has no model
-  // of its own, so `ORG_CHAT_MODEL` is required (see `selectOffering`).
-  {
-    provider: "openai-compatible",
-    entryId: "z-ai/glm-5.3-flash",
-    contextWindow: 1_000_000,
-    inputModalities: ["text", "image"],
-  },
-];
-
-// Conservative window for an unrecognized model id. Sized to the smallest
-// mainstream window so the derived budget never overruns an unknown model.
-const DEFAULT_CONTEXT_WINDOW = 128_000;
-
-// Compact when input tokens reach this fraction of the model's window, leaving
-// headroom for the response plus the next user turn before the hard ceiling.
-const COMPACTION_FRACTION = 0.75;
-
-/** The resolved construction plan for the org chat model — pure, no SDK calls. */
-export interface OrgChatModelConfig {
-  provider: OrgChatProvider;
-  entryId: string;
-  contextWindow: number;
-  providerName: string;
-  baseURL: string;
-  apiKey?: string;
-}
+/** What `getModel()` returns. A string is only the Workers AI branch. */
+export type OrgChatModel = LanguageModel | string;
 
 export interface ResolvedOrgChatModel {
-  model: LanguageModel;
+  model: OrgChatModel;
   contextWindow: number;
   provider: OrgChatProvider;
   capabilities: OrgChatModelCapabilities;
 }
 
-/** Minimal part shape used when gating attachments against provider capabilities. */
 export interface ChatAttachmentPart {
   type: string;
   mediaType?: string;
@@ -137,36 +58,162 @@ export interface ChatAttachmentPart {
 
 export type AttachmentGateResult = { ok: true } | { ok: false; reason: string };
 
-function capabilitiesFromOffering(
-  offering: ModelOffering
+const PROVIDERS: readonly OrgChatProvider[] = [
+  "workers-ai",
+  "vercel-ai-gateway",
+  "openai-compatible",
+];
+
+const DEFAULT_PROVIDER: OrgChatProvider = "workers-ai";
+
+/** Workers AI default when `ORG_CHAT_MODEL` is unset. */
+export const DEFAULT_WORKERS_AI_MODEL =
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+
+const DEFAULT_CONTEXT_WINDOW = 128_000;
+
+const COMPACTION_FRACTION = 0.75;
+
+function trimmed(value: string | undefined): string | undefined {
+  const text = value?.trim();
+  return text ? text : undefined;
+}
+
+function isProvider(value: string): value is OrgChatProvider {
+  return (PROVIDERS as readonly string[]).includes(value);
+}
+
+export function selectProvider(env: OrgInferenceEnv): OrgChatProvider {
+  const raw = trimmed(env.ORG_CHAT_PROVIDER);
+  return raw && isProvider(raw) ? raw : DEFAULT_PROVIDER;
+}
+
+function imageInputEnabled(env: OrgInferenceEnv): boolean {
+  const raw = trimmed(env.ORG_CHAT_IMAGE_INPUT)?.toLowerCase();
+  return raw === "1" || raw === "true";
+}
+
+function contextWindowFor(env: OrgInferenceEnv): number {
+  const raw = trimmed(env.ORG_CHAT_CONTEXT_WINDOW);
+  if (!raw) {
+    return DEFAULT_CONTEXT_WINDOW;
+  }
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(
+      `ORG_CHAT_CONTEXT_WINDOW="${raw}" must be a positive integer.`
+    );
+  }
+  return parsed;
+}
+
+function modelIdFor(provider: OrgChatProvider, env: OrgInferenceEnv): string {
+  const override = trimmed(env.ORG_CHAT_MODEL);
+  if (override) {
+    return override;
+  }
+  if (provider === "workers-ai") {
+    return DEFAULT_WORKERS_AI_MODEL;
+  }
+  throw new Error(
+    `ORG_CHAT_PROVIDER="${provider}" requires ORG_CHAT_MODEL to be set.`
+  );
+}
+
+function requireEnv(
+  provider: OrgChatProvider,
+  name: string,
+  value: string | undefined
+): string {
+  const text = trimmed(value);
+  if (!text) {
+    throw new Error(
+      `ORG_CHAT_PROVIDER="${provider}" requires ${name} to be set.`
+    );
+  }
+  return text;
+}
+
+function capabilitiesFor(
+  provider: OrgChatProvider,
+  entryId: string,
+  env: OrgInferenceEnv
 ): OrgChatModelCapabilities {
+  const supportsImageInput = imageInputEnabled(env);
   return {
-    provider: offering.provider,
-    entryId: offering.entryId,
-    inputModalities: offering.inputModalities,
-    supportsImageInput: offering.inputModalities.includes("image"),
+    provider,
+    entryId,
+    inputModalities: supportsImageInput ? ["text", "image"] : ["text"],
+    supportsImageInput,
+  };
+}
+
+function buildModel(
+  provider: OrgChatProvider,
+  modelId: string,
+  env: OrgInferenceEnv
+): OrgChatModel {
+  if (provider === "workers-ai") {
+    return modelId;
+  }
+  if (provider === "vercel-ai-gateway") {
+    const apiKey = requireEnv(
+      provider,
+      "AI_GATEWAY_API_KEY",
+      env.AI_GATEWAY_API_KEY
+    );
+    return createGateway({ apiKey })(modelId);
+  }
+  const baseURL = requireEnv(
+    provider,
+    "OPENAI_COMPATIBLE_BASE_URL",
+    env.OPENAI_COMPATIBLE_BASE_URL
+  );
+  const apiKey = requireEnv(
+    provider,
+    "OPENAI_COMPATIBLE_API_KEY",
+    env.OPENAI_COMPATIBLE_API_KEY
+  );
+  return createOpenAICompatible({
+    name: "openaiCompatible",
+    baseURL,
+    apiKey,
+  }).chatModel(modelId);
+}
+
+/**
+ * Resolve the org chat model from env. Workers AI returns a model-id string
+ * (Think builds the client off the `AI` binding). The other two branches
+ * return an AI SDK model. Callers resolve once and memoize.
+ */
+export function resolveOrgChatModel(
+  env: OrgInferenceEnv
+): ResolvedOrgChatModel {
+  const provider = selectProvider(env);
+  const entryId = modelIdFor(provider, env);
+  return {
+    model: buildModel(provider, entryId, env),
+    contextWindow: contextWindowFor(env),
+    provider,
+    capabilities: capabilitiesFor(provider, entryId, env),
   };
 }
 
 /**
- * Resolve the active org-chat model's input capabilities from env.
- * Pure — same `selectProvider` + `selectOffering` path as model resolve.
+ * Input capabilities for the composer. Does not construct a client and does
+ * not require provider keys. A provider that still needs `ORG_CHAT_MODEL`
+ * reports `entryId: ""` until it is set, so the capabilities route stays up.
  */
 export function resolveOrgChatCapabilities(
   env: OrgInferenceEnv
 ): OrgChatModelCapabilities {
   const provider = selectProvider(env);
-  const offering = selectOffering(provider, env);
-  return capabilitiesFromOffering(offering);
+  const entryId =
+    trimmed(env.ORG_CHAT_MODEL) ??
+    (provider === "workers-ai" ? DEFAULT_WORKERS_AI_MODEL : "");
+  return capabilitiesFor(provider, entryId, env);
 }
 
-/**
- * Gate file/image parts against provider capabilities before the model call.
- *
- * - Text-only providers: any `file` part is rejected.
- * - Image-capable providers: only `image/*` file parts are allowed; other
- *   media types (e.g. text files, PDFs) are rejected before the API call.
- */
 export function gateChatAttachments(
   parts: readonly ChatAttachmentPart[],
   capabilities: OrgChatModelCapabilities
@@ -195,152 +242,10 @@ export function gateChatAttachments(
   return { ok: true };
 }
 
-function isProvider(value: string): value is OrgChatProvider {
-  return (PROVIDERS as readonly string[]).includes(value);
-}
-
-function selectProvider(env: OrgInferenceEnv): OrgChatProvider {
-  const raw = env.ORG_CHAT_PROVIDER?.trim();
-  return raw && isProvider(raw) ? raw : DEFAULT_PROVIDER;
-}
-
-// Providers whose model must be named explicitly — no catalog default.
-const REQUIRES_EXPLICIT_MODEL: readonly OrgChatProvider[] = [
-  "openai-compatible",
-];
-
-function selectOffering(
-  provider: OrgChatProvider,
-  env: OrgInferenceEnv
-): ModelOffering {
-  const override = env.ORG_CHAT_MODEL?.trim();
-  if (override) {
-    const known = MODEL_OFFERINGS.find(
-      (o) => o.provider === provider && o.entryId === override
-    );
-    if (known) {
-      return known;
-    }
-    // Allow an arbitrary model id for the provider with conservative defaults.
-    return {
-      provider,
-      entryId: override,
-      contextWindow: DEFAULT_CONTEXT_WINDOW,
-      inputModalities: ["text"],
-    };
-  }
-  if (REQUIRES_EXPLICIT_MODEL.includes(provider)) {
-    throw new Error(
-      `ORG_CHAT_PROVIDER="${provider}" requires ORG_CHAT_MODEL to be set.`
-    );
-  }
-  const def = MODEL_OFFERINGS.find((o) => o.provider === provider);
-  if (!def) {
-    throw new Error(`No default model registered for provider "${provider}".`);
-  }
-  return def;
-}
-
-/** The env field carrying each provider's API key (also used in error messages). */
-const KEY_FIELD: Record<OrgChatProvider, NonNullable<keyof OrgInferenceEnv>> = {
-  "workers-ai": "WORKERS_AI_API_TOKEN",
-  "openai-compatible": "OPENAI_COMPATIBLE_API_KEY",
-};
-
-function apiKeyFor(
-  provider: OrgChatProvider,
-  env: OrgInferenceEnv
-): string | undefined {
-  return env[KEY_FIELD[provider]];
-}
-
-function baseURLFor(provider: OrgChatProvider, env: OrgInferenceEnv): string {
-  if (provider === "openai-compatible") {
-    const direct = env.OPENAI_COMPATIBLE_BASE_URL?.trim();
-    if (!direct) {
-      throw new Error(
-        `ORG_CHAT_PROVIDER="${provider}" requires OPENAI_COMPATIBLE_BASE_URL to be set.`
-      );
-    }
-    return direct;
-  }
-  if (!env.CF_ACCOUNT_ID) {
-    throw new Error(
-      `ORG_CHAT_PROVIDER="${provider}" requires CF_ACCOUNT_ID to be set.`
-    );
-  }
-  return `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/v1`;
-}
-
-/**
- * Resolve the construction plan for the org chat model from env. Pure — makes no
- * SDK/network calls — so the provider/model/URL/key decisions are testable.
- */
-export function resolveOrgChatModelConfig(
-  env: OrgInferenceEnv
-): OrgChatModelConfig {
-  const provider = selectProvider(env);
-  const offering = selectOffering(provider, env);
-  const baseURL = baseURLFor(provider, env);
-  const apiKey = apiKeyFor(provider, env);
-  // Fail fast at resolve time with a clear message rather than a cryptic 401 on
-  // the first inference — the registry's provider selection is explicit, so its
-  // key must be present.
-  if (!apiKey) {
-    throw new Error(
-      `ORG_CHAT_PROVIDER="${provider}" requires ${KEY_FIELD[provider]} to be set.`
-    );
-  }
-  return {
-    provider,
-    entryId: offering.entryId,
-    contextWindow: offering.contextWindow,
-    providerName: PROVIDER_BUILD[provider].providerName,
-    baseURL,
-    apiKey,
-  };
-}
-
-/** Exported for test coverage. */
-export function buildOrgChatModel(config: OrgChatModelConfig): LanguageModel {
-  return createOpenAICompatible({
-    name: config.providerName,
-    baseURL: config.baseURL,
-    apiKey: config.apiKey,
-  }).chatModel(config.entryId);
-}
-
-/**
- * Resolve the org chat model from the runtime env. The result is constant for
- * a given env, so callers resolve it once (in `onStart`) rather than per turn.
- */
-export function resolveOrgChatModel(env: Cloudflare.Env): ResolvedOrgChatModel {
-  const config = resolveOrgChatModelConfig(env);
-  return {
-    model: buildOrgChatModel(config),
-    contextWindow: config.contextWindow,
-    provider: config.provider,
-    capabilities: capabilitiesFromOffering(
-      selectOffering(config.provider, env)
-    ),
-  };
-}
-
-/**
- * Token budget above which the chat history should be compacted, derived from
- * the resolved model's context window. Both the pre-turn heuristic backstop
- * (`compactAfter`) and the post-turn real-usage trigger use this so they agree.
- */
 export function getCompactionLimit(contextWindow: number): number {
   return Math.floor(contextWindow * COMPACTION_FRACTION);
 }
 
-/**
- * Think's context-window overflow recovery config: the reactive
- * backstop compacts and retries a turn the provider rejected as too long;
- * the proactive guard compacts mid-turn once real step usage crosses ~90% of
- * the model's window. Both run the session's `onCompaction` function.
- */
 export function orgChatContextOverflow(contextWindow: number) {
   return {
     reactive: true,
