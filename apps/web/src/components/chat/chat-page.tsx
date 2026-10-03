@@ -2,7 +2,6 @@
 
 import type { PendingAction } from "@cloudflare/codemode";
 import { useAgentChat } from "@cloudflare/think/react";
-import { useNavigate, useParams } from "@tanstack/react-router";
 import type { OrgChat } from "@workspace/agent/org/chat";
 import type { ChatSummary } from "@workspace/agent/types";
 import { Button } from "@workspace/ui/components/shadcn/button";
@@ -62,6 +61,8 @@ import {
 import { ChatDeleteDialog } from "@/components/chat/chat-delete-dialog";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
+import { useChatDock } from "@/components/chat/dock/dock-context";
+import { ChatDockWindowControls } from "@/components/chat/dock/dock-controls";
 import { useAgentToolMutationInvalidation } from "@/hooks/chat/use-agent-tool-mutation-invalidation";
 import { useChatSidePanel } from "@/hooks/chat/use-chat-side-panel";
 import { type OrgChatMessage, toSendableMessage } from "@/lib/chat/ai-types";
@@ -104,39 +105,57 @@ function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
 const REJECT_REASON = "Denied by the user";
 
 /**
- * The chat page. `/chat/new` is the draft: nothing is written until the first
- * send. That call stores the user message and inserts the chat, and the page
- * navigates only once the org state's chat list contains the new id — an
- * unknown id never mounts ChatView (no chat socket): the sub-agent 404
- * reaches the browser as a non-terminal close and would reconnect forever,
- * so the missing chat is detected from the org state's chat list once it has
- * loaded (`chatRouteState`).
+ * The dock's conversation. `chatId` null is the draft: nothing is written
+ * until the first send. That call stores the user message and inserts the
+ * chat, and the dock shows the chat only once the org state's chat list
+ * contains the new id — an unknown id never mounts ChatView (no chat
+ * socket): the sub-agent 404 reaches the browser as a non-terminal close
+ * and would reconnect forever, so the missing chat is detected from the
+ * org state's chat list once it has loaded (`chatRouteState`).
+ *
+ * `files` is the expanded desktop window. The popup has no room for the
+ * workspace panel.
  */
-export function ChatPage() {
+export function ChatPage({
+  chatId,
+  files,
+}: {
+  chatId: string | null;
+  files: boolean;
+}) {
   const { chats, chatsLoadState } = useOrgConnection();
-  // `/chat/new` has no chatId param — that absence is the draft.
-  const { chatId: chatIdParam } = useParams({ strict: false });
-  const chatId = chatIdParam ?? null;
   const routeState =
     chatId === null ? "open" : chatRouteState(chatId, chatsLoadState, chats);
   return (
     <div
-      className="@container flex h-full min-h-0 flex-col overflow-hidden bg-background"
-      data-slot="full-screen-chat"
+      className="@container flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-background"
+      data-slot="chat-dock-page"
     >
       <ResizablePanelGroup
         className="min-h-0 flex-1"
-        data-slot="full-screen-chat-layout"
+        data-slot="chat-dock-layout"
         orientation="horizontal"
       >
-        {routeState === "not-found" ? <ChatNotFound /> : null}
+        {routeState === "loading" ? (
+          <DockFrame title="Chat">
+            <div className="p-4">
+              <HydratingSkeleton />
+            </div>
+          </DockFrame>
+        ) : null}
+        {routeState === "not-found" ? (
+          <DockFrame title="Chat">
+            <ChatNotFound />
+          </DockFrame>
+        ) : null}
         {routeState === "open" && chatId === null ? (
-          <DraftView title={chatTitleOf(chats, null)} />
+          <DraftView files={files} title={chatTitleOf(chats, null)} />
         ) : null}
         {routeState === "open" && chatId !== null ? (
           <ChatView
-            key={chatId}
             chatId={chatId}
+            files={files}
+            key={chatId}
             title={chatTitleOf(chats, chatId)}
           />
         ) : null}
@@ -145,8 +164,32 @@ export function ChatPage() {
   );
 }
 
+/** Header for the empty dock states so minimize and close stay available. */
+function DockFrame({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <ChatColumn
+      body={<div className="min-h-0 flex-1">{children}</div>}
+      footer={null}
+      header={
+        <ChatHeader
+          menu={null}
+          panelOpen={false}
+          title={title}
+          windowControls={<ChatDockWindowControls />}
+        />
+      }
+    />
+  );
+}
+
 function ChatNotFound() {
-  const navigate = useNavigate();
+  const dock = useChatDock();
   return (
     <Empty className="h-full border-0">
       <EmptyHeader>
@@ -160,7 +203,12 @@ function ChatNotFound() {
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button onClick={() => navigate({ to: "/chat/new" })} type="button">
+        <Button
+          onClick={() => {
+            dock.openDraft();
+          }}
+          type="button"
+        >
           <MessageCircleDashedIcon />
           Start a new chat
         </Button>
@@ -169,18 +217,21 @@ function ChatNotFound() {
   );
 }
 
-function DraftView({ title }: { title: string }) {
+function DraftView({ files, title }: { files: boolean; title: string }) {
   const { chats, startChat } = useOrgConnection();
-  const navigate = useNavigate();
+  const dock = useChatDock();
+  const sidePanel = useChatSidePanel();
+  const isMobile = useIsMobile();
   const [draftError, setDraftError] = useState<string | null>(null);
   /** Set after startChat returns; navigation waits until this id is listed. */
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
-  // The draft's chat list is already "ready", so navigating before the
-  // broadcast lands is "Chat not found". Wait for the inserted row.
-  // biome-ignore lint/plugin/no-use-effect: navigate once the new chat is in org state
+  // The draft's chat list is already "ready", so showing the chat before the
+  // broadcast lands is "Chat not found". Wait for the inserted row. A chat
+  // URL is updated by the dock; an app page stays put.
+  // biome-ignore lint/plugin/no-use-effect: promote once the new chat is in org state
   useEffect(() => {
     if (!openingId) {
       return;
@@ -188,12 +239,8 @@ function DraftView({ title }: { title: string }) {
     if (!chats.some((chat) => chat.id === openingId)) {
       return;
     }
-    navigate({
-      params: { chatId: openingId },
-      replace: true,
-      to: "/chat/$chatId",
-    });
-  }, [chats, navigate, openingId]);
+    dock.promoteDraft(openingId);
+  }, [chats, dock.promoteDraft, openingId]);
 
   const handleSubmit = useCallback(
     async (message: PromptMessage) => {
@@ -234,42 +281,101 @@ function DraftView({ title }: { title: string }) {
   );
 
   return (
-    <ChatColumn
-      body={<EmptyConversation />}
-      footer={
-        <>
-          {draftError ? (
-            <p className="pb-1 text-center text-destructive text-sm">
-              {draftError}
-            </p>
-          ) : null}
-          <ChatComposer
-            onSubmit={handleSubmit}
-            placeholder="Start a new conversation..."
-            status={submitting ? "submitted" : "ready"}
+    <>
+      <ChatColumn
+        body={<EmptyConversation />}
+        footer={
+          <>
+            {draftError ? (
+              <p className="pb-1 text-center text-destructive text-sm">
+                {draftError}
+              </p>
+            ) : null}
+            <ChatComposer
+              onSubmit={handleSubmit}
+              placeholder="Start a new conversation..."
+              status={submitting ? "submitted" : "ready"}
+            />
+          </>
+        }
+        header={
+          <ChatHeader
+            menu={null}
+            onTogglePanel={files ? sidePanel.togglePanel : undefined}
+            panelOpen={files && sidePanel.panelOpen}
+            title={title}
+            windowControls={<ChatDockWindowControls />}
           />
+        }
+      />
+      {files && sidePanel.panelOpen && !isMobile ? (
+        <>
+          <ResizableHandle className="bg-transparent" />
+          <ResizablePanel
+            className="ml-px flex min-h-0 flex-col overflow-hidden rounded-l-xl border-border border-l bg-accent/5 shadow"
+            defaultSize="32%"
+            maxSize="55%"
+            minSize="22%"
+          >
+            <ChatSidePanel
+              activeTab={sidePanel.activeTab}
+              activeTabId={sidePanel.activeTabId}
+              onClosePanel={sidePanel.closePanel}
+              onCloseTab={sidePanel.closeTab}
+              onOpenFile={sidePanel.openFileTab}
+              onSelectTab={sidePanel.setActiveTabId}
+              tabs={sidePanel.tabs}
+            />
+          </ResizablePanel>
         </>
-      }
-      header={
-        <ChatHeader
-          menu={null}
-          panelOpen={false}
-          title={title}
-          onTogglePanel={undefined}
-        />
-      }
-    />
+      ) : null}
+      <Sheet
+        onOpenChange={(open) => {
+          if (!open) {
+            sidePanel.closePanel();
+          }
+        }}
+        open={isMobile && sidePanel.panelOpen}
+      >
+        <SheetContent
+          className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-full"
+          showCloseButton={false}
+          side="right"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Files</SheetTitle>
+            <SheetDescription>
+              Read-only view of the org's shared workspace.
+            </SheetDescription>
+          </SheetHeader>
+          {isMobile && sidePanel.panelOpen ? (
+            <div className="min-h-0 flex-1">
+              <ChatSidePanel
+                activeTab={sidePanel.activeTab}
+                activeTabId={sidePanel.activeTabId}
+                onClosePanel={sidePanel.closePanel}
+                onCloseTab={sidePanel.closeTab}
+                onOpenFile={sidePanel.openFileTab}
+                onSelectTab={sidePanel.setActiveTabId}
+                tabs={sidePanel.tabs}
+              />
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
 interface ChatViewProps {
   chatId: string;
+  files: boolean;
   title: string;
 }
 
-function ChatView({ chatId, title }: ChatViewProps) {
-  const { chats, deleteChat, organizationId } = useOrgConnection();
-  const navigate = useNavigate();
+function ChatView({ chatId, files, title }: ChatViewProps) {
+  const { deleteChat, organizationId } = useOrgConnection();
+  const { releaseChat } = useChatDock();
   const sidePanel = useChatSidePanel();
   // Below md the panel is a sheet instead of a split — a 390 px screen
   // cannot give both the transcript and the files readable columns.
@@ -509,20 +615,15 @@ function ChatView({ chatId, title }: ChatViewProps) {
 
   const handleDelete = useCallback(async () => {
     helpers.stop();
-    // This tab leaves the chat route before the delete RPC. A late
-    // re-register is ignored; chat_meta is the record.
-    const next = chats.find((chat) => chat.id !== chatId)?.id;
-    await navigate(
-      next
-        ? { params: { chatId: next }, to: "/chat/$chatId" }
-        : { to: "/chat/new" }
-    );
+    // Leave the chat URL and unmount this socket before the delete RPC. A
+    // late re-register is ignored; chat_meta is the record.
+    await releaseChat(chatId, "deleted");
     try {
       await deleteChat(chatId);
     } catch {
       // deleteChat already toasted the failure.
     }
-  }, [chatId, chats, deleteChat, helpers, navigate]);
+  }, [chatId, deleteChat, helpers, releaseChat]);
 
   const hydrating = !(chatAgent.identified || chatAgent.connectionError);
   const streamingMessageId =
@@ -618,13 +719,14 @@ function ChatView({ chatId, title }: ChatViewProps) {
         header={
           <ChatHeader
             menu={menu}
-            onTogglePanel={sidePanel.togglePanel}
-            panelOpen={sidePanel.panelOpen}
+            onTogglePanel={files ? sidePanel.togglePanel : undefined}
+            panelOpen={files && sidePanel.panelOpen}
             title={title}
+            windowControls={<ChatDockWindowControls />}
           />
         }
       />
-      {sidePanel.panelOpen && !isMobile ? (
+      {files && sidePanel.panelOpen && !isMobile ? (
         <>
           <ResizableHandle className="bg-transparent" />
           <ResizablePanel

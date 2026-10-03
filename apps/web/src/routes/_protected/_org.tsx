@@ -4,6 +4,8 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { auth } from "@workspace/auth";
 import { Shell, ShellInset } from "@workspace/ui/components/brand/shell";
 import { OrgConnection } from "@/components/chat/connection/org-connection";
+import { ChatDockStage, ChatTabFooter } from "@/components/chat/dock/chat-dock";
+import { ChatDockProvider } from "@/components/chat/dock/dock-context";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { RouteError } from "@/components/layout/route-error";
 import { useActiveOrganizationId } from "@/hooks/organization/use-organization";
@@ -72,9 +74,9 @@ export const Route = createFileRoute("/_protected/_org")({
 });
 
 /**
- * The chat is the signed-in home, so the org's agent connection wraps the
- * whole org area: the sidebar thread list and the chat page share one
- * `OrgAgent` socket.
+ * One org agent socket for the sidebar list and the dock. The chat window
+ * covers the page. Desktop tabs sit under the inset card. Keyed by org
+ * so a switch drops the previous socket.
  */
 function OrgLayout() {
   const organizationId = useActiveOrganizationId();
@@ -84,15 +86,17 @@ function OrgLayout() {
     return null;
   }
   return (
-    // Keyed by org so a switch remounts the connection — without it the old
-    // org's socket (and its chat list) lingers into the new org until state
-    // happens to catch up, 404-reconnecting all the while.
     <OrgConnection key={organizationId} organizationId={organizationId}>
-      <Shell sidebar={<AppSidebar />}>
-        <ShellInset>
-          <Outlet />
-        </ShellInset>
-      </Shell>
+      <ChatDockProvider>
+        <Shell sidebar={<AppSidebar />}>
+          <ShellInset>
+            <ChatDockStage>
+              <Outlet />
+            </ChatDockStage>
+          </ShellInset>
+          <ChatTabFooter />
+        </Shell>
+      </ChatDockProvider>
     </OrgConnection>
   );
 }

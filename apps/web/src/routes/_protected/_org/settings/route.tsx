@@ -14,10 +14,16 @@ import {
 } from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
+import { cn } from "@workspace/ui/lib/utils";
 import {
   type AppBreadcrumbItem,
   AppBreadcrumbs,
 } from "@/components/layout/app-breadcrumbs";
+
+const SETTINGS_SECTIONS = [
+  { title: "General", to: "/settings/general" },
+  { title: "Members", to: "/settings/members" },
+] as const;
 
 function useSettingsCrumbs(): AppBreadcrumbItem[] {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -78,9 +84,49 @@ function SettingsLayout() {
         <ShellHeaderActions />
       </ShellHeader>
       <ShellContent>
-        <Outlet />
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <SettingsSectionNav />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-4xl space-y-8 px-4 py-6 md:px-6 md:py-8">
+              <Outlet />
+            </div>
+          </div>
+        </div>
       </ShellContent>
     </ShellPage>
+  );
+}
+
+function SettingsSectionNav() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <nav
+      aria-label="Settings"
+      className="flex shrink-0 gap-1 border-b px-3 py-2 md:w-48 md:flex-col md:border-r md:border-b-0 md:px-2 md:py-4"
+    >
+      <p className="hidden px-2 pb-1 font-medium text-muted-foreground text-xs md:block">
+        Organization
+      </p>
+      {SETTINGS_SECTIONS.map((section) => {
+        const active =
+          pathname === section.to || pathname.startsWith(`${section.to}/`);
+        return (
+          <Link
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "rounded-md px-2 py-1.5 text-sm",
+              active
+                ? "bg-muted font-medium text-foreground"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            )}
+            key={section.to}
+            to={section.to}
+          >
+            {section.title}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 

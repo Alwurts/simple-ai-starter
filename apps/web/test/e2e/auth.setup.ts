@@ -6,9 +6,8 @@ import { fillValue, waitForRouteSettled, waitHydrated } from "./helpers";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const authFile = join(__dirname, "../.auth/user.json");
 const ONBOARDING_URL_PATTERN = /onboarding/;
-// The chat is the signed-in home: `/` immediately redirects to the latest
-// chat or the new-chat draft, so assert on the landed route.
-const HOME_URL_PATTERN = /\/chat\/(new|[0-9a-f]+)/;
+// Signed-in home is `/`. Chat opens in the dock and does not replace this URL.
+const HOME_URL_PATTERN = /^https?:\/\/[^/]+\/?$/;
 
 setup("create authenticated user", async ({ page }) => {
   // Unique per attempt: a retry after a failed attempt must not collide with

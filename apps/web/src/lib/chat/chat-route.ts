@@ -8,7 +8,7 @@ export type ChatsLoadState = "loading" | "ready" | "error";
  * Sidebar chat-list readiness. Agents delivers the identity frame before the
  * state frame, so `ready` must mean the state frame arrived — it always
  * carries the full chat list, even when empty (`ready` with an empty list
- * would redirect `/` to the draft and flash "Chat not found" on real chats).
+ * would flash "Chat not found" on a real chat opened from a deep link).
  * A terminal connection error wins.
  */
 export function deriveChatsLoadState(

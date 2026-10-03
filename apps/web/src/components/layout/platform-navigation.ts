@@ -6,11 +6,16 @@ export interface PlatformNavigationItem {
   icon: LucideIcon;
 }
 
-/** Single source for sidebar + ⌘K Pages group. Chats live in the Chats group. */
+/** Sidebar destinations. Settings lives in the sidebar footer. */
 export function getPlatformNavigationItems(): PlatformNavigationItem[] {
+  return [{ title: "Catalog", url: "/catalog", icon: Package }];
+}
+
+/** ⌘K pages. Members is a section of Settings, not a sidebar item. */
+export function getPalettePages(): PlatformNavigationItem[] {
   return [
-    { title: "Catalog", url: "/catalog", icon: Package },
-    { title: "General", url: "/settings/general", icon: Settings },
+    ...getPlatformNavigationItems(),
+    { title: "Settings", url: "/settings/general", icon: Settings },
     { title: "Members", url: "/settings/members", icon: Users },
   ];
 }

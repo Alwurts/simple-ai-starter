@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChatPage } from "@/components/chat/chat-page";
+import { DockRouteSync } from "@/components/chat/dock/chat-dock";
 
 export const Route = createFileRoute("/_protected/_org/chat/new")({
-  component: ChatPage,
+  component: NewChatRoute,
 });
+
+function NewChatRoute() {
+  return <DockRouteSync chatId={null} />;
+}

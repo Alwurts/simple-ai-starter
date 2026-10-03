@@ -1,6 +1,6 @@
 "use client";
 
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +9,7 @@ import {
 } from "@workspace/ui/components/shadcn/dropdown-menu";
 import {
   SidebarGroup,
+  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
@@ -21,11 +22,13 @@ import {
   Loader2Icon,
   MoreHorizontalIcon,
   PencilIcon,
+  PlusIcon,
   Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
 import { ChatDeleteDialog } from "@/components/chat/chat-delete-dialog";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
+import { useChatDock } from "@/components/chat/dock/dock-context";
 import { RenameChatDialog } from "@/components/chat/rename-chat-dialog";
 import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile-sidebar-on-navigate";
 
@@ -37,17 +40,14 @@ import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile
 export function SidebarChats() {
   const { chats, chatsLoadState, deleteChat, renameChat, retryConnection } =
     useOrgConnection();
-  const navigate = useNavigate();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const dock = useChatDock();
   const closeOnNavigate = useCloseMobileSidebarOnNavigate();
 
   const onDelete = async (chatId: string) => {
-    // This tab leaves the chat route before the delete RPC. A late
-    // re-register is ignored; chat_meta is the record.
-    if (pathname === `/chat/${chatId}`) {
-      closeOnNavigate();
-      await navigate({ to: "/chat/new" });
-    }
+    // Unmount the chat socket and leave its URL before the delete RPC. A
+    // late re-register is ignored; chat_meta is the record.
+    closeOnNavigate();
+    await dock.releaseChat(chatId, "deleted");
     try {
       await deleteChat(chatId);
     } catch {
@@ -62,16 +62,31 @@ export function SidebarChats() {
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Chats</SidebarGroupLabel>
+      <SidebarGroupAction
+        aria-label="New chat"
+        onClick={() => {
+          closeOnNavigate();
+          dock.openDraft();
+        }}
+        title="New chat"
+      >
+        <PlusIcon />
+      </SidebarGroupAction>
       <SidebarGroupContent>
         <SidebarMenu>
           <ChatListGroupRows
             chats={chats}
             chatsLoadState={chatsLoadState}
             closeOnNavigate={closeOnNavigate}
+            focusedChatId={
+              dock.state.focus?.kind === "chat" ? dock.state.focus.chatId : null
+            }
             onDelete={onDelete}
+            onOpen={(chatId) => {
+              dock.openChat(chatId);
+            }}
             onRename={renameChat}
             onRetry={onRetry}
-            pathname={pathname}
           />
         </SidebarMenu>
       </SidebarGroupContent>
@@ -83,18 +98,20 @@ function ChatListGroupRows({
   chats,
   chatsLoadState,
   closeOnNavigate,
+  focusedChatId,
   onDelete,
+  onOpen,
   onRename,
   onRetry,
-  pathname,
 }: {
   chats: ReturnType<typeof useOrgConnection>["chats"];
   chatsLoadState: ReturnType<typeof useOrgConnection>["chatsLoadState"];
   closeOnNavigate: () => void;
+  focusedChatId: string | null;
   onDelete: (chatId: string) => void;
+  onOpen: (chatId: string) => void;
   onRename: (chatId: string, title: string) => Promise<void>;
   onRetry: () => void;
-  pathname: string;
 }) {
   if (chatsLoadState === "loading") {
     return (
@@ -137,9 +154,10 @@ function ChatListGroupRows({
         <ChatListRow
           chat={chat}
           closeOnNavigate={closeOnNavigate}
-          isActive={pathname === `/chat/${chat.id}`}
+          isActive={focusedChatId === chat.id}
           key={chat.id}
           onDelete={onDelete}
+          onOpen={onOpen}
           onRename={onRename}
         />
       ))}
@@ -152,12 +170,14 @@ function ChatListRow({
   closeOnNavigate,
   isActive,
   onDelete,
+  onOpen,
   onRename,
 }: {
   chat: ReturnType<typeof useOrgConnection>["chats"][number];
   closeOnNavigate: () => void;
   isActive: boolean;
   onDelete: (chatId: string) => void;
+  onOpen: (chatId: string) => void;
   onRename: (chatId: string, title: string) => Promise<void>;
 }) {
   const { isMobile } = useSidebar();
@@ -171,7 +191,20 @@ function ChatListRow({
         isActive={isActive}
         render={
           <Link
-            onClick={closeOnNavigate}
+            onClick={(event) => {
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey ||
+                event.button !== 0
+              ) {
+                return;
+              }
+              event.preventDefault();
+              closeOnNavigate();
+              onOpen(chat.id);
+            }}
             params={{ chatId: chat.id }}
             to="/chat/$chatId"
           />
