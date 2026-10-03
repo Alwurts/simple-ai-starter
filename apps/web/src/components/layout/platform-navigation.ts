@@ -1,4 +1,4 @@
-import { type LucideIcon, Package, Settings } from "lucide-react";
+import { type LucideIcon, Package, Settings, Users } from "lucide-react";
 
 export interface PlatformNavigationItem {
   title: string;
@@ -10,11 +10,12 @@ export interface PlatformNavigationItem {
 export function getPlatformNavigationItems(): PlatformNavigationItem[] {
   return [
     { title: "Catalog", url: "/catalog", icon: Package },
-    { title: "Settings", url: "/settings", icon: Settings },
+    { title: "General", url: "/settings/general", icon: Settings },
+    { title: "Members", url: "/settings/members", icon: Users },
   ];
 }
 
-/** Items stay active on nested paths (e.g. /settings/*). */
+/** An item stays active on its own url and on paths nested under that url. */
 export function isPlatformNavActive(pathname: string, url: string): boolean {
   return pathname === url || pathname.startsWith(`${url}/`);
 }

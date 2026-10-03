@@ -2,33 +2,21 @@
 
 import {
   type ColumnFiltersState,
-  type ColumnVisibilityState,
   flexRender,
   type OnChangeFn,
   type PaginationState,
-  type Row,
   type RowData,
-  type RowSelectionState,
   type SortingState,
-  type Table as TanstackTable,
   useTable,
 } from "@tanstack/react-table";
 import {
   type DataTableColumnDef,
-  type DataTableFeatures,
   dataTableFeatures,
 } from "@workspace/ui/components/data-table/data-table-features";
 import { sortAriaSort } from "@workspace/ui/components/data-table/sortable-header";
 import { TableFilterToolbar } from "@workspace/ui/components/data-table/table-filter-toolbar";
 import type { TableFilterDefinition } from "@workspace/ui/components/data-table/table-filter-types";
 import { Button } from "@workspace/ui/components/shadcn/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/shadcn/dropdown-menu";
-import { Input } from "@workspace/ui/components/shadcn/input";
 import {
   Table,
   TableBody,
@@ -40,514 +28,195 @@ import {
 import { cn } from "@workspace/ui/lib/utils";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { useState } from "react";
 
 const FILTER_TOOLBAR_TABLE_GUTTER =
   "[&_tr>*]:px-3 [&_tr>*:first-child]:pl-4 [&_tr>*:last-child]:pr-4";
-function DataTableEmptyRow({
-  colSpan,
-  message,
-}: {
-  colSpan: number;
-  message: string;
-}) {
-  return (
-    <TableRow>
-      <TableCell
-        className="h-24 text-center text-muted-foreground"
-        colSpan={colSpan}
-      >
-        {message}
-      </TableCell>
-    </TableRow>
-  );
-}
-function buildTableBodyContent<TData extends RowData>({
-  columnCount,
-  isServerSide,
-  toolbarFilteredCount,
-  hasFilters,
-  filteredEmptyMessage,
-  emptyMessage,
-  dataLength,
-  tableRows,
-  onRowClick,
-}: {
-  columnCount: number;
-  isServerSide: boolean;
-  toolbarFilteredCount: number;
-  hasFilters: boolean;
-  filteredEmptyMessage: string;
-  emptyMessage: string;
-  dataLength: number;
-  tableRows: Row<DataTableFeatures, TData>[];
-  onRowClick?: (row: TData) => void;
-}): ReactNode {
-  if (isServerSide && toolbarFilteredCount === 0) {
-    return (
-      <DataTableEmptyRow
-        colSpan={columnCount}
-        message={hasFilters ? filteredEmptyMessage : emptyMessage}
-      />
-    );
-  }
-  if (!isServerSide && dataLength === 0) {
-    return <DataTableEmptyRow colSpan={columnCount} message={emptyMessage} />;
-  }
-  if (tableRows.length === 0) {
-    return (
-      <DataTableEmptyRow
-        colSpan={columnCount}
-        message={hasFilters ? filteredEmptyMessage : emptyMessage}
-      />
-    );
-  }
-  return tableRows.map((row) => (
-    <TableRow
-      className={onRowClick ? "cursor-pointer" : undefined}
-      data-state={row.getIsSelected() && "selected"}
-      key={row.id}
-      onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-    >
-      {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </TableCell>
-      ))}
-    </TableRow>
-  ));
-}
-function DataTableLegacyFilterRow<TData extends RowData>({
-  table,
-  filterColumn,
-  filterPlaceholder,
-  filterValue,
-  onFilterChange,
-  showColumnVisibility,
-}: {
-  table: TanstackTable<DataTableFeatures, TData>;
-  filterColumn: string;
-  filterPlaceholder: string;
-  filterValue?: string;
-  onFilterChange?: (value: string) => void;
-  showColumnVisibility: boolean;
-}) {
-  return (
-    <div className="flex items-center py-4">
-      {onFilterChange ? (
-        <Input
-          className="max-w-sm"
-          onChange={(event) => onFilterChange(event.target.value)}
-          placeholder={filterPlaceholder}
-          value={filterValue ?? ""}
-        />
-      ) : (
-        <Input
-          className="max-w-sm"
-          onChange={(event) =>
-            table.getColumn(filterColumn)?.setFilterValue(event.target.value)
-          }
-          placeholder={filterPlaceholder}
-          value={
-            (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
-          }
-        />
-      )}
-      {showColumnVisibility ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button className="ml-auto" variant="outline" />}
-          >
-            Columns
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  checked={column.getIsVisible()}
-                  className="capitalize"
-                  key={column.id}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
-    </div>
-  );
-}
-function DataTablePaginationButtons({
-  canPrevious,
-  canNext,
-  onPrevious,
-  onNext,
-}: {
-  canPrevious: boolean;
-  canNext: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        aria-label="Previous page"
-        className="size-7"
-        disabled={!canPrevious}
-        onClick={onPrevious}
-        size="icon"
-        type="button"
-        variant="outline"
-      >
-        <ChevronLeftIcon className="size-4" />
-      </Button>
-      <Button
-        aria-label="Next page"
-        className="size-7"
-        disabled={!canNext}
-        onClick={onNext}
-        size="icon"
-        type="button"
-        variant="outline"
-      >
-        <ChevronRightIcon className="size-4" />
-      </Button>
-    </div>
-  );
-}
-function DataTableHeaderRows<TData extends RowData>({
-  table,
-}: {
-  table: TanstackTable<DataTableFeatures, TData>;
-}) {
-  return (
-    <TableHeader>
-      {table.getHeaderGroups().map((headerGroup) => (
-        <TableRow key={headerGroup.id}>
-          {headerGroup.headers.map((header) => {
-            const sorted = header.column.getIsSorted();
-            return (
-              <TableHead
-                aria-sort={sortAriaSort(sorted)}
-                className={cn(sorted && "bg-muted/40")}
-                key={header.id}
-              >
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-              </TableHead>
-            );
-          })}
-        </TableRow>
-      ))}
-    </TableHeader>
-  );
-}
-function getServerTableOptions({
-  pageCount,
-  pagination,
-  sorting,
-  columnFilters,
-  columnVisibility,
-  rowSelection,
-  onPaginationChange,
-  onSortingChange,
-  onColumnFiltersChange,
-}: {
-  pageCount?: number;
-  pagination?: PaginationState;
-  sorting: SortingState;
-  columnFilters: ColumnFiltersState;
-  columnVisibility: ColumnVisibilityState;
-  rowSelection: RowSelectionState;
-  onPaginationChange?: OnChangeFn<PaginationState>;
-  onSortingChange: OnChangeFn<SortingState>;
-  onColumnFiltersChange: OnChangeFn<ColumnFiltersState>;
-}) {
-  return {
-    manualPagination: true,
-    manualSorting: true,
-    manualFiltering: true,
-    pageCount,
-    state: {
-      pagination,
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-    onPaginationChange,
-    onSortingChange,
-    onColumnFiltersChange,
-  };
-}
-function getClientTableOptions({
-  sorting,
-  columnFilters,
-  columnVisibility,
-  rowSelection,
-  onSortingChange,
-  onColumnFiltersChange,
-}: {
-  sorting: SortingState;
-  columnFilters: ColumnFiltersState;
-  columnVisibility: ColumnVisibilityState;
-  rowSelection: RowSelectionState;
-  onSortingChange: OnChangeFn<SortingState>;
-  onColumnFiltersChange: OnChangeFn<ColumnFiltersState>;
-}) {
-  return {
-    onSortingChange,
-    onColumnFiltersChange,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  };
-}
-interface DataTableProps<TData extends RowData> {
+
+export interface DataTableProps<TData extends RowData> {
   columns: DataTableColumnDef<TData>[];
   data: TData[];
-  pageCount?: number;
-  pagination?: PaginationState;
-  onPaginationChange?: OnChangeFn<PaginationState>;
-  sorting?: SortingState;
-  onSortingChange?: OnChangeFn<SortingState>;
-
-  /** Legacy single-column search input (catalog tables). */
-  filterValue?: string;
-  onFilterChange?: (value: string) => void;
-  filterPlaceholder?: string;
-  filterColumn?: string;
-
-  /** Platform-style filter popover + chips (tasks / resource list). */
-  filterDefinitions?: TableFilterDefinition[];
-  columnFilters?: ColumnFiltersState;
-  onColumnFiltersChange?: OnChangeFn<ColumnFiltersState>;
-  showColumnVisibility?: boolean;
+  pageCount: number;
+  pagination: PaginationState;
+  onPaginationChange: OnChangeFn<PaginationState>;
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
+  filterDefinitions: TableFilterDefinition[];
+  columnFilters: ColumnFiltersState;
+  onColumnFiltersChange: OnChangeFn<ColumnFiltersState>;
+  filteredCount: number;
+  totalCount?: number;
   onRowClick?: (row: TData) => void;
+  /** Inside `ShellContent` — no outer border on the table chrome. */
+  embedded?: boolean;
+  className?: string;
+  /** Rich empty UI. Keeps the filter toolbar visible. */
+  collectionEmpty?: ReactNode;
   emptyMessage?: string;
   filteredEmptyMessage?: string;
-  filteredCount?: number;
-  totalCount?: number;
-  /** Rich empty UI for server-driven lists — replaces the default table empty row. */
-  collectionEmpty?: ReactNode;
 }
-export function DataTable<TData extends RowData>(props: DataTableProps<TData>) {
-  const controller = useDataTableController(props);
-  return <DataTableView {...props} {...controller} />;
-}
-function useDataTableController<TData extends RowData>({
+
+export function DataTable<TData extends RowData>({
   columns,
   data,
   pageCount,
-  pagination: externalPagination,
+  pagination,
   onPaginationChange,
-  sorting: externalSorting,
+  sorting,
   onSortingChange,
-  onFilterChange,
-  filterColumn = "name",
   filterDefinitions,
-  columnFilters: externalColumnFilters,
+  columnFilters,
   onColumnFiltersChange,
+  filteredCount,
+  totalCount,
   onRowClick,
+  embedded = false,
+  className,
+  collectionEmpty,
   emptyMessage = "No results.",
   filteredEmptyMessage = "No rows match your filters.",
-  filteredCount: filteredCountProp,
-  totalCount: totalCountProp,
-  collectionEmpty,
 }: DataTableProps<TData>) {
-  const isServerSide = externalPagination !== undefined;
-  const useFilterToolbar =
-    filterDefinitions !== undefined && filterDefinitions.length > 0;
-  const [internalSorting, setInternalSorting] = useState<SortingState>([]);
-  const [internalColumnFilters, setInternalColumnFilters] =
-    useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] =
-    useState<ColumnVisibilityState>({});
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const sorting = externalSorting ?? internalSorting;
-  const setSorting = onSortingChange ?? setInternalSorting;
-  const columnFilters = externalColumnFilters ?? internalColumnFilters;
-  const setColumnFilters = onColumnFiltersChange ?? setInternalColumnFilters;
   const table = useTable({
     features: dataTableFeatures,
     data,
     columns,
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    ...(isServerSide
-      ? getServerTableOptions({
-          columnFilters,
-          columnVisibility,
-          onColumnFiltersChange: setColumnFilters,
-          onPaginationChange,
-          onSortingChange: setSorting,
-          pageCount,
-          pagination: externalPagination,
-          rowSelection,
-          sorting,
-        })
-      : getClientTableOptions({
-          columnFilters,
-          columnVisibility,
-          onColumnFiltersChange: setColumnFilters,
-          onSortingChange: setSorting,
-          rowSelection,
-          sorting,
-        })),
+    manualPagination: true,
+    manualSorting: true,
+    pageCount,
+    state: { pagination, sorting },
+    onPaginationChange,
+    onSortingChange,
   });
-  const filteredRows = table.getFilteredRowModel().rows;
-  const tableRows = isServerSide ? table.getRowModel().rows : filteredRows;
-  const toolbarFilteredCount = filteredCountProp ?? filteredRows.length;
-  const toolbarTotalCount =
-    totalCountProp ?? (isServerSide ? toolbarFilteredCount : data.length);
-  const hasFilters = useFilterToolbar && columnFilters.length > 0;
-  const showLegacyFilterRow =
-    !useFilterToolbar && (onFilterChange !== undefined || filterColumn);
-  const tableBodyContent = buildTableBodyContent({
-    columnCount: columns.length,
-    dataLength: data.length,
-    emptyMessage,
-    filteredEmptyMessage,
-    hasFilters,
-    isServerSide,
-    onRowClick,
-    tableRows,
-    toolbarFilteredCount,
-  });
-  const showCollectionEmpty =
-    isServerSide && toolbarFilteredCount === 0 && collectionEmpty !== undefined;
-  return {
-    columnFilters,
-    collectionEmpty,
-    filteredRows,
-    isServerSide,
-    setColumnFilters,
-    showCollectionEmpty,
-    showLegacyFilterRow,
-    table,
-    tableBodyContent,
-    toolbarFilteredCount,
-    toolbarTotalCount,
-    useFilterToolbar,
-    showClientPagination: !(isServerSide || useFilterToolbar),
-  };
-}
-function DataTableView<TData extends RowData>({
-  filterColumn = "name",
-  filterDefinitions,
-  filterPlaceholder = "Filter...",
-  filterValue,
-  onFilterChange,
-  pageCount,
-  pagination: externalPagination,
-  showColumnVisibility = true,
-  columnFilters,
-  filteredRows,
-  isServerSide,
-  setColumnFilters,
-  showLegacyFilterRow,
-  table,
-  tableBodyContent,
-  toolbarFilteredCount,
-  toolbarTotalCount,
-  useFilterToolbar,
-  showClientPagination,
-  collectionEmpty,
-  showCollectionEmpty,
-}: DataTableProps<TData> & ReturnType<typeof useDataTableController<TData>>) {
+  const hasFilters = columnFilters.length > 0;
+  const showCollectionEmpty = filteredCount === 0 && collectionEmpty != null;
+  const rows = table.getRowModel().rows;
+  const toolbarTotal = totalCount ?? filteredCount;
+
   return (
     <div
       className={cn(
-        "w-full",
-        useFilterToolbar && "flex min-h-0 flex-1 flex-col"
+        "flex min-h-0 flex-col",
+        !embedded && "rounded-md border",
+        className
       )}
+      data-slot="data-table"
     >
-      {useFilterToolbar ? (
-        <div className="shrink-0">
-          <TableFilterToolbar
-            columnFilters={columnFilters}
-            definitions={filterDefinitions ?? []}
-            filteredCount={toolbarFilteredCount}
-            onColumnFiltersChange={setColumnFilters}
-            totalCount={toolbarTotalCount}
-          />
-        </div>
-      ) : null}
-
-      {showLegacyFilterRow ? (
-        <DataTableLegacyFilterRow
-          filterColumn={filterColumn}
-          filterPlaceholder={filterPlaceholder}
-          filterValue={filterValue}
-          onFilterChange={onFilterChange}
-          showColumnVisibility={showColumnVisibility}
-          table={table}
+      <div className="shrink-0">
+        <TableFilterToolbar
+          columnFilters={columnFilters}
+          definitions={filterDefinitions}
+          filteredCount={filteredCount}
+          onColumnFiltersChange={onColumnFiltersChange}
+          totalCount={toolbarTotal}
         />
-      ) : null}
+      </div>
 
       {showCollectionEmpty ? (
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col",
-            useFilterToolbar && FILTER_TOOLBAR_TABLE_GUTTER
+            FILTER_TOOLBAR_TABLE_GUTTER
           )}
-          data-slot="resource-table-collection-empty"
+          data-slot="data-table-collection-empty"
         >
           {collectionEmpty}
         </div>
       ) : (
         <div
           className={cn(
-            !useFilterToolbar && "rounded-md border",
-            useFilterToolbar &&
-              cn("min-h-0 flex-1 overflow-auto", FILTER_TOOLBAR_TABLE_GUTTER)
+            "min-h-0 flex-1 overflow-auto",
+            FILTER_TOOLBAR_TABLE_GUTTER
           )}
         >
           <Table>
-            <DataTableHeaderRows table={table} />
-            <TableBody>{tableBodyContent}</TableBody>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const sorted = header.column.getIsSorted();
+                    return (
+                      <TableHead
+                        aria-sort={sortAriaSort(sorted)}
+                        className={cn(sorted && "bg-muted/40")}
+                        key={header.id}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    className="h-24 text-center text-muted-foreground"
+                    colSpan={columns.length}
+                  >
+                    {hasFilters ? filteredEmptyMessage : emptyMessage}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((row) => (
+                  <TableRow
+                    className={onRowClick ? "cursor-pointer" : undefined}
+                    key={row.id}
+                    onClick={
+                      onRowClick ? () => onRowClick(row.original) : undefined
+                    }
+                  >
+                    {row.getAllCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
           </Table>
         </div>
       )}
 
-      {isServerSide && !showCollectionEmpty ? (
+      {showCollectionEmpty ? null : (
         <div className="flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3">
           <div className="flex-1 text-muted-foreground text-sm tabular-nums">
-            {`Page ${(externalPagination?.pageIndex ?? 0) + 1} of ${Math.max(pageCount ?? 0, 1)}`}
+            {`Page ${pagination.pageIndex + 1} of ${Math.max(pageCount, 1)}`}
           </div>
-          <DataTablePaginationButtons
-            canNext={table.getCanNextPage()}
-            canPrevious={table.getCanPreviousPage()}
-            onNext={() => table.nextPage()}
-            onPrevious={() => table.previousPage()}
-          />
-        </div>
-      ) : null}
-
-      {showClientPagination ? (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <div className="flex-1 text-muted-foreground text-sm">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {filteredRows.length} row(s) selected.
+          <div className="flex items-center gap-1">
+            <Button
+              aria-label="Previous page"
+              className="size-7"
+              disabled={!table.getCanPreviousPage()}
+              onClick={() => table.previousPage()}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <ChevronLeftIcon className="size-4" />
+            </Button>
+            <Button
+              aria-label="Next page"
+              className="size-7"
+              disabled={!table.getCanNextPage()}
+              onClick={() => table.nextPage()}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <ChevronRightIcon className="size-4" />
+            </Button>
           </div>
-          <DataTablePaginationButtons
-            canNext={table.getCanNextPage()}
-            canPrevious={table.getCanPreviousPage()}
-            onNext={() => table.nextPage()}
-            onPrevious={() => table.previousPage()}
-          />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -31,8 +31,10 @@ export function LoginPage() {
   const { redirect: redirectTo } = useSearch({ from: "/_auth/login" });
 
   const loginSchema = z.object({
-    email: z.email({ message: "Email" }),
-    password: z.string({ message: "Password" }).min(6),
+    email: z.email({ message: "Enter a valid email address." }),
+    password: z
+      .string({ message: "Enter your password." })
+      .min(6, { message: "Password must be at least 6 characters." }),
   });
 
   const form = useForm<LoginValues>({
@@ -73,7 +75,7 @@ export function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form method="post" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
             <Controller
               control={form.control}

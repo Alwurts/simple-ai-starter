@@ -16,10 +16,12 @@ test.describe("navigation", () => {
     await expect(page).toHaveURL(CATALOG_URL_PATTERN);
   });
 
-  test("sidebar navigates to Settings", async ({ page }) => {
+  test("sidebar opens General and Members settings", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Settings" }).click();
-    await expect(page).toHaveURL("/settings");
+    await page.getByRole("link", { name: "General" }).click();
+    await expect(page).toHaveURL("/settings/general");
+    await page.getByRole("link", { name: "Members" }).click();
+    await expect(page).toHaveURL("/settings/members");
   });
 
   test("new chat opens the draft route", async ({ page }) => {

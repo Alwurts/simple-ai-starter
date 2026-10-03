@@ -7,6 +7,9 @@ import { organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 import { ac, roles } from "./access-control";
+import { destroyOrgAgent } from "./destroy-org-agent";
+
+export { destroyOrgAgent } from "./destroy-org-agent";
 
 function authOrigin(baseUrl: string): string {
   return new URL(baseUrl).origin;
@@ -44,6 +47,11 @@ function createAuth() {
       organization({
         ac,
         roles,
+        organizationHooks: {
+          afterDeleteOrganization: async ({ organization: deleted }) => {
+            await destroyOrgAgent(deleted.id);
+          },
+        },
         async sendInvitationEmail(data) {
           const inviteLink = `${origin}/accept-invitation/${data.id}`;
           await sendMail(data.email, "organization-invitation", {

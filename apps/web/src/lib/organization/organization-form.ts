@@ -27,7 +27,7 @@ const TRAILING_HYPHEN_REGEX = /-+$/;
 
 export const filterSlug = (slug: string) =>
   slug
-    .replace(/[^a-z0-9-_]/g, "")
+    .replace(/[^a-z0-9-]/g, "")
     .replace(MULTIPLE_HYPHENS_REGEX, "-")
     .replace(TRAILING_HYPHEN_REGEX, "");
 
