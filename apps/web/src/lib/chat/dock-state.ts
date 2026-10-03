@@ -2,6 +2,9 @@ export type DockFocus = { kind: "draft" } | { kind: "chat"; chatId: string };
 
 export type DockSize = "popup" | "fullscreen";
 
+/** Tabs in the working set. A sixth open chat drops the oldest. */
+export const MAX_OPEN_TABS = 5;
+
 export interface DockState {
   bodyOpen: boolean;
   focus: DockFocus | null;
@@ -51,6 +54,23 @@ export function chatPathToSync(
   return pathname === next ? null : next;
 }
 
+/**
+ * A chat already on screen keeps its place. A new one, or one that had
+ * fallen out of the visible set, goes on the end. The list never grows
+ * past {@link MAX_OPEN_TABS}.
+ */
+function placeChat(ids: string[], chatId: string): string[] {
+  const index = ids.indexOf(chatId);
+  if (index !== -1) {
+    const visibleStart = Math.max(0, ids.length - MAX_OPEN_TABS);
+    if (index >= visibleStart) {
+      return ids;
+    }
+    return [...ids.filter((id) => id !== chatId), chatId].slice(-MAX_OPEN_TABS);
+  }
+  return [...ids, chatId].slice(-MAX_OPEN_TABS);
+}
+
 export function dockReducer(state: DockState, action: DockAction): DockState {
   switch (action.type) {
     case "open-draft":
@@ -60,10 +80,7 @@ export function dockReducer(state: DockState, action: DockAction): DockState {
         ...state,
         bodyOpen: true,
         focus: { kind: "chat", chatId: action.chatId },
-        openChatIds: [
-          ...state.openChatIds.filter((id) => id !== action.chatId),
-          action.chatId,
-        ],
+        openChatIds: placeChat(state.openChatIds, action.chatId),
       };
     case "minimize":
       return { ...state, bodyOpen: false };
@@ -81,16 +98,7 @@ export function dockReducer(state: DockState, action: DockAction): DockState {
       if (!closing) {
         return { ...state, openChatIds };
       }
-      const next = openChatIds.at(-1);
-      if (!next) {
-        return { ...state, bodyOpen: false, focus: null, openChatIds };
-      }
-      return {
-        ...state,
-        bodyOpen: true,
-        focus: { kind: "chat", chatId: next },
-        openChatIds,
-      };
+      return { ...state, bodyOpen: false, focus: null, openChatIds };
     }
     case "set-size":
       return { ...state, size: action.size };

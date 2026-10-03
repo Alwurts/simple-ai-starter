@@ -28,11 +28,11 @@ interface ChatDockApi {
   /** Close the focused draft or chat tab. Does not delete the chat. */
   closeFocused: () => void;
   /**
-   * Drop a chat tab and, when this page is that chat's URL, leave the URL
-   * before the caller deletes it. `deleted` opens the draft route when no
-   * other tab is left, which is the deep-link replacement for the old page.
+   * Drop a chat tab. Closing the focused chat hides the window and does not
+   * open another one. When this page is that chat's URL, go home before the
+   * caller deletes it.
    */
-  releaseChat: (chatId: string, mode: "close" | "deleted") => Promise<void>;
+  releaseChat: (chatId: string) => Promise<void>;
   /** The draft's first send stored this id. Show it, and keep a chat URL in sync. */
   promoteDraft: (chatId: string) => void;
 }
@@ -94,24 +94,12 @@ export function ChatDockProvider({ children }: { children: ReactNode }) {
   }, [send]);
 
   const releaseChat = useCallback(
-    async (chatId: string, mode: "close" | "deleted") => {
+    async (chatId: string) => {
       const path = pathnameRef.current;
-      const remaining = stateRef.current.openChatIds.filter(
-        (id) => id !== chatId
-      );
       flushSync(() => {
         dispatch({ type: "close-chat", chatId });
       });
       if (path !== `/chat/${chatId}`) {
-        return;
-      }
-      const next = remaining.at(-1);
-      if (next) {
-        await navigate({ params: { chatId: next }, to: "/chat/$chatId" });
-        return;
-      }
-      if (mode === "deleted") {
-        await navigate({ to: "/chat/new" });
         return;
       }
       await navigate({ to: "/" });
@@ -122,7 +110,7 @@ export function ChatDockProvider({ children }: { children: ReactNode }) {
   const closeFocused = useCallback(() => {
     const focus = stateRef.current.focus;
     if (focus?.kind === "chat") {
-      releaseChat(focus.chatId, "close");
+      releaseChat(focus.chatId);
       return;
     }
     if (focus?.kind === "draft") {

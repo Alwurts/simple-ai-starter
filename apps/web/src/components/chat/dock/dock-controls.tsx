@@ -14,6 +14,7 @@ export function ChatDockWindowControls() {
   const dock = useChatDock();
   const isMobile = useIsMobile();
   const fullscreen = dock.state.size === "fullscreen";
+  const draft = dock.state.focus?.kind === "draft";
 
   return (
     <>
@@ -36,7 +37,7 @@ export function ChatDockWindowControls() {
           <TooltipContent>{fullscreen ? "Restore" : "Expand"}</TooltipContent>
         </Tooltip>
       )}
-      {isMobile ? null : (
+      {isMobile || draft ? null : (
         <Tooltip>
           <TooltipTrigger
             render={

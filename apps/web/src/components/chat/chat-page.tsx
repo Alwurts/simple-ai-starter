@@ -617,7 +617,7 @@ function ChatView({ chatId, files, title }: ChatViewProps) {
     helpers.stop();
     // Leave the chat URL and unmount this socket before the delete RPC. A
     // late re-register is ignored; chat_meta is the record.
-    await releaseChat(chatId, "deleted");
+    await releaseChat(chatId);
     try {
       await deleteChat(chatId);
     } catch {

@@ -10,13 +10,11 @@ import {
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile";
 import { cn } from "@workspace/ui/lib/utils";
 import { BotIcon, PlusIcon, XIcon } from "lucide-react";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ChatPage } from "@/components/chat/chat-page";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { useChatDock } from "@/components/chat/dock/dock-context";
 import { HomeStage } from "@/components/chat/dock/home-stage";
-
-const MAX_VISIBLE_TABS = 5;
 
 /**
  * The page stays in the outlet. The window covers only that page.
@@ -35,11 +33,20 @@ export function ChatDockStage({ children }: { children: ReactNode }) {
   );
 }
 
-/** Desktop working set, outside the inset card. Hidden until a chat is open. */
+/**
+ * Desktop working set, outside the inset card. The row stays for the rest
+ * of the session once the dock has opened, so the card does not jump when
+ * the first tab appears. A phone has no row.
+ */
 export function ChatTabFooter() {
   const dock = useChatDock();
   const isMobile = useIsMobile();
-  if (isMobile || dock.state.openChatIds.length === 0) {
+  const used = dock.state.bodyOpen || dock.state.openChatIds.length > 0;
+  const [reserved, setReserved] = useState(false);
+  if (!isMobile && used && !reserved) {
+    setReserved(true);
+  }
+  if (isMobile || !reserved) {
     return null;
   }
   return (
@@ -89,32 +96,32 @@ function DockWindow() {
   );
 }
 
-/** Desktop working set. Older open chats stay in the sidebar list. */
+/** Desktop working set. Pills and the plus sit together on the right. */
 function ChatTabStrip() {
   const dock = useChatDock();
   const { chats } = useOrgConnection();
-  const ids = dock.state.openChatIds;
-  const visible =
-    ids.length > MAX_VISIBLE_TABS ? ids.slice(-MAX_VISIBLE_TABS) : ids;
+  const draft = dock.state.focus?.kind === "draft";
   const titleOf = (chatId: string) =>
     chats.find((chat) => chat.id === chatId)?.title ?? "Chat";
 
   return (
     <div
-      className="flex h-10 shrink-0 items-center gap-1 px-2"
+      className="flex h-10 shrink-0 items-center justify-end gap-1 px-2"
       data-slot="chat-tab-strip"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-        {visible.map((chatId) => (
-          <ChatPill chatId={chatId} key={chatId} title={titleOf(chatId)} />
-        ))}
-      </div>
+      {dock.state.openChatIds.map((chatId) => (
+        <ChatPill chatId={chatId} key={chatId} title={titleOf(chatId)} />
+      ))}
       <Tooltip>
         <TooltipTrigger
           render={
             <Button
               aria-label="Open a new chat"
-              className="size-7 shrink-0"
+              aria-pressed={draft}
+              className={cn(
+                "size-7 shrink-0",
+                draft && "bg-background text-foreground"
+              )}
               onClick={dock.openDraft}
               size="icon"
               type="button"
@@ -162,7 +169,7 @@ function ChatPill({ chatId, title }: { chatId: string; title: string }) {
         aria-label={`Close ${title}`}
         className="rounded p-0.5 opacity-0 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
         onClick={() => {
-          dock.releaseChat(chatId, "close");
+          dock.releaseChat(chatId);
         }}
         type="button"
       >

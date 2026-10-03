@@ -47,7 +47,7 @@ export function SidebarChats() {
     // Unmount the chat socket and leave its URL before the delete RPC. A
     // late re-register is ignored; chat_meta is the record.
     closeOnNavigate();
-    await dock.releaseChat(chatId, "deleted");
+    await dock.releaseChat(chatId);
     try {
       await deleteChat(chatId);
     } catch {

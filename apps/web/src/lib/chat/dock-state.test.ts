@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { chatPathToSync, dockReducer, initialDockState } from "./dock-state";
+import {
+  chatPathToSync,
+  dockReducer,
+  initialDockState,
+  MAX_OPEN_TABS,
+} from "./dock-state";
 
 describe("dockReducer", () => {
   it("opens a draft without a pill", () => {
@@ -43,7 +48,7 @@ describe("dockReducer", () => {
     expect(state.bodyOpen).toBe(true);
   });
 
-  it("closing the focused chat focuses the previous pill", () => {
+  it("closing the focused chat hides the window and leaves the other pills", () => {
     let state = dockReducer(initialDockState, {
       type: "open-chat",
       chatId: "a",
@@ -51,8 +56,8 @@ describe("dockReducer", () => {
     state = dockReducer(state, { type: "open-chat", chatId: "b" });
     state = dockReducer(state, { type: "close-chat", chatId: "b" });
     expect(state.openChatIds).toEqual(["a"]);
-    expect(state.focus).toEqual({ kind: "chat", chatId: "a" });
-    expect(state.bodyOpen).toBe(true);
+    expect(state.focus).toBeNull();
+    expect(state.bodyOpen).toBe(false);
   });
 
   it("closing the last chat clears the window", () => {
@@ -68,15 +73,27 @@ describe("dockReducer", () => {
     });
   });
 
-  it("moves a reopened chat to the end of the pills", () => {
+  it("keeps a visible pill in place when it is opened again", () => {
     let state = dockReducer(initialDockState, {
       type: "open-chat",
       chatId: "a",
     });
     state = dockReducer(state, { type: "open-chat", chatId: "b" });
     state = dockReducer(state, { type: "open-chat", chatId: "a" });
-    expect(state.openChatIds).toEqual(["b", "a"]);
+    expect(state.openChatIds).toEqual(["a", "b"]);
     expect(state.focus).toEqual({ kind: "chat", chatId: "a" });
+  });
+
+  it("drops the oldest pill when a sixth chat opens", () => {
+    let state = initialDockState;
+    for (let index = 0; index < MAX_OPEN_TABS + 1; index += 1) {
+      state = dockReducer(state, {
+        type: "open-chat",
+        chatId: String(index),
+      });
+    }
+    expect(state.openChatIds).toEqual(["1", "2", "3", "4", "5"]);
+    expect(state.focus).toEqual({ kind: "chat", chatId: "5" });
   });
 
   it("closing a background chat keeps the focused one", () => {
