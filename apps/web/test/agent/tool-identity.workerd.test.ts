@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
 
 /**
- * Tool identity (S3). Think builds the ToolSet at turn start inside the
+ * Tool identity. Think builds the ToolSet at turn start inside the
  * turn's ALS (think.js builds tools before beforeTurn), so OrgChat.getTools()
  * binds the initiating connection's user into that invocation's tool
  * closures; sandbox tool callbacks have no ALS of their own and read the

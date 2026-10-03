@@ -159,7 +159,7 @@ describe("OrgChat compaction wiring", () => {
   });
 
   it("compactAfter budget is finite and the intended fraction of the window, through the real startup order", async () => {
-    // Regression (B1): configureSession runs before onStart, so a budget
+    // configureSession runs before onStart, so a budget
     // derived from an onStart-assigned field was NaN — and Sessions'
     // `estimate <= NaN` gate is always false, auto-compacting on EVERY
     // append. No field is pre-set here: configureSession itself must resolve.

@@ -16,17 +16,23 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useState,
 } from "react";
 import type { OutgoingUserMessage } from "@/lib/chat/ai-types";
 import { deriveChatsLoadState } from "@/lib/chat/chat-route";
 import { workspaceQueryKey } from "@/lib/chat/workspace-query-key";
 
+interface StartChatInput {
+  id: string;
+  title?: string;
+  message: OutgoingUserMessage & { id: string };
+}
+
 interface OrgConnectionValue {
   /** All chats of the active org, newest first (OrgAgent state order). */
   chats: ChatSummary[];
   chatsLoadState: "loading" | "ready" | "error";
-  createChat: (opts?: { title?: string }) => Promise<ChatSummary>;
+  /** Store the first user message and insert the chat (`OrgAgent.startChat`). */
+  startChat: (input: StartChatInput) => Promise<ChatSummary>;
   deleteChat: (chatId: string) => Promise<void>;
   /** Retitle a chat (`OrgAgent.renameChat`); throws after toasting. */
   renameChat: (chatId: string, title: string) => Promise<void>;
@@ -34,14 +40,6 @@ interface OrgConnectionValue {
   searchChats: (query: string) => Promise<ChatSearchHit[]>;
   /** Retry after a terminal close: force the built-in reconnection. */
   retryConnection: () => void;
-  /**
-   * Draft bridged across the draft → createChat → navigate hand-off, tied to
-   * the chat it was created for so a fast chat switch can't flush it into
-   * another conversation.
-   */
-  pendingMessage: { chatId: string; message: OutgoingUserMessage } | null;
-  clearPendingMessage: () => void;
-  setPendingMessage: (chatId: string, message: OutgoingUserMessage) => void;
   /** Read-only workspace listing for the file viewer (defaults to root). */
   listWorkspace: (path?: string) => Promise<WorkspaceFileInfo[]>;
   organizationId: string;
@@ -76,12 +74,6 @@ export function OrgConnection({
   children,
 }: OrgConnectionProps) {
   const queryClient = useQueryClient();
-  const [pendingMessage, setPendingMessage] = useState<{
-    chatId: string;
-    message: OutgoingUserMessage;
-  } | null>(null);
-  /** Just-created chats, held until the agent's state broadcast catches up. */
-  const [optimisticChats, setOptimisticChats] = useState<ChatSummary[]>([]);
 
   // The chat list lives in the OrgAgent's broadcast state (upstream directory
   // pattern): create/rename/delete/touch all re-broadcast, so this stays live
@@ -115,30 +107,13 @@ export function OrgConnection({
     orgAgent.connectionError,
     orgAgent.state
   );
-  const chats = useMemo(() => {
-    const stateChats = Array.isArray(orgAgent.state?.chats)
-      ? orgAgent.state.chats
-      : [];
-    if (optimisticChats.length === 0) {
-      return stateChats;
-    }
-    // Trust the createChat response: include a just-created chat until the
-    // next state broadcast contains it (then the optimistic entry drops out).
-    const known = new Set(stateChats.map((chat) => chat.id));
-    const missing = optimisticChats.filter((chat) => !known.has(chat.id));
-    return [...missing, ...stateChats].sort(
-      (a, b) => b.updatedAt - a.updatedAt
-    );
-  }, [optimisticChats, orgAgent.state]);
+  const chats = useMemo(
+    () => (Array.isArray(orgAgent.state?.chats) ? orgAgent.state.chats : []),
+    [orgAgent.state]
+  );
 
-  const createChat = useCallback(
-    async (opts?: { title?: string }) => {
-      // Trust the create response: hold the chat locally so the route check
-      // accepts the immediate navigation before the state broadcast lands.
-      const chat = await orgAgent.stub.createChat(opts);
-      setOptimisticChats((prev) => [...prev, chat]);
-      return chat;
-    },
+  const startChat = useCallback(
+    (input: StartChatInput) => orgAgent.stub.startChat(input),
     [orgAgent]
   );
 
@@ -146,9 +121,6 @@ export function OrgConnection({
     async (chatId: string) => {
       try {
         await orgAgent.stub.deleteChat(chatId);
-        // A just-created chat may exist only as an optimistic entry (its
-        // broadcast never landed) — drop it so no ghost row survives.
-        setOptimisticChats((prev) => prev.filter((chat) => chat.id !== chatId));
       } catch (error) {
         console.error("[OrgConnection] failed to delete chat", error);
         toast.error("Couldn't delete chat. Please try again.");
@@ -202,31 +174,26 @@ export function OrgConnection({
     () => ({
       chats,
       chatsLoadState,
-      clearPendingMessage: () => setPendingMessage(null),
-      createChat,
       deleteChat,
       listWorkspace,
       organizationId,
-      pendingMessage,
       readWorkspaceFile,
       renameChat,
       retryConnection,
       searchChats,
-      setPendingMessage: (chatId, message) =>
-        setPendingMessage({ chatId, message }),
+      startChat,
     }),
     [
       chats,
       chatsLoadState,
-      createChat,
       deleteChat,
       listWorkspace,
       organizationId,
-      pendingMessage,
       readWorkspaceFile,
       renameChat,
       retryConnection,
       searchChats,
+      startChat,
     ]
   );
   return (

@@ -5,6 +5,7 @@ import {
 } from "@cloudflare/shell";
 import { errorMessage, structuredLog } from "@workspace/log";
 import { Agent, type Connection, callable } from "agents";
+import type { UIMessage } from "ai";
 import type {
   ChatMessageHit,
   ChatSearchHit,
@@ -168,22 +169,72 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
     }));
   }
 
+  /**
+   * First send. The client mints the id. The user message is stored on the
+   * facet before `chat_meta` is inserted, so a crash leaves an unlisted
+   * orphan that `onStart` sweeps instead of an empty titled row. A chat that
+   * already has a row is returned as-is (no second user message). A facet
+   * that is registered without a row — a crash orphan, or a delete whose
+   * registry row came back — is refused, so this call cannot resurrect it.
+   */
   @callable()
-  async createChat(opts?: { title?: string }): Promise<ChatSummary> {
-    const id = generateChatId();
-    const now = Date.now();
-    const title = capChatTitle(opts?.title?.trim() || defaultChatTitle(now));
-
-    // get() before the row: a throw writes nothing listable, and a restart
-    // before the insert is an orphan onStart sweeps. That hook holds
-    // blockConcurrencyWhile, and the client connects only after this returns.
-    await this.dynamicAgents.get(OrgChat, id);
+  async startChat(input: {
+    id: string;
+    title?: string;
+    message: StartChatMessage;
+  }): Promise<ChatSummary> {
+    const id = input?.id;
+    if (typeof id !== "string" || !CHAT_ID_PATTERN.test(id)) {
+      throw new Error("Invalid chat id");
+    }
+    const message = startChatMessage(input.message);
     this.ensureChatMeta();
-    this.sql`INSERT INTO chat_meta (id, title, created_at, updated_at)
-      VALUES (${id}, ${title}, ${now}, ${now})`;
-    this.refreshChatState();
+    const existing = this.chatSummary(id);
+    if (existing) {
+      return existing;
+    }
+    // Checked before get(): get() itself registers the facet.
+    if (this.dynamicAgents.has(OrgChat, id)) {
+      throw new Error("Chat is not available");
+    }
 
+    const now = Date.now();
+    const title = capChatTitle(input.title?.trim() || defaultChatTitle(now));
+    const child = await this.dynamicAgents.get(OrgChat, id);
+    await child.addMessages([message]);
+    try {
+      this.sql`INSERT INTO chat_meta (id, title, created_at, updated_at)
+        VALUES (${id}, ${title}, ${now}, ${now})`;
+    } catch (error) {
+      // A concurrent start of this same id inserted the row while get()
+      // was in flight. The message append is idempotent by id.
+      if (isUniqueConstraint(error)) {
+        const raced = this.chatSummary(id);
+        if (raced) {
+          return raced;
+        }
+      }
+      throw error;
+    }
+    this.refreshChatState();
     return { id, title, createdAt: now, updatedAt: now };
+  }
+
+  private chatSummary(id: string): ChatSummary | undefined {
+    this.ensureChatMeta();
+    const rows = this.sql<ChatRow>`
+      SELECT id, title, created_at, updated_at FROM chat_meta
+      WHERE id = ${id} LIMIT 1`;
+    const row = rows[0];
+    if (!row) {
+      return;
+    }
+    return {
+      id: row.id,
+      title: row.title,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
   }
 
   @callable()
@@ -350,12 +401,36 @@ function capChatTitle(title: string): string {
     : title.slice(0, CHAT_TITLE_MAX_LENGTH);
 }
 
-function generateChatId(): string {
-  const bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 function defaultChatTitle(timestamp: number): string {
   return `Chat ${new Date(timestamp).toISOString().slice(0, 16).replace("T", " ")}`;
+}
+
+/** Client-minted chat ids are 8 random bytes, hex. E2E matches this shape. */
+const CHAT_ID_PATTERN = /^[0-9a-f]{16}$/;
+
+interface StartChatMessage {
+  id: string;
+  role: "user";
+  parts: UIMessage["parts"];
+}
+
+function startChatMessage(message: StartChatMessage | undefined): UIMessage {
+  const id = message?.id;
+  const parts = message?.parts;
+  if (
+    message?.role !== "user" ||
+    typeof id !== "string" ||
+    id.trim() === "" ||
+    id.length > 128 ||
+    !Array.isArray(parts) ||
+    parts.length === 0
+  ) {
+    throw new Error("A user message is required to start a chat");
+  }
+  return { id, role: "user", parts };
+}
+
+function isUniqueConstraint(error: unknown): boolean {
+  const text = error instanceof Error ? error.message : String(error);
+  return text.includes("UNIQUE constraint failed");
 }

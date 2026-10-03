@@ -1,15 +1,8 @@
 import type { FileInfo } from "@cloudflare/shell";
 import type { UIMessage } from "ai";
 
-/**
- * The chat message as `OrgChat` writes it and the web UI reads it. The only
- * metadata the UI consumes is `responseTime` (the "worked" footer duration).
- */
-export interface OrgChatMessageMetadata {
-  responseTime?: number;
-}
-
-export type OrgChatUIMessage = UIMessage<OrgChatMessageMetadata>;
+/** The chat message as `OrgChat` writes it and the web UI reads it. */
+export type OrgChatUIMessage = UIMessage;
 
 export interface ChatSummary {
   createdAt: number;

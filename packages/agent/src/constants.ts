@@ -1,4 +1,4 @@
-/** Keep in sync with `in-app/display.ts` and UI `tool-registry.tsx`. */
+/** Keep in sync with `in-app/display.ts`. The chat UI matches these names. */
 export const DISPLAY_TOOL_NAMES = {
   PRODUCT_LIST: "display_product_list",
   MEMORY: "display_memory",

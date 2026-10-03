@@ -24,7 +24,6 @@ const config: KnipConfig = {
         "tailwindcss",
         // Config-only: resolved by the TanStack Start plugin, never imported.
         "@tanstack/router-plugin",
-        "@tanstack/react-router-ssr-query",
       ],
     },
     "packages/agent": {

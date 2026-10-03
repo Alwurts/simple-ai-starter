@@ -142,7 +142,7 @@ test.describe("invitation for a brand-new user", () => {
     const invitationId = await inviteMember(page, inviteeEmail);
 
     // Open the invite link signed out: login keeps the redirect, and its
-    // "Sign up" link carries it to signup (checkpoint A finding 1).
+    // "Sign up" link carries it to signup.
     await page.context().clearCookies();
     await page.goto(`/accept-invitation/${invitationId}`);
     await expect(page).toHaveURL(LOGIN_REDIRECT_PATTERN, {
@@ -174,9 +174,9 @@ test.describe("invitation for a brand-new user", () => {
 });
 
 test.describe("removed member", () => {
-  // Checkpoint A finding 2: better-auth keeps the removed member's
-  // `activeOrganizationId` on their *existing* session row, so the `_org`
-  // guard must verify membership against the live member row.
+  // better-auth keeps the removed member's `activeOrganizationId` on their
+  // existing session row, so the `_org` guard must verify membership against
+  // the live member row.
   test("is sent to onboarding instead of the org shell", async ({
     browser,
     page,
