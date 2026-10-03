@@ -3,7 +3,6 @@ import { waitHydrated } from "./helpers";
 
 const CHAT_ID_URL_PATTERN = /\/chat\/[0-9a-f]{16}$/;
 const CHAT_ID_IN_URL = /\/chat\/([0-9a-f]{16})$/;
-const NEW_CHAT_URL_PATTERN = /\/chat\/new/;
 const COMPOSER = '[data-slot="chat-input"] [contenteditable="true"]';
 
 /**
@@ -90,8 +89,8 @@ test.describe("sidebar", () => {
     await expect(
       page.getByRole("link", { name: title, exact: true })
     ).toBeHidden({ timeout: 15_000 });
-    // The deleted chat was the open one — land on the draft.
-    await expect(page).toHaveURL(NEW_CHAT_URL_PATTERN, { timeout: 15_000 });
+    // Deleting the open chat closes the window and leaves the page.
+    await expect(page).toHaveURL("/", { timeout: 15_000 });
   });
 
   test("a deleted open chat stays deleted in a new page", async ({ page }) => {
@@ -116,7 +115,7 @@ test.describe("sidebar", () => {
     await expect(
       page.getByRole("link", { name: title, exact: true })
     ).toBeHidden({ timeout: 15_000 });
-    await expect(page).toHaveURL(NEW_CHAT_URL_PATTERN, { timeout: 15_000 });
+    await expect(page).toHaveURL("/", { timeout: 15_000 });
 
     const fresh = await page.context().newPage();
     await fresh.goto("/chat/new");
