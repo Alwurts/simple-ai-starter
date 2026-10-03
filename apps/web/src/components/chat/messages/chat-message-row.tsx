@@ -69,8 +69,6 @@ function MarkdownBody({
   );
 }
 
-export const PRODUCT_LIST_TOOL_NAME = "display_product_list";
-
 export const EXECUTE_TOOL_NAME = "execute";
 
 /**
@@ -121,7 +119,7 @@ export function isProductListCardPart(
   part: ToolUIPart | DynamicToolUIPart
 ): boolean {
   return (
-    getToolName(part) === PRODUCT_LIST_TOOL_NAME &&
+    getToolName(part) === DISPLAY_TOOL_NAMES.PRODUCT_LIST &&
     part.state === "output-available"
   );
 }
@@ -133,7 +131,10 @@ function isVisibleCardName(part: { toolName?: string; type: string }): boolean {
   } else if (part.type.startsWith("tool-")) {
     name = part.type.slice("tool-".length);
   }
-  return name === PRODUCT_LIST_TOOL_NAME || name === DISPLAY_TOOL_NAMES.MEMORY;
+  return (
+    name === DISPLAY_TOOL_NAMES.PRODUCT_LIST ||
+    name === DISPLAY_TOOL_NAMES.MEMORY
+  );
 }
 
 export function isMemoryCardPart(
@@ -615,14 +616,6 @@ function OrgMessagePart({
   return null;
 }
 
-function workedDurationSeconds(message: OrgChatMessage): number | undefined {
-  const responseTime = message.metadata?.responseTime;
-  if (typeof responseTime !== "number" || responseTime <= 0) {
-    return;
-  }
-  return Math.max(1, Math.round(responseTime / 1000));
-}
-
 export function ChatMessageRow({
   message,
   isStreaming = false,
@@ -646,7 +639,6 @@ export function ChatMessageRow({
     .join("\n\n");
   const align = message.role === "user" ? "end" : "start";
   const lastPartIndex = message.parts.length - 1;
-  const duration = workedDurationSeconds(message);
 
   const partRow = (
     part: OrgChatMessage["parts"][number],
@@ -677,7 +669,6 @@ export function ChatMessageRow({
                   const start = segment.items[0]?.index ?? 0;
                   return (
                     <Worked
-                      duration={duration}
                       isStreaming={isStreaming}
                       key={`${message.id}-worked-${start}`}
                     >

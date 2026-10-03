@@ -4,9 +4,9 @@ import { deriveTitleFromMessage } from "./chat-titles";
 
 /**
  * The draft's first send. Returns null when there is nothing to send, so the
- * page does not call `createChat` for an empty composer — no empty chats.
- * The title is derived here and passed to `createChat` (the starter set the
- * title at creation; it did not call `renameChat` afterwards).
+ * page does not call `startChat` for an empty composer — opening `/chat/new`
+ * writes nothing. The title is derived here and passed with that call (the
+ * starter set the title at creation; it did not call `renameChat` afterwards).
  */
 export function firstSendPlan(message: {
   text: string;

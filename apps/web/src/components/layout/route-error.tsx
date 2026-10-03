@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react";
 /**
  * Route error view, standalone by design: router `errorComponent`s mount
  * above the layout tree, outside `<OrgConnection>` — so no org-connected
- * part (the sidebar) may render here, or the error page itself crashes (B4).
+ * part (the sidebar) may render here, or the error page itself crashes.
  * Also used as the root `errorComponent`.
  */
 export function RouteError({ error, reset }: ErrorComponentProps) {

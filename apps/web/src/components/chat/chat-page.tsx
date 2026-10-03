@@ -64,11 +64,8 @@ import { ChatHeader } from "@/components/chat/chat-header";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { useAgentToolMutationInvalidation } from "@/hooks/chat/use-agent-tool-mutation-invalidation";
 import { useChatSidePanel } from "@/hooks/chat/use-chat-side-panel";
-import {
-  type OrgChatMessage,
-  type OutgoingUserMessage,
-  toSendableMessage,
-} from "@/lib/chat/ai-types";
+import { type OrgChatMessage, toSendableMessage } from "@/lib/chat/ai-types";
+import { mintChatId } from "@/lib/chat/chat-id";
 import { chatRouteState } from "@/lib/chat/chat-route";
 import { defaultNewChatTitle } from "@/lib/chat/chat-titles";
 import { firstSendPlan } from "@/lib/chat/first-send";
@@ -77,6 +74,9 @@ import { EmptyConversation } from "./messages/empty-conversation";
 import { MessageListOrEmpty } from "./messages/message-list";
 import { TurnErrorBanner } from "./messages/turn-error-banner";
 import { ChatSidePanel } from "./side-panel/chat-side-panel";
+
+/** Think's connect snapshot. The turn kick waits for this frame. */
+const CHAT_MESSAGES_FRAME = "cf_agent_chat_messages";
 
 /** Transcript placeholder while the chat socket hydrates its history. */
 function HydratingSkeleton() {
@@ -104,10 +104,10 @@ function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
 const REJECT_REASON = "Denied by the user";
 
 /**
- * The chat page. `/chat/new` is the draft: nothing connects until the first
- * send, which creates the chat via `OrgAgent.createChat` and hands off to
- * `/chat/$chatId` — no empty chats pile up (matches the starter's dock). An
- * unknown chat id never mounts ChatView (no chat socket): the sub-agent 404
+ * The chat page. `/chat/new` is the draft: nothing is written until the first
+ * send. That call stores the user message and inserts the chat, and the page
+ * navigates only once the org state's chat list contains the new id — an
+ * unknown id never mounts ChatView (no chat socket): the sub-agent 404
  * reaches the browser as a non-terminal close and would reconnect forever,
  * so the missing chat is detected from the org state's chat list once it has
  * loaded (`chatRouteState`).
@@ -170,29 +170,59 @@ function ChatNotFound() {
 }
 
 function DraftView({ title }: { title: string }) {
-  const { createChat, setPendingMessage } = useOrgConnection();
+  const { chats, startChat } = useOrgConnection();
   const navigate = useNavigate();
   const [draftError, setDraftError] = useState<string | null>(null);
+  /** Set after startChat returns; navigation waits until this id is listed. */
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+
+  // The draft's chat list is already "ready", so navigating before the
+  // broadcast lands is "Chat not found". Wait for the inserted row.
+  // biome-ignore lint/plugin/no-use-effect: navigate once the new chat is in org state
+  useEffect(() => {
+    if (!openingId) {
+      return;
+    }
+    if (!chats.some((chat) => chat.id === openingId)) {
+      return;
+    }
+    navigate({
+      params: { chatId: openingId },
+      replace: true,
+      to: "/chat/$chatId",
+    });
+  }, [chats, navigate, openingId]);
 
   const handleSubmit = useCallback(
     async (message: PromptMessage) => {
+      if (submittingRef.current) {
+        return;
+      }
       const plan = firstSendPlan(message);
       if (!plan) {
         return;
       }
+      submittingRef.current = true;
+      setSubmitting(true);
       setDraftError(null);
+      const id = mintChatId();
       try {
-        const chat = await createChat(
-          plan.title ? { title: plan.title } : undefined
-        );
-        setPendingMessage(chat.id, plan.outgoing);
-        navigate({
-          params: { chatId: chat.id },
-          replace: true,
-          to: "/chat/$chatId",
+        await startChat({
+          id,
+          ...(plan.title ? { title: plan.title } : {}),
+          message: {
+            id: crypto.randomUUID(),
+            role: "user",
+            parts: plan.outgoing.parts,
+          },
         });
+        setOpeningId(id);
       } catch (error) {
-        console.error("[ChatPage] createChat failed", error);
+        submittingRef.current = false;
+        setSubmitting(false);
+        console.error("[ChatPage] startChat failed", error);
         setDraftError(
           error instanceof Error && error.message
             ? error.message
@@ -200,7 +230,7 @@ function DraftView({ title }: { title: string }) {
         );
       }
     },
-    [createChat, navigate, setPendingMessage]
+    [startChat]
   );
 
   return (
@@ -216,7 +246,7 @@ function DraftView({ title }: { title: string }) {
           <ChatComposer
             onSubmit={handleSubmit}
             placeholder="Start a new conversation..."
-            status="ready"
+            status={submitting ? "submitted" : "ready"}
           />
         </>
       }
@@ -238,13 +268,7 @@ interface ChatViewProps {
 }
 
 function ChatView({ chatId, title }: ChatViewProps) {
-  const {
-    chats,
-    clearPendingMessage,
-    deleteChat,
-    organizationId,
-    pendingMessage,
-  } = useOrgConnection();
+  const { chats, deleteChat, organizationId } = useOrgConnection();
   const navigate = useNavigate();
   const sidePanel = useChatSidePanel();
   // Below md the panel is a sheet instead of a split — a 390 px screen
@@ -258,6 +282,26 @@ function ChatView({ chatId, title }: ChatViewProps) {
     name: organizationId,
     sub: [{ agent: "OrgChat", name: chatId }],
   });
+  const [historyReady, setHistoryReady] = useState(false);
+  // biome-ignore lint/plugin/no-use-effect: the connect snapshot is a socket frame, not React state
+  useEffect(() => {
+    const onMessage = (event: Event) => {
+      const data = event instanceof MessageEvent ? event.data : undefined;
+      if (typeof data !== "string") {
+        return;
+      }
+      try {
+        const parsed = JSON.parse(data) as { type?: string };
+        if (parsed.type === CHAT_MESSAGES_FRAME) {
+          setHistoryReady(true);
+        }
+      } catch {
+        // Not a chat snapshot.
+      }
+    };
+    chatAgent.addEventListener("message", onMessage);
+    return () => chatAgent.removeEventListener("message", onMessage);
+  }, [chatAgent]);
 
   const helpers = useAgentChat<unknown, OrgChatMessage>({
     agent: chatAgent,
@@ -282,42 +326,51 @@ function ChatView({ chatId, title }: ChatViewProps) {
   // Invalidate React Query when agent write tools complete.
   useAgentToolMutationInvalidation({ messages: helpers.messages });
 
-  // Flush the draft message bridged from `/` once the socket is identified
-  // and the hook is ready to send — but only into the chat it was created
-  // for. Identification is part of the guard: a frame buffered on a
-  // still-connecting socket would be dropped if the user switches chats
-  // before it opens. Deduped by object identity (strict-mode safe).
-  const lastSentRef = useRef<OutgoingUserMessage | null>(null);
   const { sendMessage } = helpers;
   const identified = chatAgent.identified;
-  // biome-ignore lint/plugin/no-use-effect: flush the bridged draft once the connection is ready
-  useEffect(() => {
-    if (
-      pendingMessage?.chatId !== chatId ||
-      !identified ||
-      helpers.status !== "ready" ||
-      lastSentRef.current === pendingMessage.message
-    ) {
-      return;
-    }
-    lastSentRef.current = pendingMessage.message;
-    const message = pendingMessage.message;
-    clearPendingMessage();
-    // Never rejects — failures arrive as the hook's `error`.
-    sendMessage(toSendableMessage(message));
-  }, [
-    chatId,
-    identified,
-    pendingMessage,
-    helpers.status,
-    sendMessage,
-    clearPendingMessage,
-  ]);
-
   // Server-driven continuations (approve/rejectExecution, resume, another
   // tab's turn) set the hook's server-stream flag without changing `status`,
   // so busy/streaming come from `isStreaming` + `isRecovering`, not `status`.
   const chatBusy = helpers.isStreaming || helpers.isRecovering;
+  const statusRef = useRef(helpers.status);
+  statusRef.current = helpers.status;
+  const busyRef = useRef(chatBusy);
+  busyRef.current = chatBusy;
+  const messagesRef = useRef(helpers.messages);
+  messagesRef.current = helpers.messages;
+  // One kick per mount. sendMessage() with no message posts the hydrated
+  // transcript and does not append a second user row; Think skips a message
+  // it already stored and runs the turn on this socket (tool identity).
+  const turnStartedRef = useRef(false);
+  // biome-ignore lint/plugin/no-use-effect: start the stored first turn once history has settled
+  useEffect(() => {
+    if (
+      turnStartedRef.current ||
+      !historyReady ||
+      !identified ||
+      helpers.status !== "ready" ||
+      chatBusy
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (
+        turnStartedRef.current ||
+        statusRef.current !== "ready" ||
+        busyRef.current
+      ) {
+        return;
+      }
+      const last = messagesRef.current.at(-1);
+      turnStartedRef.current = true;
+      if (last?.role !== "user") {
+        return;
+      }
+      // No argument: request the transcript already on the hook.
+      sendMessage();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [chatBusy, helpers.status, historyReady, identified, sendMessage]);
 
   const handleToolApproval = useCallback(
     (id: string, approved: boolean) =>

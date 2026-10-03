@@ -123,6 +123,17 @@ describe("useChatAttachments", () => {
     });
   });
 
+  it("revokes preview URLs when the tray unmounts", () => {
+    const { result, unmount } = renderTray();
+
+    act(() => {
+      result.current.addFiles([imageFile("chart.png", 10)]);
+    });
+
+    unmount();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:preview");
+  });
+
   it("keeps the attachments when the read fails, so the send can be retried", async () => {
     readGate = "reject";
     const { result } = renderTray();

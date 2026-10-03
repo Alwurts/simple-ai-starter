@@ -8,7 +8,8 @@ import { env } from "./test-env";
  * reference. Drives the real OrgAgent DO over RPC via `runInDurableObject`:
  * - `chat_meta` is the only chat record. `listChats` reads that table;
  *   a registry row with no meta row is not a chat.
- * - `createChat` / `listChats` / `deleteChat` behave and persist.
+ * - `startChat` / `listChats` / `deleteChat` behave and persist.
+ * - the first user message is stored on the facet before the meta row.
  * - deleting the last chat leaves zero chats — there is no `"default"` re-seed.
  * - `onBeforeSubAgent` gates unknown children with a 404 and admits known ones.
  *
@@ -31,6 +32,38 @@ import { env } from "./test-env";
  * `dynamicAgents` is a prototype getter without a setter, so the fake is
  * installed as a shadowing own property via `Object.defineProperty`.
  */
+interface StoredChatMessage {
+  id: string;
+  parts: unknown[];
+  role: string;
+}
+
+interface FakeRegistry {
+  addCount: number;
+  storedMessages: Map<string, StoredChatMessage[]>;
+}
+
+function startChatInput(title?: string, id?: string) {
+  const chatId =
+    id ??
+    Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) =>
+      byte.toString(16).padStart(2, "0")
+    ).join("");
+  return {
+    id: chatId,
+    ...(title ? { title } : {}),
+    message: {
+      id: `msg-${chatId}`,
+      role: "user" as const,
+      parts: [{ type: "text" as const, text: title ?? "Hello" }],
+    },
+  };
+}
+
+function fakeRegistry(o: OrgAgent): FakeRegistry {
+  return o.dynamicAgents as unknown as FakeRegistry;
+}
+
 function installFakeRegistry(o: OrgAgent, sql: SqlStorage): void {
   // runInDurableObject constructs the DO but does not drive the agents async
   // lifecycle (onStart is wrapped and awaited internally). `this.sql` is backed
@@ -44,14 +77,33 @@ function installFakeRegistry(o: OrgAgent, sql: SqlStorage): void {
     "CREATE TABLE IF NOT EXISTS _test_registry (name TEXT PRIMARY KEY, created_at INTEGER NOT NULL)"
   );
 
+  const storedMessages = new Map<string, StoredChatMessage[]>();
   const fake = {
+    addCount: 0,
+    storedMessages,
     get: (_cls: unknown, name: string) => {
       sql.exec(
         "INSERT OR IGNORE INTO _test_registry (name, created_at) VALUES (?, ?)",
         name,
         Date.now()
       );
-      return Promise.resolve(undefined);
+      return Promise.resolve({
+        addMessages: (messages: StoredChatMessage[]) => {
+          fake.addCount += 1;
+          const existing = storedMessages.get(name) ?? [];
+          for (const message of messages) {
+            if (!existing.some((row) => row.id === message.id)) {
+              existing.push({
+                id: message.id,
+                role: message.role,
+                parts: message.parts,
+              });
+            }
+          }
+          storedMessages.set(name, existing);
+          return Promise.resolve();
+        },
+      });
     },
     delete: (_cls: unknown, name: string) => {
       sql.exec("DELETE FROM _test_registry WHERE name = ?", name);
@@ -100,8 +152,8 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
       stub,
       async (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
-        const alpha = await o.createChat({ title: "Alpha" });
-        const beta = await o.createChat({ title: "Beta" });
+        const alpha = await o.startChat(startChatInput("Alpha"));
+        const beta = await o.startChat(startChatInput("Beta"));
         return { list: o.listChats(), alphaId: alpha.id, betaId: beta.id };
       }
     );
@@ -122,8 +174,8 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
       stub,
       async (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
-        const a = await o.createChat();
-        const b = await o.createChat();
+        const a = await o.startChat(startChatInput());
+        const b = await o.startChat(startChatInput());
 
         await o.deleteChat(a.id);
         const afterOne = o.listChats().map((c) => c.id);
@@ -146,7 +198,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
       stub,
       async (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
-        const chat = await o.createChat({ title: "Doomed" });
+        const chat = await o.startChat(startChatInput("Doomed"));
         await o.deleteChat(chat.id);
 
         // The upstream forward-on-close does INSERT OR IGNORE back into the
@@ -211,7 +263,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
           () => Promise.reject(new Error("facet unavailable"));
         let rejected: string | null = null;
         try {
-          await o.createChat({ title: "Never" });
+          await o.startChat(startChatInput("Never"));
         } catch (error) {
           rejected = error instanceof Error ? error.message : String(error);
         }
@@ -234,7 +286,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
       stub,
       async (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
-        const chat = await o.createChat({ title: "Short" });
+        const chat = await o.startChat(startChatInput("Short"));
         await o.renameChat(chat.id, "Renamed");
         const renamed = o
           .listChats()
@@ -274,7 +326,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
           { className: "OrgChat", name: "default" }
         );
 
-        const chat = await o.createChat();
+        const chat = await o.startChat(startChatInput());
         const known = await o.onBeforeSubAgent(new Request("http://do/"), {
           className: "OrgChat",
           name: chat.id,
@@ -306,7 +358,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
       env.OrgAgent.get(id),
       (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
-        return o.createChat({ title: "Persisted" });
+        return o.startChat(startChatInput("Persisted"));
       }
     );
 
@@ -322,6 +374,158 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
 
     expect(list.map((c) => c.id)).toContain(created.id);
     expect(list.find((c) => c.id === created.id)?.title).toBe("Persisted");
+  });
+
+  it("stores the user message on the facet and lists the chat", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-first-message"));
+    const input = startChatInput("List my products");
+    const stored = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        const chat = await o.startChat(input);
+        return {
+          listed: o.listChats().map((entry) => entry.id),
+          title: chat.title,
+          messages: fakeRegistry(o).storedMessages.get(input.id) ?? [],
+        };
+      }
+    );
+    expect(stored.listed).toEqual([input.id]);
+    expect(stored.title).toBe("List my products");
+    expect(stored.messages).toEqual([input.message]);
+  });
+
+  it("does not append again when the same id is started twice", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-start-retry"));
+    const input = startChatInput("Once");
+    const result = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        await o.startChat(input);
+        const second = await o.startChat(input);
+        return {
+          secondId: second.id,
+          addCount: fakeRegistry(o).addCount,
+          messages: fakeRegistry(o).storedMessages.get(input.id) ?? [],
+          listed: o.listChats().map((entry) => entry.id),
+        };
+      }
+    );
+    expect(result.secondId).toBe(input.id);
+    expect(result.addCount).toBe(1);
+    expect(result.messages).toHaveLength(1);
+    expect(result.listed).toEqual([input.id]);
+  });
+
+  it("refuses a registered facet that has no chat_meta row", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-orphan-start"));
+    const input = startChatInput("Orphan", "abcdef0123456789");
+    const result = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        state.storage.sql.exec(
+          "INSERT INTO _test_registry (name, created_at) VALUES (?, ?)",
+          input.id,
+          Date.now()
+        );
+        let rejected: string | null = null;
+        try {
+          await o.startChat(input);
+        } catch (error) {
+          rejected = error instanceof Error ? error.message : String(error);
+        }
+        const metaCount = [
+          ...state.storage.sql.exec("SELECT id FROM chat_meta"),
+        ].length;
+        return {
+          rejected,
+          metaCount,
+          addCount: fakeRegistry(o).addCount,
+          listed: o.listChats(),
+        };
+      }
+    );
+    expect(result.rejected).toBe("Chat is not available");
+    expect(result.metaCount).toBe(0);
+    expect(result.addCount).toBe(0);
+    expect(result.listed).toEqual([]);
+  });
+
+  it("does not recreate a deleted chat whose registry row came back", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-deleted-start"));
+    const input = startChatInput("Doomed again");
+    const result = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        await o.startChat(input);
+        await o.deleteChat(input.id);
+        state.storage.sql.exec(
+          "INSERT INTO _test_registry (name, created_at) VALUES (?, ?)",
+          input.id,
+          Date.now()
+        );
+        let rejected: string | null = null;
+        try {
+          await o.startChat(input);
+        } catch (error) {
+          rejected = error instanceof Error ? error.message : String(error);
+        }
+        const gated = await o.onBeforeSubAgent(new Request("http://do/"), {
+          className: "OrgChat",
+          name: input.id,
+        });
+        const metaCount = [
+          ...state.storage.sql.exec(
+            "SELECT id FROM chat_meta WHERE id = ?",
+            input.id
+          ),
+        ].length;
+        return {
+          rejected,
+          gatedStatus: (gated as Response).status,
+          metaCount,
+          listed: o.listChats().map((entry) => entry.id),
+        };
+      }
+    );
+    expect(result.rejected).toBe("Chat is not available");
+    expect(result.gatedStatus).toBe(404);
+    expect(result.metaCount).toBe(0);
+    expect(result.listed).toEqual([]);
+  });
+
+  it("rejects an id that is not 16 hex characters and writes nothing", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("org-bad-id"));
+    const result = await runInDurableObject(
+      stub,
+      async (o: OrgAgent, state) => {
+        installFakeRegistry(o, state.storage.sql);
+        let rejected: string | null = null;
+        try {
+          await o.startChat({
+            id: "not-a-chat-id",
+            message: {
+              id: "m",
+              role: "user",
+              parts: [{ type: "text", text: "hi" }],
+            },
+          });
+        } catch (error) {
+          rejected = error instanceof Error ? error.message : String(error);
+        }
+        return {
+          rejected,
+          metaCount: [...state.storage.sql.exec("SELECT id FROM chat_meta")]
+            .length,
+        };
+      }
+    );
+    expect(result.rejected).toBe("Invalid chat id");
+    expect(result.metaCount).toBe(0);
   });
 });
 

@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@workspace/ui/components/shadcn/card";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
+import { toast } from "@workspace/ui/components/shadcn/sonner";
 import { CheckIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import {
@@ -34,8 +35,12 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
       await acceptMutation.mutateAsync(invitationId);
       setInvitationStatus("accepted");
       navigate({ to: "/" });
-    } catch {
-      // Swallow — no mutation onError; failed accept leaves the pending UI as-is.
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Couldn't accept the invitation"
+      );
     }
   };
 
@@ -43,8 +48,12 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
     try {
       await rejectMutation.mutateAsync(invitationId);
       setInvitationStatus("rejected");
-    } catch {
-      // Swallow — no mutation onError; failed reject leaves the pending UI as-is.
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Couldn't decline the invitation"
+      );
     }
   };
 

@@ -125,8 +125,8 @@ test.describe("sidebar", () => {
       timeout: 15_000,
     });
 
-    // createChat re-reads the list. A forwarded close re-registers the facet
-    // after delete; that id comes back unless chat_meta is the only record.
+    // The next send mints a new id. A forwarded close re-registers the facet
+    // after delete; the old id stays gone because chat_meta is the record.
     const followUp = `After delete ${Date.now()}`;
     const composer = fresh.locator(COMPOSER);
     await expect(composer).toBeVisible({ timeout: 15_000 });

@@ -2,7 +2,7 @@
 
 import { toast } from "@workspace/ui/components/shadcn/sonner";
 import type { FileUIPart } from "ai";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { filePartsFromFiles } from "@/lib/chat/attachments";
 
 /**
@@ -28,6 +28,17 @@ export interface ChatAttachment {
 export function useChatAttachments(options: { supportsImages: boolean }) {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [converting, setConverting] = useState(false);
+  const attachmentsRef = useRef(attachments);
+  attachmentsRef.current = attachments;
+  // biome-ignore lint/plugin/no-use-effect: revoke blob previews if the tray unmounts first
+  useEffect(
+    () => () => {
+      for (const attachment of attachmentsRef.current) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
+    },
+    []
+  );
 
   const addFiles = useCallback(
     (list: FileList | File[]) => {

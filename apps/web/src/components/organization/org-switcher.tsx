@@ -2,6 +2,7 @@
 
 import { useNavigate } from "@tanstack/react-router";
 import { authClient } from "@workspace/auth/client";
+import { APP_NAME } from "@workspace/ui/components/brand/auth-page";
 import {
   Avatar,
   AvatarFallback,
@@ -112,7 +113,7 @@ export function OrgSwitcher() {
           <DropdownMenuTrigger
             render={
               <SidebarMenuButton
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
                 size="lg"
                 tooltip={displayOrganization?.name ?? "Organization"}
               />
@@ -132,7 +133,7 @@ export function OrgSwitcher() {
                 {displayOrganization?.name ?? "No organization"}
               </span>
               <span className="truncate text-muted-foreground text-xs">
-                Starter
+                {APP_NAME}
               </span>
             </div>
             <ChevronsUpDown className="ml-auto size-4" />

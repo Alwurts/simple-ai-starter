@@ -1,6 +1,7 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { APP_NAME } from "@workspace/ui/components/brand/auth-page";
 import { Toaster } from "@workspace/ui/components/shadcn/sonner";
 import { RouteError } from "../components/layout/route-error";
 import { RouteNotFound } from "../components/layout/route-not-found";
@@ -27,7 +28,7 @@ export const Route = createRootRoute({
         name: "viewport",
       },
       {
-        title: "App",
+        title: APP_NAME,
       },
     ],
   }),

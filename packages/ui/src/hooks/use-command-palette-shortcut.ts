@@ -17,11 +17,14 @@ export function useCommandPaletteShortcut(onToggle: () => void) {
   // biome-ignore lint/plugin/no-use-effect: document keydown for ⌘K / Ctrl+K / /
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || e.key === "/") {
-        if (isTypingTarget(e.target)) {
-          return;
-        }
-
+      // `/` is a typing character. ⌘K / Ctrl+K still opens the palette from
+      // an input, where `/` must not be swallowed.
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onToggle();
+        return;
+      }
+      if (e.key === "/" && !isTypingTarget(e.target)) {
         e.preventDefault();
         onToggle();
       }

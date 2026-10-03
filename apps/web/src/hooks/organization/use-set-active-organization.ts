@@ -18,10 +18,15 @@ export function useSetActiveOrganization() {
   const { refetch: refetchActiveOrganization } =
     authClient.useActiveOrganization();
   return useMutation({
-    mutationFn: (organizationId: string) =>
-      authClient.organization.setActive({
+    mutationFn: async (organizationId: string) => {
+      const res = await authClient.organization.setActive({
         organizationId,
-      }),
+      });
+      if (res.error) {
+        throw new Error(res.error.message ?? "Couldn't switch organization");
+      }
+      return res.data;
+    },
     onSuccess: () => {
       toast.success("Organization set as active");
       navigate({
@@ -31,6 +36,13 @@ export function useSetActiveOrganization() {
       queryClient.invalidateQueries({
         predicate: (query) => isOrgDataQueryKey(query.queryKey),
       });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Couldn't switch organization"
+      );
     },
   });
 }

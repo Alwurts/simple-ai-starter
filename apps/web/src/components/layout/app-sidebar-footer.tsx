@@ -79,7 +79,7 @@ export function AppSidebarFooter() {
   const handleSignOut = async () => {
     await authClient.signOut();
     // The next session may be a different user/org — never serve this
-    // session's cache (B5).
+    // session's cache.
     queryClient.clear();
     navigate({
       to: "/login",
@@ -100,7 +100,7 @@ export function AppSidebarFooter() {
           <DropdownMenuTrigger
             render={
               <SidebarMenuButton
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
                 size="lg"
                 tooltip={user.name ?? "Account"}
               />
