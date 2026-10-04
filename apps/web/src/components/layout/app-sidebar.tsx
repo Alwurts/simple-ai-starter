@@ -1,6 +1,7 @@
 "use client";
 
 import { Link, useRouterState } from "@tanstack/react-router";
+import { LogoMark } from "@workspace/ui/components/brand/logo-monochrome";
 import {
   Sidebar,
   SidebarContent,
@@ -13,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@workspace/ui/components/shadcn/sidebar";
-import { MessageSquarePlusIcon, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
 import { SidebarChats } from "@/components/chat/sidebar-chats";
 import { AppSidebarFooter } from "@/components/layout/app-sidebar-footer";
@@ -21,18 +22,30 @@ import {
   getPlatformNavigationItems,
   isPlatformNavActive,
 } from "@/components/layout/platform-navigation";
-import { OrgSwitcher } from "@/components/organization/org-switcher";
 import { SearchCommand } from "@/components/search/search-command";
 import { useCloseMobileSidebarOnNavigate } from "@/hooks/layout/use-close-mobile-sidebar-on-navigate";
 
 export function AppSidebar() {
   const [searchOpen, setSearchOpen] = useState(false);
-  const closeOnNavigate = useCloseMobileSidebarOnNavigate();
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
-        <OrgSwitcher />
         <SidebarMenu>
+          <SidebarMenuItem className="flex items-center gap-2">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <LogoMark className="size-5" />
+            </div>
+            <SidebarMenuButton
+              className="ml-auto size-8 group-data-[collapsible=icon]:hidden"
+              onClick={() => setSearchOpen(true)}
+              tooltip="Search"
+            >
+              <Search />
+              <span className="sr-only">Search</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setSearchOpen(true)}
@@ -45,20 +58,6 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className="overflow-x-hidden">
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                render={<Link onClick={closeOnNavigate} to="/chat/new" />}
-                tooltip="New chat"
-                variant="outline"
-              >
-                <MessageSquarePlusIcon />
-                <span>New chat</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
         <AppSidebarMainNavigation />
         <SidebarChats />
       </SidebarContent>
@@ -66,7 +65,6 @@ export function AppSidebar() {
         <AppSidebarFooter />
       </SidebarFooter>
 
-      {/* Expanded desktop uses the rail; collapsed desktop uses the header trigger. */}
       <SidebarRail className="group-data-[collapsible=icon]:hidden" />
       <SearchCommand open={searchOpen} setOpen={setSearchOpen} />
     </Sidebar>

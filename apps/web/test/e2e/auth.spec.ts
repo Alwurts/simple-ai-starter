@@ -3,8 +3,8 @@ import { fillValue, waitForRouteSettled, waitHydrated } from "./helpers";
 
 const LOGIN_URL_PATTERN = /login/;
 const ONBOARDING_URL_PATTERN = /onboarding/;
-// The chat is the signed-in home; a fresh org lands on the new-chat draft.
-const HOME_URL_PATTERN = /\/chat\/(new|[0-9a-f]+)/;
+// Signed-in home is `/`. Chat opens in the dock and does not replace this URL.
+const HOME_URL_PATTERN = /^https?:\/\/[^/]+\/?$/;
 const LOGIN_REDIRECT_PATTERN = /login\?redirect=%2Faccept-invitation%2F/;
 const SIGNUP_REDIRECT_PATTERN = /signup\?redirect=%2Faccept-invitation%2F/;
 

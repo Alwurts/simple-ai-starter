@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChatHomePage } from "@/components/chat/chat-home-page";
+import { HomeStage } from "@/components/chat/dock/home-stage";
 
 export const Route = createFileRoute("/_protected/_org/")({
-  component: ChatHomePage,
+  component: HomeStage,
 });

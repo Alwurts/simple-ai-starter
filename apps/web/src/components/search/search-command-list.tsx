@@ -8,7 +8,7 @@ import {
   CommandList,
 } from "@workspace/ui/components/shadcn/command";
 import { type LucideIcon, MessageSquareTextIcon, Package } from "lucide-react";
-import { getPlatformNavigationItems } from "@/components/layout/platform-navigation";
+import { getPalettePages } from "@/components/layout/platform-navigation";
 
 interface SearchCommandProduct {
   description?: string | null;
@@ -36,7 +36,7 @@ export function SearchCommandList({
   onNavigateToChat,
   products,
 }: SearchCommandListProps) {
-  const pages = getPlatformNavigationItems();
+  const pages = getPalettePages();
   const showChats = chats.length > 0 || messageHits.length > 0;
 
   return (

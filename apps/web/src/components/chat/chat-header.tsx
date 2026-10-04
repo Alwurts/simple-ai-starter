@@ -13,8 +13,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@workspace/ui/components/shadcn/tooltip";
-import { BotIcon, PanelRightIcon } from "lucide-react";
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile";
+import { ArrowLeftIcon, BotIcon, PanelRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { useChatDock } from "@/components/chat/dock/dock-context";
 
 /** Chat page top bar: sidebar trigger, bot icon, title, menu, panel toggle. */
 export function ChatHeader({
@@ -22,43 +24,70 @@ export function ChatHeader({
   menu,
   panelOpen,
   onTogglePanel,
+  windowControls,
 }: {
   title: string;
   menu: ReactNode;
   panelOpen: boolean;
   onTogglePanel?: () => void;
+  windowControls?: ReactNode;
 }) {
+  const isMobile = useIsMobile();
+  const dock = useChatDock();
+  const showFiles = Boolean(onTogglePanel) && !panelOpen;
+  const leaveChat = () => {
+    if (dock.state.focus?.kind === "draft") {
+      dock.closeFocused();
+      return;
+    }
+    dock.minimize();
+  };
   return (
-    <ShellHeader className="px-3" data-slot="full-screen-chat-header">
+    <ShellHeader className="flex-nowrap px-3" data-slot="chat-dock-header">
       <ShellHeaderSidebarTrigger className="-ml-1" />
-      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+      {isMobile ? (
+        <Button
+          aria-label="Back"
+          className="size-7 shrink-0"
+          onClick={leaveChat}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          <ArrowLeftIcon />
+        </Button>
+      ) : null}
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <ShellHeaderIcon>
           <BotIcon />
         </ShellHeaderIcon>
         <ShellHeaderTitle>{title}</ShellHeaderTitle>
         {menu}
       </div>
-      {panelOpen || !onTogglePanel ? null : (
+      {showFiles || windowControls ? (
         <ShellHeaderActions>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  className="size-7 shrink-0"
-                  onClick={onTogglePanel}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                />
-              }
-            >
-              <PanelRightIcon />
-              <span className="sr-only">Files</span>
-            </TooltipTrigger>
-            <TooltipContent>Files</TooltipContent>
-          </Tooltip>
+          {showFiles ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    className="size-7 shrink-0"
+                    onClick={onTogglePanel}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  />
+                }
+              >
+                <PanelRightIcon />
+                <span className="sr-only">Files</span>
+              </TooltipTrigger>
+              <TooltipContent>Files</TooltipContent>
+            </Tooltip>
+          ) : null}
+          {windowControls}
         </ShellHeaderActions>
-      )}
+      ) : null}
     </ShellHeader>
   );
 }
