@@ -20,7 +20,6 @@ async function createChatWithTitle(page: Page, title: string): Promise<void> {
   await expect(page).toHaveURL(CHAT_ID_URL_PATTERN, { timeout: 15_000 });
 }
 
-/** The row-menu trigger of the sidebar chat whose title matches. */
 function chatRowMenu(page: Page, title: string) {
   return page
     .getByRole("listitem")

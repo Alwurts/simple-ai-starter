@@ -429,7 +429,6 @@ function ChatView({ chatId, files, title }: ChatViewProps) {
     // transcript as a second chat request on top of the approval frame.
   });
 
-  // Invalidate React Query when agent write tools complete.
   useAgentToolMutationInvalidation({ messages: helpers.messages });
 
   const { sendMessage } = helpers;

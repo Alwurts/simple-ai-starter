@@ -10,13 +10,11 @@ test.describe("catalog products", () => {
     await page.goto("/catalog");
     await waitHydrated(page);
 
-    // Open the create product dialog
     await page.getByRole("button", { name: "Add Product" }).click();
     await expect(
       page.getByRole("heading", { name: "Add New Product" })
     ).toBeVisible({ timeout: 10_000 });
 
-    // Fill the product form
     await fillValue(page.locator("input#name"), productName);
     await fillValue(page.locator("input#price"), "29.99");
     await fillValue(page.locator("textarea#description"), "An e2e product");
@@ -27,7 +25,6 @@ test.describe("catalog products", () => {
       .getByRole("button", { name: "Add Product" })
       .click();
 
-    // Verify the product appears in the table
     await expect(page.getByText(productName)).toBeVisible({
       timeout: 10_000,
     });
@@ -52,13 +49,11 @@ test.describe("catalog products", () => {
       .getByRole("button", { name: "Add Product" })
       .click();
 
-    // Wait for the product to appear, then click its name
     await expect(page.getByText(detailProductName)).toBeVisible({
       timeout: 10_000,
     });
     await page.getByRole("link", { name: detailProductName }).click();
 
-    // Verify we're on the product detail page
     await expect(page).toHaveURL(CATALOG_DETAIL_URL_PATTERN);
     await expect(page.getByText(detailProductName)).toBeVisible();
   });

@@ -20,7 +20,6 @@ export type Product = InferResponseType<
 export const productsQueryKey = (organizationId: string) =>
   [organizationId, "products"] as const;
 
-/** One product's key under the org's catalog prefix. */
 export const productQueryKey = (organizationId: string, id: string) =>
   [...productsQueryKey(organizationId), "detail", id] as const;
 

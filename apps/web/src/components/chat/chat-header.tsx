@@ -18,7 +18,6 @@ import { ArrowLeftIcon, BotIcon, PanelRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useChatDock } from "@/components/chat/dock/dock-context";
 
-/** Chat page top bar: sidebar trigger, bot icon, title, menu, panel toggle. */
 export function ChatHeader({
   title,
   menu,

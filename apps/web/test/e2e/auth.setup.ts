@@ -21,7 +21,6 @@ setup("create authenticated user", async ({ page }) => {
   await fillValue(page.locator("input#password"), "TestPassword123!");
   await page.getByRole("button", { name: "Sign up" }).click();
 
-  // Should redirect to onboarding
   await expect(page).toHaveURL(ONBOARDING_URL_PATTERN, { timeout: 15_000 });
 
   // The org route mounts lazily after the URL changes: let its chunk cascade
@@ -31,9 +30,7 @@ setup("create authenticated user", async ({ page }) => {
   await fillValue(page.locator("input#name"), "E2E Test Org");
   await page.getByRole("button", { name: "Create Organization" }).click();
 
-  // Should redirect to the dashboard
   await expect(page).toHaveURL(HOME_URL_PATTERN, { timeout: 15_000 });
 
-  // Save the authenticated state
   await page.context().storageState({ path: authFile });
 });

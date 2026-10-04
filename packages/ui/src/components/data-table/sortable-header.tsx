@@ -65,7 +65,6 @@ export function SortableHeader<TData extends RowData>({
   className,
 }: {
   column: Column<DataTableFeatures, TData, unknown>;
-  /** Extra classes, e.g. right-align a header over right-aligned values. */
   className?: string;
 }) {
   const sorted = column.getIsSorted();

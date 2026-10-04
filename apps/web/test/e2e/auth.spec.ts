@@ -51,7 +51,6 @@ test.describe("login flow", () => {
   const loginPassword = "TestPassword123!";
 
   test("can log in with existing credentials", async ({ page }) => {
-    // First, create a user via signup + onboarding
     await page.goto("/signup");
     await waitHydrated(page);
     await fillValue(page.locator("input#name"), "Login Test User");
@@ -66,12 +65,10 @@ test.describe("login flow", () => {
     await page.getByRole("button", { name: "Create Organization" }).click();
     await expect(page).toHaveURL(HOME_URL_PATTERN, { timeout: 15_000 });
 
-    // Now navigate to login page directly (fresh context without cookies)
     await page.context().clearCookies();
     await page.goto("/login");
     await waitHydrated(page);
 
-    // Log in with the credentials
     await fillValue(page.locator("input#email"), loginEmail);
     await fillValue(page.locator("input#password"), loginPassword);
     await page.getByRole("button", { name: "Log in" }).click();

@@ -11,7 +11,6 @@ describe("auth enforcement", () => {
   });
 
   it("returns 403 on org-protected routes without active org", async () => {
-    // Create session without org
     const { cookie } = await createTestSession();
     const res = await exports.default.fetch(
       "http://localhost/api/catalog/products",

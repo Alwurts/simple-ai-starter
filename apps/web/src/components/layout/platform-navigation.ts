@@ -20,7 +20,6 @@ export function getPalettePages(): PlatformNavigationItem[] {
   ];
 }
 
-/** An item stays active on its own url and on paths nested under that url. */
 export function isPlatformNavActive(pathname: string, url: string): boolean {
   return pathname === url || pathname.startsWith(`${url}/`);
 }

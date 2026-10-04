@@ -9,7 +9,6 @@ interface DisplayProductListOutput {
   productIds?: string[];
 }
 
-/** Card renderer for the `display_product_list` UI-echo tool. */
 function ProductRow({ productId }: { productId: string }) {
   const { data: product, isLoading, isError } = useProduct(productId);
 
