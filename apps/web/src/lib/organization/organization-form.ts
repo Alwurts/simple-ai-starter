@@ -17,10 +17,11 @@ export const organizationSlugSchema = z
 
 /**
  * Display-name input filter. Letters are never stripped, so accents survive
- * ("José" stays "José"); the slug derivation folds them instead.
+ * ("José" stays "José"). `&` stays in the name. The slug derivation folds
+ * accents and drops `&`.
  */
 export const filterName = (name: string) =>
-  name.replace(/[^\p{L}\p{N}\s\-_']/gu, "");
+  name.replace(/[^\p{L}\p{N}\s\-_&']/gu, "");
 
 const MULTIPLE_HYPHENS_REGEX = /-{2,}/g;
 const TRAILING_HYPHEN_REGEX = /-+$/;

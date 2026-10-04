@@ -12,45 +12,56 @@ and [`docs/architecture.md`](architecture.md).
 
 Say this in plain language, and skip anything they already know.
 
-- A private app. People sign up, name the business, and sign in. It is not a
-  public shop, and it does not take payment.
-- One example list, `products`: a name, an optional short description, and a
-  price. The sample rows are placeholders. That list is the one you rename.
-  There are no photos, no count of how many are left, and no orders.
-- A chat for signed-in people. It can look at the list and, after they
-  approve, change it. It can also remember a short fact about how they work.
-- Settings for the organization and its members.
+- You can help them make the app they need.
+- The app is private. People sign in. It does not take payment.
+- It already comes with an agent. The agent can see the information they let
+  it see, help organize it, and do work for them. It asks before it changes
+  anything.
+
+The template also has one example list, `products`, with a name, an optional
+short description, and a price. The sample rows are placeholders. Settings
+cover the organization and its members. There are no photos, no count of how
+many are left, and no orders. Say these only when they matter.
 
 ## How to ask
 
 One question at a time. Skip anything they already answered. Do not ask them
 to pick a stack, a database, a port, or a color code.
 
-Stop when you know the business name, who it is for, what they call one item,
-and whether a name, a description, and a price are enough. Then change the
-app. The chat, a sample item, and the look can wait.
+Stop when you know what they want the app to do, who it is for, what the
+first version should do, and what they want the agent to take care of. Then
+change the app. A real example and the look can wait.
+
+If their answer is a list of things, ask what each one should remember. The
+template already has a name, a short description, and a price. Add a field
+only when they asked for it.
 
 ## Questions
 
-1. What should we call this, and what do you call one thing on the list?
+1. What do you want this app to do?
 2. Who is it for on the first day, and who is not?
-3. What should the first version do?
-4. For one item, are a name, a short description, and a price enough? What
-   else should each item remember?
-5. Do you want the chat, and should it remember anything about how you work?
-6. What is one real item to put on the list, so the first screen is yours?
-7. Leave the look as it is, or change it? See [Look](#look).
+3. What should the first version let you do?
+4. What would you like the agent to take care of?
+5. What is one real example we should put in, so the first screen is yours?
+6. Leave the look as it is, or change it? See [Look](#look).
 
 ## What you change
 
-Use their words on the screen, including the assistant's. Rename the
-`products` slice through the layers. The map is
+Set the app up for them, including how they sign in. When they want to see
+it, give the address and the sign-in in one sentence. Do not ask them to
+sign up or to name the business in the form.
+
+Do not invent an example to check your work. Use a real one they gave you.
+Until then, leave the examples that came with the template.
+
+Use their words everywhere they will read them, including what the assistant
+says. Do not invent a shorter name.
+
+When their app is a list of things, reshape the `products` slice. The map is
 [the worked example](architecture.md#worked-example-a-read-and-a-write-through-products).
-Replace the sample rows with their item. Add a field only when they asked for
-it on each item. A standing fact about how they work stays a memory the
-assistant already has. Keep the chat unless they said they do not want it.
-When they need to look, tell them the address and the sign-in in one plain
-sentence.
+Add a field only when they asked for it on each thing. A standing fact about
+how they work stays a memory the agent already has. Keep the agent unless
+they said they do not want it.
 
 ## Look
 
