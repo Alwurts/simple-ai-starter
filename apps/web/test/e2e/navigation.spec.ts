@@ -15,13 +15,14 @@ test.describe("navigation", () => {
       page.getByRole("button", { name: "Search", exact: true })
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "Search" })).toHaveCount(0);
-    await expect(page.locator("[data-slot=chat-tab-strip]")).toHaveCount(0);
+    await expect(page.locator("[data-slot=chat-tab-strip]")).toBeVisible();
   });
 
   test("sidebar navigates to Catalog", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "Catalog" }).click();
     await expect(page).toHaveURL(CATALOG_URL_PATTERN);
+    await expect(page.locator("[data-slot=chat-tab-strip]")).toBeVisible();
   });
 
   test("settings opens from the account menu", async ({ page }) => {
@@ -31,6 +32,7 @@ test.describe("navigation", () => {
     await page.getByRole("button", { name: "E2E Test User" }).click();
     await page.getByRole("menuitem", { name: "Settings" }).click();
     await expect(page).toHaveURL("/settings/general");
+    await expect(page.locator("[data-slot=chat-tab-strip]")).toBeVisible();
     await page
       .getByRole("navigation", { name: "Settings" })
       .getByRole("link", { name: "Members" })

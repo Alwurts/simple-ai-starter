@@ -13,16 +13,24 @@ import {
   ShellPage,
 } from "@workspace/ui/components/brand/shell";
 import { Button } from "@workspace/ui/components/shadcn/button";
+import { Separator } from "@workspace/ui/components/shadcn/separator";
 import { Skeleton } from "@workspace/ui/components/shadcn/skeleton";
 import { cn } from "@workspace/ui/lib/utils";
+import { Fragment } from "react";
 import {
   type AppBreadcrumbItem,
   AppBreadcrumbs,
 } from "@/components/layout/app-breadcrumbs";
 
-const SETTINGS_SECTIONS = [
-  { title: "General", to: "/settings/general" },
-  { title: "Members", to: "/settings/members" },
+const SETTINGS_NAV = [
+  {
+    label: null,
+    links: [{ title: "General", to: "/settings/general" }],
+  },
+  {
+    label: "Organization",
+    links: [{ title: "Members", to: "/settings/members" }],
+  },
 ] as const;
 
 function useSettingsCrumbs(): AppBreadcrumbItem[] {
@@ -102,30 +110,45 @@ function SettingsSectionNav() {
   return (
     <nav
       aria-label="Settings"
-      className="flex shrink-0 gap-1 border-b px-3 py-2 md:w-48 md:flex-col md:border-r md:border-b-0 md:px-2 md:py-4"
+      className="flex shrink-0 items-stretch gap-1 border-b px-3 md:h-full md:w-48 md:flex-col md:self-stretch md:border-r md:border-b-0 md:px-2 md:py-4"
     >
-      <p className="hidden px-2 pb-1 font-medium text-muted-foreground text-xs md:block">
-        Organization
-      </p>
-      {SETTINGS_SECTIONS.map((section) => {
-        const active =
-          pathname === section.to || pathname.startsWith(`${section.to}/`);
-        return (
-          <Link
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "rounded-md px-2 py-1.5 text-sm",
-              active
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-            )}
-            key={section.to}
-            to={section.to}
-          >
-            {section.title}
-          </Link>
-        );
-      })}
+      {SETTINGS_NAV.map((group, index) => (
+        <Fragment key={group.label ?? group.links[0].to}>
+          {index > 0 ? (
+            <>
+              <div
+                aria-hidden
+                className="mx-1 h-4 w-px shrink-0 self-center bg-border md:hidden"
+              />
+              <Separator className="mx-2 my-2 hidden md:block" />
+            </>
+          ) : null}
+          {group.label ? (
+            <p className="hidden px-2 pt-1 pb-1 font-medium text-muted-foreground text-xs md:block">
+              {group.label}
+            </p>
+          ) : null}
+          {group.links.map((section) => {
+            const active =
+              pathname === section.to || pathname.startsWith(`${section.to}/`);
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-md px-2 py-2.5 text-sm md:py-1.5",
+                  active
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                )}
+                key={section.to}
+                to={section.to}
+              >
+                {section.title}
+              </Link>
+            );
+          })}
+        </Fragment>
+      ))}
     </nav>
   );
 }

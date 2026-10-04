@@ -10,7 +10,7 @@ import {
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile";
 import { cn } from "@workspace/ui/lib/utils";
 import { BotIcon, PlusIcon, XIcon } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import { ChatPage } from "@/components/chat/chat-page";
 import { useOrgConnection } from "@/components/chat/connection/org-connection";
 import { useChatDock } from "@/components/chat/dock/dock-context";
@@ -34,19 +34,12 @@ export function ChatDockStage({ children }: { children: ReactNode }) {
 }
 
 /**
- * Desktop working set, outside the inset card. The row stays for the rest
- * of the session once the dock has opened, so the card does not jump when
- * the first tab appears. A phone has no row.
+ * Desktop working set, outside the inset card. The row is always there, so
+ * Catalog and Settings keep the same footer as Home. A phone has no row.
  */
 export function ChatTabFooter() {
-  const dock = useChatDock();
   const isMobile = useIsMobile();
-  const used = dock.state.bodyOpen || dock.state.openChatIds.length > 0;
-  const [reserved, setReserved] = useState(false);
-  if (!isMobile && used && !reserved) {
-    setReserved(true);
-  }
-  if (isMobile || !reserved) {
+  if (isMobile) {
     return null;
   }
   return (
