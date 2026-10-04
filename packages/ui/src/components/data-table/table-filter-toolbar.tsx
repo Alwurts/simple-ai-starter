@@ -56,6 +56,32 @@ function FilterChip({
     </Badge>
   );
 }
+function TextFilterSection({
+  definition,
+  value,
+  onChange,
+}: {
+  definition: Extract<TableFilterDefinition, { type: "text" }>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label className="font-medium text-sm" htmlFor={definition.id}>
+        {definition.label}
+      </Label>
+      <Input
+        id={definition.id}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={
+          definition.placeholder ??
+          `Filter by ${definition.label.toLowerCase()}…`
+        }
+        value={value}
+      />
+    </div>
+  );
+}
 function EnumFilterSection({
   definition,
   selected,
@@ -110,20 +136,6 @@ export function TableFilterToolbar({
   className,
 }: TableFilterToolbarProps) {
   const activeCount = countActiveFilters(columnFilters, definitions);
-  // Text filters are the table's search: always visible in the toolbar,
-  // not hidden behind the "Filters" popover (enum filters stay there).
-  const textDefinitions = definitions.filter(
-    (
-      definition
-    ): definition is Extract<TableFilterDefinition, { type: "text" }> =>
-      definition.type === "text"
-  );
-  const popoverDefinitions = definitions.filter(
-    (
-      definition
-    ): definition is Extract<TableFilterDefinition, { type: "enum" }> =>
-      definition.type !== "text"
-  );
   const activeChips = useMemo(
     () =>
       definitions.flatMap((definition) => {
@@ -155,27 +167,7 @@ export function TableFilterToolbar({
       )}
       data-slot="table-filter-toolbar"
     >
-      {textDefinitions.map((definition) => (
-        <Input
-          aria-label={definition.label}
-          className="h-8 w-52 bg-background"
-          key={definition.id}
-          onChange={(event) =>
-            updateFilter(definition.columnId, event.target.value)
-          }
-          placeholder={
-            definition.placeholder ??
-            `Search ${definition.label.toLowerCase()}…`
-          }
-          value={
-            (getColumnFilterValue(columnFilters, definition.columnId) as
-              | string
-              | undefined) ?? ""
-          }
-        />
-      ))}
-
-      {popoverDefinitions.length > 0 ? (
+      {definitions.length > 0 ? (
         <Popover>
           <PopoverTrigger
             render={
@@ -207,21 +199,36 @@ export function TableFilterToolbar({
             </div>
             <Separator />
             <div className="max-h-[min(24rem,60vh)] space-y-4 overflow-y-auto p-4">
-              {popoverDefinitions.map((definition, index) => (
+              {definitions.map((definition, index) => (
                 <div key={definition.id}>
                   {index > 0 ? <Separator className="mb-4" /> : null}
-                  <EnumFilterSection
-                    definition={definition}
-                    onChange={(values) =>
-                      updateFilter(definition.columnId, values)
-                    }
-                    selected={
-                      (getColumnFilterValue(
-                        columnFilters,
-                        definition.columnId
-                      ) as string[] | undefined) ?? []
-                    }
-                  />
+                  {definition.type === "text" ? (
+                    <TextFilterSection
+                      definition={definition}
+                      onChange={(value) =>
+                        updateFilter(definition.columnId, value)
+                      }
+                      value={
+                        (getColumnFilterValue(
+                          columnFilters,
+                          definition.columnId
+                        ) as string | undefined) ?? ""
+                      }
+                    />
+                  ) : (
+                    <EnumFilterSection
+                      definition={definition}
+                      onChange={(values) =>
+                        updateFilter(definition.columnId, values)
+                      }
+                      selected={
+                        (getColumnFilterValue(
+                          columnFilters,
+                          definition.columnId
+                        ) as string[] | undefined) ?? []
+                      }
+                    />
+                  )}
                 </div>
               ))}
             </div>

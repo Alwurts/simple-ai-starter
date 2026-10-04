@@ -10,14 +10,10 @@ export const ROLE_LABELS: Record<RoleName, string> = {
   member: "Member",
 };
 
-/** Label for a known role key. */
 export function roleMessage(role: RoleName): string {
   return ROLE_LABELS[role];
 }
 
-/**
- * Label for a role string from better-auth data. Unknown keys render as-is.
- */
 export function roleLabel(role: string): string {
   return role in ROLE_LABELS ? ROLE_LABELS[role as RoleName] : role;
 }

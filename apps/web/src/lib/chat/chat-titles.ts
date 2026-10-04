@@ -3,11 +3,6 @@ export function defaultNewChatTitle(): string {
   return "New chat";
 }
 
-/**
- * Derive a chat title from the first outgoing message — the starter's
- * title-from-first-message behaviour (chat-titles.ts): strip code fences,
- * inline code runs, and collapse whitespace, then clamp to 50 chars.
- */
 export function deriveTitleFromMessage(
   parts: Array<{ type: string; text?: string }>
 ): string | undefined {

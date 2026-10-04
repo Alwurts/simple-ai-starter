@@ -35,7 +35,6 @@ export function useChatSidePanel() {
     }
   }, [closePanel, openPanel, panelOpen]);
 
-  /** Open a workspace file, reusing its tab when already open. */
   const openFileTab = useCallback(
     (path: string, name: string) => {
       setPanelOpen(true);

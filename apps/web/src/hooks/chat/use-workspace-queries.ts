@@ -44,7 +44,6 @@ export function useWorkspaceDirectory(path: string) {
   );
 }
 
-/** The open file's text. */
 export function useWorkspaceFile(path: string) {
   const { organizationId, readWorkspaceFile } = useOrgConnection();
   return useQuery(

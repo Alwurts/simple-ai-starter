@@ -3,9 +3,6 @@ import { exports } from "cloudflare:workers";
 // Must match BETTER_AUTH_URL in .dev.vars for CSRF validation
 export const ORIGIN = "http://localhost:4011";
 
-/**
- * Helper to make POST requests with the Origin header required by Better Auth CSRF protection.
- */
 function authPost(url: string, body: object, cookie?: string) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -56,7 +53,6 @@ export async function createTestSession(overrides?: {
     throw new Error("No session cookie returned from signup");
   }
 
-  // Extract just the cookie key=value part (before the first ;)
   const cookieValue = sessionCookie.split(";")[0] ?? sessionCookie;
 
   const body = (await res.json()) as { user: { id: string } };
@@ -64,10 +60,6 @@ export async function createTestSession(overrides?: {
   return { cookie: cookieValue, userId: body.user.id, email };
 }
 
-/**
- * Creates a test session with an active organization.
- * Signs up, creates an org, then returns the session cookie.
- */
 export async function createTestSessionWithOrg(overrides?: {
   name?: string;
   email?: string;
@@ -78,7 +70,6 @@ export async function createTestSessionWithOrg(overrides?: {
   const orgName = overrides?.orgName ?? "Test Org";
   const orgSlug = `test-org-${crypto.randomUUID().slice(0, 8)}`;
 
-  // Create organization via Better Auth API
   const orgRes = await authPost(
     `${ORIGIN}/api/auth/organization/create`,
     { name: orgName, slug: orgSlug },
@@ -108,12 +99,10 @@ export async function createTestSessionWithOrg(overrides?: {
     c.startsWith("better-auth.session_token=")
   );
 
-  // Use the updated cookie if available, otherwise the original
   const finalCookie = updatedSessionCookie
     ? (updatedSessionCookie.split(";")[0] ?? cookie)
     : cookie;
 
-  // Set active org
   const setActiveRes = await authPost(
     `${ORIGIN}/api/auth/organization/set-active`,
     { organizationSlug: orgSlug },

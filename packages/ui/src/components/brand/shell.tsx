@@ -88,7 +88,6 @@ export function ShellPage({
   );
 }
 
-/** Sidebar expand control in page headers — mobile always; desktop when collapsed. */
 export function ShellHeaderSidebarTrigger({
   className,
 }: {
@@ -184,7 +183,6 @@ export function ShellHeaderActions({
   );
 }
 
-/** Main content slot below the header — page bodies compose here. */
 export function ShellContent({
   className,
   children,
