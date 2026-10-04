@@ -66,8 +66,9 @@ Ask in this order. Reorder if they lead somewhere else.
 6. **What is one real item to put on the list?** Name, price, and anything
    from question 4, so the first screen is theirs.
 7. **Look and feel, last.** Only if the four stop-condition answers are in.
-   Show the three pictures below and ask which is closest, or whether to
-   leave it as it is. Then follow [Look and feel](#look-and-feel).
+   Describe the looks in [Look and feel](#look-and-feel) in one sentence
+   each, and ask which is closest, or whether to leave it. Do not ask them
+   for a color code.
 
 ## What you change
 
@@ -95,23 +96,25 @@ stream glitches stay in your work. Do not narrate them.
 
 ## Look and feel
 
-The three pictures are the catalog in light mode. **Ink** is what ships.
-Leave [`packages/ui/src/styles/globals.css`](../packages/ui/src/styles/globals.css)
-alone if they pick Ink or say to leave it.
+A look is the color tokens and `--radius` in
+[`packages/ui/src/styles/globals.css`](../packages/ui/src/styles/globals.css).
+Describe these five in one sentence each and ask which is closest. There are
+no pictures to show. If they want to see one, apply it, let them look at the
+running app, and switch if they say so.
 
-![Ink, the look that ships](assets/themes/ink.png)
+**Ink** is what ships: a white page, near-black buttons, slightly rounded
+corners. Leave the file alone if they pick Ink or say to leave it.
 
-![Clay](assets/themes/clay.png)
+**Clay** is warm paper, clay-colored buttons, and rounder corners.
+**Harbor** is a cool pale page, blue buttons, and tighter corners.
+**Bloom** is a faint rose page, berry buttons, and very round corners.
+**Slate** is a gray page, dark slate buttons, and square corners.
 
-![Grove](assets/themes/grove.png)
-
-Show those three images in the chat. Ask which is closest. Do not ask for a
-color code, a hex value, or an `oklch` number.
-
-For Clay or Grove, set the variables below in **both** `:root` and `.dark`.
-Leave `--destructive`, `--destructive-foreground`, `--chart-1` through
-`--chart-5`, and `--radius` as they are. Primary text has to stay readable on
-the primary color: the pairs below already do.
+For Clay, Harbor, Bloom, or Slate, set every variable in that look's `:root`
+block and every variable in its `.dark` block. Leave `--destructive`,
+`--destructive-foreground`, and `--chart-1` through `--chart-5` as they are.
+Primary text has to stay readable on the primary color. The pairs below
+already do. Do not ask them for a hex value or an `oklch` number.
 
 ### Clay
 
@@ -135,6 +138,7 @@ the primary color: the pairs below already do.
 --border: oklch(0.88 0.02 70);
 --input: oklch(0.88 0.02 70);
 --ring: oklch(0.62 0.1 45);
+--radius: 0.75rem;
 --sidebar: oklch(0.96 0.018 75);
 --sidebar-foreground: oklch(0.28 0.04 50);
 --sidebar-primary: oklch(0.52 0.13 45);
@@ -165,6 +169,7 @@ the primary color: the pairs below already do.
 --border: oklch(0.36 0.02 50);
 --input: oklch(1 0 0 / 15%);
 --ring: oklch(0.7 0.08 55);
+--radius: 0.75rem;
 --sidebar: oklch(0.26 0.025 50);
 --sidebar-foreground: oklch(0.96 0.01 80);
 --sidebar-primary: oklch(0.75 0.1 55);
@@ -175,64 +180,194 @@ the primary color: the pairs below already do.
 --sidebar-ring: oklch(0.7 0.08 55);
 ```
 
-### Grove
+### Harbor
 
 `:root`
 
 ```css
---background: oklch(0.98 0.012 145);
---foreground: oklch(0.27 0.04 155);
---card: oklch(0.995 0.006 145);
---card-foreground: oklch(0.27 0.04 155);
---popover: oklch(0.995 0.006 145);
---popover-foreground: oklch(0.27 0.04 155);
---primary: oklch(0.42 0.09 155);
---primary-foreground: oklch(0.98 0.01 145);
---secondary: oklch(0.94 0.02 150);
---secondary-foreground: oklch(0.3 0.04 155);
---muted: oklch(0.94 0.015 150);
---muted-foreground: oklch(0.46 0.03 155);
---accent: oklch(0.92 0.03 150);
---accent-foreground: oklch(0.3 0.04 155);
---border: oklch(0.88 0.02 150);
---input: oklch(0.88 0.02 150);
---ring: oklch(0.55 0.08 155);
---sidebar: oklch(0.96 0.02 150);
---sidebar-foreground: oklch(0.27 0.04 155);
---sidebar-primary: oklch(0.42 0.09 155);
---sidebar-primary-foreground: oklch(0.98 0.01 145);
---sidebar-accent: oklch(0.92 0.025 150);
---sidebar-accent-foreground: oklch(0.3 0.04 155);
---sidebar-border: oklch(0.88 0.02 150);
---sidebar-ring: oklch(0.55 0.08 155);
+--background: oklch(0.985 0.01 250);
+--foreground: oklch(0.25 0.04 260);
+--card: oklch(0.995 0.005 250);
+--card-foreground: oklch(0.25 0.04 260);
+--popover: oklch(0.995 0.005 250);
+--popover-foreground: oklch(0.25 0.04 260);
+--primary: oklch(0.45 0.14 255);
+--primary-foreground: oklch(0.98 0.01 250);
+--secondary: oklch(0.94 0.02 250);
+--secondary-foreground: oklch(0.28 0.04 260);
+--muted: oklch(0.94 0.015 250);
+--muted-foreground: oklch(0.45 0.03 255);
+--accent: oklch(0.93 0.03 250);
+--accent-foreground: oklch(0.28 0.04 260);
+--border: oklch(0.88 0.02 250);
+--input: oklch(0.88 0.02 250);
+--ring: oklch(0.55 0.1 255);
+--radius: 0.5rem;
+--sidebar: oklch(0.96 0.02 250);
+--sidebar-foreground: oklch(0.25 0.04 260);
+--sidebar-primary: oklch(0.45 0.14 255);
+--sidebar-primary-foreground: oklch(0.98 0.01 250);
+--sidebar-accent: oklch(0.93 0.025 250);
+--sidebar-accent-foreground: oklch(0.28 0.04 260);
+--sidebar-border: oklch(0.88 0.02 250);
+--sidebar-ring: oklch(0.55 0.1 255);
 ```
 
 `.dark`
 
 ```css
---background: oklch(0.2 0.02 155);
---foreground: oklch(0.96 0.01 145);
---card: oklch(0.23 0.02 155);
---card-foreground: oklch(0.96 0.01 145);
---popover: oklch(0.23 0.02 155);
---popover-foreground: oklch(0.96 0.01 145);
---primary: oklch(0.78 0.1 155);
---primary-foreground: oklch(0.22 0.04 155);
---secondary: oklch(0.3 0.02 155);
---secondary-foreground: oklch(0.96 0.01 145);
---muted: oklch(0.3 0.02 155);
---muted-foreground: oklch(0.75 0.02 150);
---accent: oklch(0.32 0.03 155);
---accent-foreground: oklch(0.96 0.01 145);
---border: oklch(0.34 0.02 155);
+--background: oklch(0.18 0.03 260);
+--foreground: oklch(0.96 0.01 250);
+--card: oklch(0.22 0.03 260);
+--card-foreground: oklch(0.96 0.01 250);
+--popover: oklch(0.22 0.03 260);
+--popover-foreground: oklch(0.96 0.01 250);
+--primary: oklch(0.75 0.12 250);
+--primary-foreground: oklch(0.2 0.04 260);
+--secondary: oklch(0.28 0.03 260);
+--secondary-foreground: oklch(0.96 0.01 250);
+--muted: oklch(0.28 0.03 260);
+--muted-foreground: oklch(0.75 0.02 250);
+--accent: oklch(0.32 0.04 255);
+--accent-foreground: oklch(0.96 0.01 250);
+--border: oklch(0.34 0.03 260);
 --input: oklch(1 0 0 / 15%);
---ring: oklch(0.7 0.08 155);
---sidebar: oklch(0.24 0.025 155);
---sidebar-foreground: oklch(0.96 0.01 145);
---sidebar-primary: oklch(0.78 0.1 155);
---sidebar-primary-foreground: oklch(0.22 0.04 155);
---sidebar-accent: oklch(0.32 0.03 155);
---sidebar-accent-foreground: oklch(0.96 0.01 145);
---sidebar-border: oklch(0.34 0.02 155);
---sidebar-ring: oklch(0.7 0.08 155);
+--ring: oklch(0.7 0.1 250);
+--radius: 0.5rem;
+--sidebar: oklch(0.2 0.03 260);
+--sidebar-foreground: oklch(0.96 0.01 250);
+--sidebar-primary: oklch(0.75 0.12 250);
+--sidebar-primary-foreground: oklch(0.2 0.04 260);
+--sidebar-accent: oklch(0.32 0.04 255);
+--sidebar-accent-foreground: oklch(0.96 0.01 250);
+--sidebar-border: oklch(0.34 0.03 260);
+--sidebar-ring: oklch(0.7 0.1 250);
+```
+
+### Bloom
+
+`:root`
+
+```css
+--background: oklch(0.98 0.015 15);
+--foreground: oklch(0.28 0.05 15);
+--card: oklch(0.995 0.008 15);
+--card-foreground: oklch(0.28 0.05 15);
+--popover: oklch(0.995 0.008 15);
+--popover-foreground: oklch(0.28 0.05 15);
+--primary: oklch(0.55 0.2 12);
+--primary-foreground: oklch(0.98 0.01 20);
+--secondary: oklch(0.95 0.02 15);
+--secondary-foreground: oklch(0.32 0.05 15);
+--muted: oklch(0.95 0.015 15);
+--muted-foreground: oklch(0.48 0.04 15);
+--accent: oklch(0.94 0.03 15);
+--accent-foreground: oklch(0.32 0.05 15);
+--border: oklch(0.9 0.02 15);
+--input: oklch(0.9 0.02 15);
+--ring: oklch(0.62 0.14 12);
+--radius: 1rem;
+--sidebar: oklch(0.97 0.02 15);
+--sidebar-foreground: oklch(0.28 0.05 15);
+--sidebar-primary: oklch(0.55 0.2 12);
+--sidebar-primary-foreground: oklch(0.98 0.01 20);
+--sidebar-accent: oklch(0.94 0.03 15);
+--sidebar-accent-foreground: oklch(0.32 0.05 15);
+--sidebar-border: oklch(0.9 0.02 15);
+--sidebar-ring: oklch(0.62 0.14 12);
+```
+
+`.dark`
+
+```css
+--background: oklch(0.2 0.03 15);
+--foreground: oklch(0.96 0.01 20);
+--card: oklch(0.23 0.03 15);
+--card-foreground: oklch(0.96 0.01 20);
+--popover: oklch(0.23 0.03 15);
+--popover-foreground: oklch(0.96 0.01 20);
+--primary: oklch(0.75 0.15 15);
+--primary-foreground: oklch(0.22 0.05 15);
+--secondary: oklch(0.3 0.03 15);
+--secondary-foreground: oklch(0.96 0.01 20);
+--muted: oklch(0.3 0.03 15);
+--muted-foreground: oklch(0.75 0.03 15);
+--accent: oklch(0.34 0.05 15);
+--accent-foreground: oklch(0.96 0.01 20);
+--border: oklch(0.36 0.03 15);
+--input: oklch(1 0 0 / 15%);
+--ring: oklch(0.72 0.12 15);
+--radius: 1rem;
+--sidebar: oklch(0.22 0.03 15);
+--sidebar-foreground: oklch(0.96 0.01 20);
+--sidebar-primary: oklch(0.75 0.15 15);
+--sidebar-primary-foreground: oklch(0.22 0.05 15);
+--sidebar-accent: oklch(0.34 0.05 15);
+--sidebar-accent-foreground: oklch(0.96 0.01 20);
+--sidebar-border: oklch(0.36 0.03 15);
+--sidebar-ring: oklch(0.72 0.12 15);
+```
+
+### Slate
+
+`:root`
+
+```css
+--background: oklch(0.97 0.005 260);
+--foreground: oklch(0.2 0.02 260);
+--card: oklch(0.99 0.003 260);
+--card-foreground: oklch(0.2 0.02 260);
+--popover: oklch(0.99 0.003 260);
+--popover-foreground: oklch(0.2 0.02 260);
+--primary: oklch(0.3 0.03 260);
+--primary-foreground: oklch(0.98 0 0);
+--secondary: oklch(0.93 0.008 260);
+--secondary-foreground: oklch(0.25 0.02 260);
+--muted: oklch(0.93 0.006 260);
+--muted-foreground: oklch(0.45 0.02 260);
+--accent: oklch(0.92 0.01 260);
+--accent-foreground: oklch(0.25 0.02 260);
+--border: oklch(0.86 0.01 260);
+--input: oklch(0.86 0.01 260);
+--ring: oklch(0.5 0.03 260);
+--radius: 0rem;
+--sidebar: oklch(0.94 0.008 260);
+--sidebar-foreground: oklch(0.2 0.02 260);
+--sidebar-primary: oklch(0.3 0.03 260);
+--sidebar-primary-foreground: oklch(0.98 0 0);
+--sidebar-accent: oklch(0.9 0.01 260);
+--sidebar-accent-foreground: oklch(0.25 0.02 260);
+--sidebar-border: oklch(0.86 0.01 260);
+--sidebar-ring: oklch(0.5 0.03 260);
+```
+
+`.dark`
+
+```css
+--background: oklch(0.16 0.01 260);
+--foreground: oklch(0.96 0.005 260);
+--card: oklch(0.2 0.012 260);
+--card-foreground: oklch(0.96 0.005 260);
+--popover: oklch(0.2 0.012 260);
+--popover-foreground: oklch(0.96 0.005 260);
+--primary: oklch(0.9 0.01 260);
+--primary-foreground: oklch(0.18 0.02 260);
+--secondary: oklch(0.26 0.012 260);
+--secondary-foreground: oklch(0.96 0.005 260);
+--muted: oklch(0.26 0.012 260);
+--muted-foreground: oklch(0.72 0.01 260);
+--accent: oklch(0.3 0.015 260);
+--accent-foreground: oklch(0.96 0.005 260);
+--border: oklch(0.32 0.012 260);
+--input: oklch(1 0 0 / 15%);
+--ring: oklch(0.7 0.02 260);
+--radius: 0rem;
+--sidebar: oklch(0.18 0.012 260);
+--sidebar-foreground: oklch(0.96 0.005 260);
+--sidebar-primary: oklch(0.9 0.01 260);
+--sidebar-primary-foreground: oklch(0.18 0.02 260);
+--sidebar-accent: oklch(0.3 0.015 260);
+--sidebar-accent-foreground: oklch(0.96 0.005 260);
+--sidebar-border: oklch(0.32 0.012 260);
+--sidebar-ring: oklch(0.7 0.02 260);
 ```
