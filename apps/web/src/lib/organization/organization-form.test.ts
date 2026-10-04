@@ -11,17 +11,23 @@ describe("filterName", () => {
     expect(filterName("José Café")).toBe("José Café");
   });
 
-  it("strips characters outside letters, numbers, space, - _ '", () => {
+  it("keeps & and strips characters outside letters, numbers, space, - _ '", () => {
     expect(filterName("Acme <script>alert(1)</script>")).toBe(
       "Acme scriptalert1script"
     );
-    expect(filterName("O'Neill & Co-2_3")).toBe("O'Neill  Co-2_3");
+    expect(filterName("O'Neill & Co-2_3")).toBe("O'Neill & Co-2_3");
   });
 });
 
 describe("slugFromName", () => {
   it("folds diacritics into an ASCII slug", () => {
     expect(slugFromName("José Café")).toBe("jose-cafe");
+  });
+
+  it("drops & and still satisfies the slug rule", () => {
+    const slug = slugFromName("O'Neill & Co");
+    expect(slug).toBe("oneill-co");
+    expect(organizationSlugSchema.safeParse(slug).success).toBe(true);
   });
 
   it("keeps the slug rule satisfied for unicode names", () => {
