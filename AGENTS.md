@@ -8,6 +8,11 @@ deeper: follow the links for detail.
 > real copies, not a symlink, since some tools don't auto-read a symlinked
 > instructions file. Change one, copy it over the other.
 
+If someone pointed you at this repo so you would turn it into their app, read
+[`docs/starting-questions.md`](docs/starting-questions.md) and ask those
+questions before you rename or change code. Setup commands stay in
+[Getting started](README.md#getting-started).
+
 ## Commands
 
 Run from the **monorepo root** (not inside a package):
@@ -59,6 +64,8 @@ Run from the **monorepo root** (not inside a package):
 
 ## Where things live (index)
 
+- **Turning this into their app** → [`docs/starting-questions.md`](docs/starting-questions.md)
+  before the first edit.
 - **What the system is** → [`docs/architecture.md`](docs/architecture.md) — the
   layer map + a worked `products` slice; the org agent (five product tools,
   memory, shared workspace, `delegate` sub-agent, approvals, compaction,

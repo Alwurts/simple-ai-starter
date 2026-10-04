@@ -6,6 +6,10 @@ The chat UI is simple-ai's [`chat-page`](https://www.simple-ai.dev) wired to a
 Object, and `products` is the example domain you rename into yours. Built for
 developers and their coding agents building an AI-first app.
 
+Someone who wants this turned into their own app should be asked what to
+change before anything is edited. Agents: read
+[`docs/starting-questions.md`](docs/starting-questions.md) first.
+
 ![simple-ai starter chat](docs/assets/chat.png)
 
 ## Getting started
@@ -144,6 +148,8 @@ owner-managed in GitHub, not in this repo.
 
 ## Where to go next
 
+- [`docs/starting-questions.md`](docs/starting-questions.md): the questions to
+  ask before turning this template into someone's app.
 - [`AGENTS.md`](AGENTS.md): commands and conventions once you are working in
   the repo.
 - [`docs/architecture.md`](docs/architecture.md): the layer map and a worked
