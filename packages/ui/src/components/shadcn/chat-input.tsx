@@ -16,13 +16,7 @@ import {
 } from "@workspace/ui/components/shadcn/input-group";
 import { cn } from "@workspace/ui/lib/utils";
 import type { ChatStatus } from "ai";
-import {
-  ArrowUpIcon,
-  AtSignIcon,
-  Loader2Icon,
-  SquareIcon,
-  XIcon,
-} from "lucide-react";
+import { ArrowUpIcon, AtSignIcon, Loader2Icon, SquareIcon } from "lucide-react";
 import {
   type ComponentProps,
   createContext,
@@ -671,8 +665,6 @@ export function ChatInputSubmitButton({
     icon = <SquareIcon className="size-4" />;
   } else if (isInFlight) {
     icon = <Loader2Icon className="size-4 animate-spin" />;
-  } else if (status === "error") {
-    icon = <XIcon className="size-4" />;
   }
 
   return (
