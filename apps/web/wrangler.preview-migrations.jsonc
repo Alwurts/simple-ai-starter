@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Migration target for previews only. Keep database_name and database_id
+  // identical to previews.d1_databases in wrangler.jsonc. Never point this
+  // file at the production database.
+  "d1_databases": [
+    {
+      "binding": "PREVIEW_DB",
+      "database_name": "simple-ai-starter-preview",
+      "database_id": "placeholder-replace-before-preview",
+      "migrations_dir": "../../packages/db/drizzle"
+    }
+  ]
+}

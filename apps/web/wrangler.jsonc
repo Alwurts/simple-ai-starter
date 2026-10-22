@@ -41,6 +41,28 @@
   // `fetch_url` tool may GET; empty disables the fetch tool entirely.
   "vars": {
     "FETCH_ALLOWED_HOSTS": ""
+  },
+  // Previews inherit nothing from the top-level bindings. Repeat every
+  // binding here. Point D1 at the staging database, never production.
+  "previews": {
+    "vars": {
+      "FETCH_ALLOWED_HOSTS": ""
+    },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "simple-ai-starter-preview",
+        // Replace before the first preview deploy. Must not be the
+        // production database id above.
+        "database_id": "placeholder-replace-before-preview",
+        "migrations_dir": "../../packages/db/drizzle"
+      }
+    ],
+    "durable_objects": {
+      "bindings": [{ "class_name": "OrgAgent", "name": "OrgAgent" }]
+    },
+    "worker_loaders": [{ "binding": "LOADER" }],
+    "ai": { "binding": "AI" }
   }
   // Secrets are NOT declared here: `secrets.required` would hard-fail
   // `wrangler deploy` until every name exists on the Worker, and several of
