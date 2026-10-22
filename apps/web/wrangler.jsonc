@@ -52,8 +52,6 @@
       {
         "binding": "DB",
         "database_name": "simple-ai-starter-preview",
-        // Replace before the first preview deploy. Must not be the
-        // production database id above.
         "database_id": "placeholder-replace-before-preview",
         "migrations_dir": "../../packages/db/drizzle"
       }
