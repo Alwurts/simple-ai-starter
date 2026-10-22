@@ -124,6 +124,35 @@ Deploying needs Cloudflare resources first:
 4. Migrate the remote database: `pnpm db:migrate:prod`.
 5. Build and deploy: `pnpm --filter web deploy`.
 
+### Previews
+
+Previews do not inherit production bindings. The `previews` block in
+`apps/web/wrangler.jsonc` is the whole preview config.
+
+You cannot reverse **Set up Worker Previews**. A Worker that already uses
+Workers Builds keeps the old preview model until you use **Settings**,
+**Builds**, **Set up Worker Previews**. See
+[Build branches](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/).
+
+Create the staging database with `wrangler d1 create simple-ai-starter-preview`.
+Paste the id into `previews.d1_databases` in `apps/web/wrangler.jsonc` and into
+`apps/web/wrangler.preview-migrations.jsonc`. The id must not be the production
+database id.
+
+Apply migrations with `pnpm db:migrate:preview` before the first preview
+deploy. That command uses `apps/web/wrangler.preview-migrations.jsonc`.
+
+Deploy a branch preview with `pnpm preview:deploy`.
+
+From `apps/web`, set shared preview secrets with
+`wrangler preview base-config secret put <NAME>`. Set a `BETTER_AUTH_SECRET`
+that is not the production secret.
+
+Each preview has its own URL. A base-config `BETTER_AUTH_URL` cannot match
+every preview. After a preview exists, set that preview's URL with
+`wrangler preview secret put BETTER_AUTH_URL --name <preview-name>`. The app
+still reads `BETTER_AUTH_URL` as the auth origin.
+
 **Rate limiting.** Better Auth's built-in limiter counts in per-isolate
 memory, which on Workers means every isolate has its own counters — effective
 limits end up multiplied across isolates. Before exposing sign-up publicly,

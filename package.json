@@ -17,6 +17,8 @@
     "db:studio": "pnpm --filter @workspace/db db:studio",
     "db:migrate": "pnpm --filter web db:migrate",
     "db:migrate:prod": "pnpm --filter web db:migrate:prod",
+    "db:migrate:preview": "pnpm --filter web db:migrate:preview",
+    "preview:deploy": "pnpm --filter web preview:deploy",
     "db:seed": "pnpm --filter web db:seed",
     "db:reset": "pnpm --filter web db:reset",
     "db:list": "pnpm --filter web db:list",
