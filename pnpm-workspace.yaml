@@ -18,6 +18,11 @@ overrides:
   ws: "^8.21.0"
   postcss: "^8.5.10"
   hono: "^4.12.28"
+  # Wrangler 4.151.2 depends on esbuild 0.28.2. The rest of the graph
+  # still resolved 0.28.1, so Vite's peer key split and pnpm installed
+  # two copies of agents. Tool identity reads AsyncLocalStorage from
+  # one copy. A second copy makes the bound user look missing.
+  esbuild: "0.28.2"
   # Do NOT add a workspace `zod` override. Direct app packages pin exact
   # `4.3.5` because `^4.3.5` → 4.4 breaks shadcn `RegistryItem`
   # inference; a global override would also force zod 4 onto shadcn itself
