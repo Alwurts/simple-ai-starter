@@ -1,6 +1,5 @@
 "use client";
 
-import type { PendingAction } from "@cloudflare/codemode";
 import { useAgentChat } from "@cloudflare/think/react";
 import type { OrgChat } from "@workspace/agent/org/chat";
 import type { ChatSummary } from "@workspace/agent/types";
@@ -100,9 +99,6 @@ function chatTitleOf(chats: ChatSummary[], chatId: string | null): string {
   }
   return chats.find((chat) => chat.id === chatId)?.title ?? "Chat";
 }
-
-/** Short, model-facing reason sent with `rejectExecution`. */
-const REJECT_REASON = "Denied by the user";
 
 /**
  * The dock's conversation. `chatId` null is the draft: nothing is written
@@ -483,78 +479,6 @@ function ChatView({ chatId, files, title }: ChatViewProps) {
     [helpers]
   );
 
-  // Codemode executions (the `execute` tool) pause durably instead of using
-  // the AI SDK approval flow: Think resolves them via these callables, replays
-  // the run and auto-continues the chat.
-  const [resolvingExecutions, setResolvingExecutions] = useState(
-    () => new Set<string>()
-  );
-
-  const handleExecutionApproval = useCallback(
-    (executionId: string, approved: boolean) => {
-      setResolvingExecutions((prev) => new Set(prev).add(executionId));
-      // Both callables return `{ status: "error", error }` instead of
-      // throwing when the run is stale or already resolved — surface that as
-      // a toast, never an unhandled rejection.
-      const call = approved
-        ? chatAgent.stub.approveExecution(executionId)
-        : chatAgent.stub.rejectExecution(executionId, REJECT_REASON);
-      call
-        .then((result) => {
-          if (
-            result &&
-            typeof result === "object" &&
-            "status" in result &&
-            result.status === "error"
-          ) {
-            const errorText =
-              ("error" in result ? result.error : undefined) ?? "Unknown error";
-            console.error(
-              `[ChatPage] ${approved ? "approveExecution" : "rejectExecution"} failed:`,
-              errorText
-            );
-            toast.error(
-              `Couldn't ${approved ? "approve" : "reject"}: this run already moved on.`,
-              {
-                position: "top-center",
-              }
-            );
-          }
-        })
-        .catch((error: unknown) => {
-          console.error(
-            `[ChatPage] ${approved ? "approveExecution" : "rejectExecution"} failed`,
-            error
-          );
-          toast.error("Couldn't resolve the execution. Please try again.", {
-            position: "top-center",
-          });
-        })
-        .finally(() => {
-          setResolvingExecutions((prev) => {
-            const next = new Set(prev);
-            next.delete(executionId);
-            return next;
-          });
-        });
-    },
-    [chatAgent]
-  );
-
-  // An in-flight call is rejected when its socket closes mid-flight. The
-  // retry below is safe rather than clever: calls made while the socket is
-  // closed are queued and flushed on open (30s timeout), and a reconnect
-  // remounts the list anyway — so the paused card reloads instead of
-  // sticking on "unavailable".
-  const handleLoadPendingExecution = useCallback(
-    (executionId: string): Promise<PendingAction[]> =>
-      chatAgent.stub
-        .pendingExecutions(executionId)
-        .catch(() => chatAgent.ready)
-        .then(() => chatAgent.stub.pendingExecutions(executionId)),
-    [chatAgent]
-  );
-
   const handleRegenerate = useCallback(
     (messageId: string) => {
       // Server-driven continuations (approvals, resume, other tabs) surface
@@ -681,10 +605,7 @@ function ChatView({ chatId, files, title }: ChatViewProps) {
                   {hydrating || chatAgent.connectionError ? null : (
                     <MessageListOrEmpty
                       messages={helpers.messages}
-                      resolvingExecutions={resolvingExecutions}
                       streamingMessageId={streamingMessageId}
-                      onExecutionApproval={handleExecutionApproval}
-                      onLoadPendingExecution={handleLoadPendingExecution}
                       onRegenerate={handleRegenerate}
                       onToolApproval={handleToolApproval}
                     />

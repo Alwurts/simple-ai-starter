@@ -9,7 +9,7 @@ export type DisplayToolName =
 
 /**
  * Mutating top-level org-agent tools. The web chat invalidates its products
- * queries when one of these settles (or when a codemode run applied one).
+ * queries when one of these settles.
  */
 export const AGENT_WRITE_TOOL_NAMES = [
   "create_product",
@@ -27,3 +27,12 @@ export type AgentWriteToolName = (typeof AGENT_WRITE_TOOL_NAMES)[number];
  */
 export const PERMISSION_DENIED_MESSAGE =
   "You don't have permission to perform this action.";
+
+/**
+ * Where org files live. Think resolves relative paths here, Computer's tools
+ * describe paths as `/workspace/...`, and the JS backend's `root` defaults
+ * to it.
+ */
+export const WORKSPACE_ROOT = "/workspace";
+
+export const WORKSPACE_CHANGE_FRAME = "workspace-change";

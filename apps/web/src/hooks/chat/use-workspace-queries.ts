@@ -21,7 +21,10 @@ export function workspaceDirectoryQueryOptions(options: {
   });
 }
 
-/** A workspace file's text contents (null when absent/binary). */
+/**
+ * Text of one workspace file. Null when missing, a directory, a symlink,
+ * or outside `/workspace`.
+ */
 export function workspaceFileQueryOptions(options: {
   organizationId: string;
   readWorkspaceFile: (path: string) => Promise<string | null>;

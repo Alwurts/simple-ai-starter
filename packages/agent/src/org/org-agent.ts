@@ -1,17 +1,17 @@
-import {
-  type FileInfo,
-  Workspace,
-  type WorkspaceChangeEvent,
-} from "@cloudflare/shell";
+import { Workspace, type WorkspaceStub } from "@cloudflare/computer";
+import { WorkerJavaScriptBackend } from "@cloudflare/computer/backends/worker-javascript";
 import { errorMessage, structuredLog } from "@workspace/log";
 import { Agent, type Connection, callable } from "agents";
 import type { UIMessage } from "ai";
+import { WORKSPACE_CHANGE_FRAME, WORKSPACE_ROOT } from "../constants";
 import type {
   ChatMessageHit,
   ChatSearchHit,
   ChatSummary,
   OrgAgentState,
   OrgMemorySnapshot,
+  WorkspaceChangeFrame,
+  WorkspaceFileInfo,
 } from "../types";
 import { OrgChat } from "./chat";
 import {
@@ -19,6 +19,7 @@ import {
   SEARCH_MAX_CHATS,
   SEARCH_MAX_HITS_PER_CHAT,
 } from "./chat/search";
+import { listPanelDirectory, readPanelFile } from "./workspace-panel";
 
 interface ChatRow {
   created_at: number;
@@ -31,9 +32,10 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
   initialState: OrgAgentState = { chats: [] };
 
   workspace = new Workspace({
-    sql: this.ctx.storage.sql,
-    name: () => this.name,
-    onChange: (event) => this.broadcastWorkspaceChange(event),
+    storage: this.ctx.storage,
+    backends: [
+      new WorkerJavaScriptBackend({ id: "js", loader: this.env.LOADER }),
+    ],
   });
 
   override async onStart(): Promise<void> {
@@ -90,13 +92,18 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
     return Promise.resolve(undefined);
   }
 
-  private broadcastWorkspaceChange(event: WorkspaceChangeEvent): void {
-    // Fan a lightweight file-change signal to every client connected to this
-    // OrgAgent (all chat tabs) so a workspace-backed UI can refresh live across
-    // chats/tabs. Best-effort `broadcast` (not `setState`) — file churn should
-    // not trigger heavier state re-broadcasts. Does not notify sibling
-    // dynamic agents.
-    this.broadcast(JSON.stringify({ type: "workspace-change", event }));
+  /** `WorkspaceStubHost` for `getWorkspace(stub)`. */
+  async __getWorkspaceStub(): Promise<WorkspaceStub> {
+    await this.workspace.ready();
+    return this.workspace.stub();
+  }
+
+  announceWorkspaceChange(): void {
+    this.broadcast(
+      JSON.stringify({
+        type: WORKSPACE_CHANGE_FRAME,
+      } satisfies WorkspaceChangeFrame)
+    );
   }
 
   touchChat(chatId: string): Promise<void> {
@@ -299,96 +306,14 @@ export class OrgAgent extends Agent<Cloudflare.Env, OrgAgentState> {
     return mergeChatSearchResults(recent, hitsPerChat);
   }
 
-  // The generic fs methods below are internal (used by the SharedWorkspace
-  // proxy) and intentionally NOT `@callable()`. These two thin
-  // wrappers are the only workspace methods the browser can reach: read-only,
-  // org-gated (the `/agents/org-agent/:id` route is scoped to the caller's
-  // active org), and returning already-serializable values.
-
   @callable()
-  listWorkspace(path = "/"): Promise<FileInfo[]> {
-    return this.workspace.readDir(path);
+  listWorkspace(dir = WORKSPACE_ROOT): Promise<WorkspaceFileInfo[]> {
+    return listPanelDirectory(this.workspace.fs, dir);
   }
 
   @callable()
   readWorkspaceFile(path: string): Promise<string | null> {
-    return this.workspace.readFile(path);
-  }
-
-  readFile(path: string) {
-    return this.workspace.readFile(path);
-  }
-
-  readFileBytes(path: string) {
-    return this.workspace.readFileBytes(path);
-  }
-
-  writeFile(
-    path: string,
-    content: string,
-    mimeType?: Parameters<Workspace["writeFile"]>[2]
-  ) {
-    return this.workspace.writeFile(path, content, mimeType);
-  }
-
-  writeFileBytes(
-    path: string,
-    content: Parameters<Workspace["writeFileBytes"]>[1],
-    mimeType?: Parameters<Workspace["writeFileBytes"]>[2]
-  ) {
-    return this.workspace.writeFileBytes(path, content, mimeType);
-  }
-
-  appendFile(
-    path: string,
-    content: string,
-    mimeType?: Parameters<Workspace["appendFile"]>[2]
-  ) {
-    return this.workspace.appendFile(path, content, mimeType);
-  }
-
-  exists(path: string) {
-    return this.workspace.exists(path);
-  }
-
-  readDir(path: string, opts?: Parameters<Workspace["readDir"]>[1]) {
-    return this.workspace.readDir(path, opts);
-  }
-
-  rm(path: string, opts?: Parameters<Workspace["rm"]>[1]) {
-    return this.workspace.rm(path, opts);
-  }
-
-  glob(pattern: string) {
-    return this.workspace.glob(pattern);
-  }
-
-  mkdir(path: string, opts?: Parameters<Workspace["mkdir"]>[1]) {
-    return this.workspace.mkdir(path, opts);
-  }
-
-  stat(path: string) {
-    return this.workspace.stat(path);
-  }
-
-  lstat(path: string) {
-    return this.workspace.lstat(path);
-  }
-
-  cp(src: string, dest: string, opts?: Parameters<Workspace["cp"]>[2]) {
-    return this.workspace.cp(src, dest, opts);
-  }
-
-  mv(src: string, dest: string) {
-    return this.workspace.mv(src, dest);
-  }
-
-  symlink(target: string, linkPath: string) {
-    return this.workspace.symlink(target, linkPath);
-  }
-
-  readlink(path: string) {
-    return this.workspace.readlink(path);
+    return readPanelFile(this.workspace.fs, path);
   }
 }
 

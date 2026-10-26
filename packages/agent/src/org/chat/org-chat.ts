@@ -1,13 +1,16 @@
 import bundledSkills from "agents:skills";
-import type { WorkspaceFsLike } from "@cloudflare/shell";
+import { getWorkspace, type WorkspaceClient } from "@cloudflare/computer";
+import { createAITools } from "@cloudflare/computer/tools/ai-sdk";
 import {
   defaultContextOverflowClassifier,
+  lazyWorkspace,
   type Session,
   type SkillSource,
+  type StepContext,
   Think,
+  type ThinkWorkspace,
   type TurnContext,
 } from "@cloudflare/think";
-import { createExecuteTool } from "@cloudflare/think/tools/execute";
 import { auth } from "@workspace/auth";
 import { errorMessage, structuredLog } from "@workspace/log";
 import {
@@ -21,7 +24,7 @@ import type { ContextConfig } from "agents/context";
 import { createCompactFunction } from "agents/sessions";
 import { generateText, type ToolSet } from "ai";
 import { z } from "zod";
-import { PERMISSION_DENIED_MESSAGE } from "../../constants";
+import { PERMISSION_DENIED_MESSAGE, WORKSPACE_ROOT } from "../../constants";
 import { buildOrgContext } from "../../context/assemble";
 import { getOrgAgentTools } from "../../in-app/compose-org-tools";
 import { createDisplayTools } from "../../in-app/display";
@@ -39,11 +42,10 @@ import { fetchToolsForEnv } from "./fetch-allowlist";
 import { OrgMemoryProvider } from "./org-memory-provider";
 import { OrgSubAgent } from "./org-sub-agent";
 import { SEARCH_MAX_HITS_PER_CHAT, snippetAround } from "./search";
-import { SharedWorkspace } from "./shared-workspace";
 
 type OrgAgentParent = Pick<
   OrgAgent,
-  "readOrgMemory" | "writeOrgMemory" | "touchChat"
+  "announceWorkspaceChange" | "readOrgMemory" | "touchChat" | "writeOrgMemory"
 >;
 
 /**
@@ -55,7 +57,14 @@ const AGENT_TOOL_RUN_RETENTION_MS = 7 * 24 * 60 * 60_000;
 export class OrgChat extends Think<Cloudflare.Env> {
   override maxSteps = 50;
 
-  override workspace: WorkspaceFsLike = new SharedWorkspace(this);
+  #orgWorkspace: Promise<WorkspaceClient> | undefined;
+
+  /**
+   * The org workspace. Before `onStart` this is fs-only, which stops Think
+   * from building a private workspace in this facet. `onStart` swaps in the
+   * loaded client, which lists the "js" backend, so Think adds `exec`.
+   */
+  override workspace: ThinkWorkspace = lazyWorkspace(() => this.orgWorkspace());
 
   private resolvedModel: ResolvedOrgChatModel | undefined;
 
@@ -77,11 +86,43 @@ export class OrgChat extends Think<Cloudflare.Env> {
     return this.requireOrganizationId();
   }
 
-  override onStart(): void {
-    // Warm the resolution here (same fail-fast on a missing provider key as
-    // before) and set the turn-time overflow config — contextOverflow is only
-    // read during turns, so onStart assignment is fine for it.
+  private orgWorkspace(): Promise<WorkspaceClient> {
+    this.#orgWorkspace ??= this.parentAgent(OrgAgent)
+      .then((agent) =>
+        // agents' DurableObjectStub wraps an RpcTarget result as
+        // Stub<WorkspaceStub>. getWorkspace names that wire value WorkspaceStub.
+        getWorkspace(agent as Parameters<typeof getWorkspace>[0])
+      )
+      .catch((error: unknown) => {
+        this.#orgWorkspace = undefined;
+        throw error;
+      });
+    return this.#orgWorkspace;
+  }
+
+  override async onStart(): Promise<void> {
     this.contextOverflow = orgChatContextOverflow(this.resolved.contextWindow);
+    this.workspace = await this.orgWorkspace();
+  }
+
+  override onStepEnd(step: StepContext): void {
+    if ((step.toolCalls?.length ?? 0) === 0) {
+      return;
+    }
+    const organizationId = this.parentPath.at(-1)?.name ?? "?";
+    this.ctx.waitUntil(
+      this.getParent()
+        .then((parent) => parent.announceWorkspaceChange())
+        .catch((err: unknown) => {
+          structuredLog({
+            kind: "org_workspace_announce_failed",
+            severity: "error",
+            organizationId,
+            chatName: this.name,
+            error: errorMessage(err),
+          });
+        })
+    );
   }
 
   private getParent(): Promise<OrgAgentParent> {
@@ -354,45 +395,8 @@ export class OrgChat extends Think<Cloudflare.Env> {
     return resolveTurnUserId(connection);
   }
 
-  /**
-   * Approvals run as the user who approved: rebuilding the tools here — under
-   * the callable's own ALS connection (the socket that sent the approval
-   * frame) — rebinds `this.codemode` to a runtime whose tool closures carry
-   * the approver's identity. Think's `approveExecution` takes
-   * `_codemodeRuntime()` (= `this.codemode`, assigned by `createExecuteTool`
-   * inside `getTools()`) synchronously before the replay, so the paused
-   * sandbox writes — which have no ALS connection at execute time — authorize
-   * against the approver, and a concurrent turn's `getTools()` cannot swap
-   * the runtime mid-replay. `@callable()` keeps the Think built-in
-   * registered after the override (nearest decorated declaration wins).
-   */
-  @callable()
-  override approveExecution(executionId: string): Promise<unknown> {
-    try {
-      this.getTools();
-    } catch {
-      // Fail closed: a leftover runtime is bound to whoever built the tools
-      // last. Clearing it makes Think's approveExecution return its "no
-      // codemode runtime" status error — its `_codemodeRuntime()` retries
-      // `getTools()` once and, when that throws too, leaves the runtime
-      // unset — so the approval settles without ever replaying under a
-      // stale identity.
-      this.codemode = undefined;
-    }
-    return super.approveExecution(executionId);
-  }
-
   override getTools(): ToolSet {
     const self = this;
-    // Identity is captured per invocation: getTools runs at turn start inside
-    // the turn's ALS (think.js builds tools before beforeTurn), so the bound
-    // user is the connection that started this turn / sent this approval.
-    // Sandbox tool callbacks have no ALS of their own, so they read the bound
-    // user; a live ALS connection at execute time (direct tool calls, the
-    // approval continuation) still wins; neither → fail closed
-    // (PERMISSION_DENIED_MESSAGE). No shared mutable field: any member's
-    // approve/reject callable runs outside the turn queue and could
-    // otherwise re-stamp another turn's identity mid-flight.
     const boundUserId = self.tryResolveTurnUserId();
     const toolsCtx = {
       get userId() {
@@ -416,19 +420,12 @@ export class OrgChat extends Think<Cloudflare.Env> {
     // (comma-separated hostnames). Empty/unset means no fetch tool at all.
     const fetchTools = fetchToolsForEnv(this.env.FETCH_ALLOWED_HOSTS);
 
-    // Code execution (codemode). The one-liner infers state.*
-    // from this.workspace and the executor from env.LOADER; the sandbox sees
-    // ONLY the org's own product tools — `update_product` / `delete_product`
-    // keep needsApproval, which inside the sandbox maps to the codemode
-    // runtime's durable pause/approve/resume (resolved client-side via Think's
-    // `approveExecution` / `rejectExecution` callables). No browser (no
-    // BROWSER binding) and no delegate/display tools reach the sandbox. The
-    // execute tool itself is NOT gated: read-only code runs freely in
-    // the no-network sandbox; approvals come from the gated tools the code
-    // calls.
-    const executeTool = createExecuteTool(this, { tools: productTools });
-
     return {
+      // Think builds these without a root, then spreads getTools() over them.
+      ...createAITools({
+        workspace: this.workspace,
+        root: WORKSPACE_ROOT,
+      }),
       ...fetchTools,
       ...productTools,
       // Child dynamic agent with its own context window — see `OrgSubAgent`.
@@ -446,7 +443,6 @@ export class OrgChat extends Think<Cloudflare.Env> {
         displayName: "Sub-agent",
       }),
       ...displayTools,
-      execute: executeTool,
     };
   }
 }

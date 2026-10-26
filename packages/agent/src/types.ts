@@ -1,5 +1,5 @@
-import type { FileInfo } from "@cloudflare/shell";
 import type { UIMessage } from "ai";
+import type { WORKSPACE_CHANGE_FRAME } from "./constants";
 
 /** The chat message as `OrgChat` writes it and the web UI reads it. */
 export type OrgChatUIMessage = UIMessage;
@@ -12,11 +12,19 @@ export interface ChatSummary {
 }
 
 /**
- * A single workspace entry (file or directory) as returned by the read-only
- * workspace RPC. Re-exported from `@cloudflare/shell` so client code can type
- * the file viewer without depending on the shell package directly.
+ * One entry in the org workspace as the browser sees it. Symlinks are listed
+ * as files.
  */
-export type WorkspaceFileInfo = FileInfo;
+export interface WorkspaceFileInfo {
+  /** Absolute path, always under `WORKSPACE_ROOT`. */
+  path: string;
+  name: string;
+  type: "file" | "directory";
+}
+
+export interface WorkspaceChangeFrame {
+  type: typeof WORKSPACE_CHANGE_FRAME;
+}
 
 export interface OrgMemorySnapshot {
   content: string | null;

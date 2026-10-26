@@ -1,6 +1,5 @@
 "use client";
 
-import type { ToolLogEntry } from "@cloudflare/codemode";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { AGENT_WRITE_TOOL_NAMES } from "@workspace/agent/constants";
 import { getToolName, isToolUIPart } from "ai";
@@ -13,28 +12,6 @@ const WRITE_TOOLS: ReadonlySet<string> = new Set(AGENT_WRITE_TOOL_NAMES);
 
 function isWriteTool(method: string | undefined): boolean {
   return Boolean(method && WRITE_TOOLS.has(method));
-}
-
-/**
- * Writes applied by sandboxed `execute` code, read from the run's settled
- * output (`calls` tool log). Only `applied` entries ran — `pending` and
- * `executing` did not, `reverted` was undone, `error` failed.
- */
-function executeAppliedWrite(settledOutput: unknown): boolean {
-  if (!settledOutput || typeof settledOutput !== "object") {
-    return false;
-  }
-  const status = (settledOutput as { status?: unknown }).status;
-  if (status !== "completed" && status !== "error") {
-    return false;
-  }
-  const calls = (settledOutput as { calls?: ToolLogEntry[] }).calls;
-  if (!Array.isArray(calls)) {
-    return false;
-  }
-  return calls.some(
-    (call) => call?.state === "applied" && isWriteTool(call.method)
-  );
 }
 
 /** Completion id for one assistant part, or null when it isn't a new write. */
@@ -61,19 +38,12 @@ function writeCompletionIdForPart(
     // write part is a real mutation. The old `{ ok: false }` envelope is gone.
     return alreadyHandled.has(toolCallId) ? null : toolCallId;
   }
-  if (method === "execute") {
-    const eventId = `${toolCallId}:calls`;
-    return executeAppliedWrite(part.output) && !alreadyHandled.has(eventId)
-      ? eventId
-      : null;
-  }
   return null;
 }
 
 /**
- * Ids of write completions not yet handled: a settled top-level write tool
- * (its toolCallId) or a settled codemode run that applied a sandboxed write
- * (`<toolCallId>:calls`). Pure helper — exported for unit tests.
+ * Ids of write completions not yet handled. A settled top-level write tool
+ * contributes its toolCallId. Pure helper, exported for unit tests.
  */
 export function collectWriteToolCompletionIds(
   messages: OrgChatMessage[],
@@ -123,10 +93,9 @@ export function applyWriteToolInvalidations(options: {
 }
 
 /**
- * Invalidate React Query when agent writes settle: top-level write tools
- * (`create_product`, …) and writes applied inside codemode runs (settled
- * `execute` output `calls`). Custom because no built-in ties transcript tool
- * parts to the query cache; "write tool" comes from
+ * Invalidate React Query when a top-level write tool settles
+ * (`create_product`, …). Custom because no built-in ties transcript tool
+ * parts to the query cache. "Write tool" comes from
  * `AGENT_WRITE_TOOL_NAMES` (packages/agent), not a web-side list.
  */
 export function useAgentToolMutationInvalidation(options: {

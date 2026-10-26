@@ -19,9 +19,6 @@ import { cors } from "hono/cors";
 import { routeGatedAgentRequest } from "../../src/agent-gate";
 import { app as honoApp } from "../../src/api";
 
-// Mirrors src/server.ts: OrgChat.getTools() builds the codemode `execute`
-// tool, whose runtime resolves through ctx.exports.CodemodeRuntime.
-export { CodemodeRuntime } from "@cloudflare/codemode";
 // OrgAgent (+ its OrgChat facet) are exported so the workers vitest
 // project can drive the multi-session backend over RPC. Mirrors production:
 // only OrgAgent is bound (wrangler.test.jsonc); OrgChat is resolved as a facet
