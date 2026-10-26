@@ -1,6 +1,10 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  WORKSPACE_CHANGE_FRAME,
+  WORKSPACE_ROOT,
+} from "@workspace/agent/constants";
 import type { OrgAgent } from "@workspace/agent/org";
 import type {
   ChatSearchHit,
@@ -43,7 +47,10 @@ interface OrgConnectionValue {
   /** Read-only workspace listing for the file viewer (defaults to root). */
   listWorkspace: (path?: string) => Promise<WorkspaceFileInfo[]>;
   organizationId: string;
-  /** Read a workspace file's text contents (null when absent/binary). */
+  /**
+   * Text of one workspace file. Null when missing, a directory, a symlink,
+   * or outside `/workspace`.
+   */
   readWorkspaceFile: (path: string) => Promise<string | null>;
 }
 
@@ -82,9 +89,6 @@ export function OrgConnection({
     agent: "OrgAgent",
     name: organizationId,
     onMessage: (event) => {
-      // The OrgAgent broadcasts `{ type: "workspace-change", event }` whenever a
-      // file is created/updated/deleted (see OrgAgent.broadcastWorkspaceChange).
-      // Invalidate the org's workspace queries so open file viewers refetch.
       // Ignore anything that isn't our JSON signal (the agent framework sends
       // other frames too).
       if (typeof event.data !== "string") {
@@ -92,7 +96,7 @@ export function OrgConnection({
       }
       try {
         const parsed = JSON.parse(event.data) as { type?: string };
-        if (parsed.type === "workspace-change") {
+        if (parsed.type === WORKSPACE_CHANGE_FRAME) {
           queryClient.invalidateQueries({
             queryKey: workspaceQueryKey(organizationId),
           });
@@ -159,7 +163,7 @@ export function OrgConnection({
   );
 
   const listWorkspace = useCallback(
-    (path = "/"): Promise<WorkspaceFileInfo[]> =>
+    (path = WORKSPACE_ROOT): Promise<WorkspaceFileInfo[]> =>
       orgAgent.stub.listWorkspace(path),
     [orgAgent]
   );

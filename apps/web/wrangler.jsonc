@@ -29,8 +29,6 @@
     "bindings": [{ "class_name": "OrgAgent", "name": "OrgAgent" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["OrgAgent"] }],
-  // Backs the chat agent's code execution (codemode) sandbox — see
-  // docs/guides/writing-agent-tools.md.
   "worker_loaders": [{ "binding": "LOADER" }],
   // Workers AI. Think resolves a `@cf/...` model id off this binding.
   // Local calls are remote: `wrangler login` (no account-id token).

@@ -1,5 +1,6 @@
 "use client";
 
+import { WORKSPACE_ROOT } from "@workspace/agent/constants";
 import type { WorkspaceFileInfo } from "@workspace/agent/types";
 import { cn } from "@workspace/ui/lib/utils";
 import {
@@ -35,7 +36,7 @@ export function FileExplorerTree({
   selectedPath: string | null;
   className?: string;
 }) {
-  const root = useWorkspaceDirectory("/");
+  const root = useWorkspaceDirectory(WORKSPACE_ROOT);
 
   if (root.isPending) {
     return <TreeLoading className={className} />;

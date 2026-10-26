@@ -29,15 +29,9 @@ describe("OrgChat client callables", () => {
     expect(callables.has("searchMessages")).toBe(false);
   });
 
-  it("keeps the Think approval callables registered after the rebuild overrides", () => {
-    // OrgChat overrides approveExecution/rejectExecution to rebuild the tool
-    // set under the approver's connection (per-getTools binding);
-    // `@callable()` on the overrides keeps them reachable from the client
-    // (nearest decorated declaration wins).
-    const instance = Object.create(OrgChat.prototype) as OrgChat;
-    const callables = instance.getCallableMethods();
-    expect(callables.has("approveExecution")).toBe(true);
-    expect(callables.has("rejectExecution")).toBe(true);
-    expect(callables.has("pendingExecutions")).toBe(true);
+  it("does not override Think's execution approval methods", () => {
+    expect(Object.hasOwn(OrgChat.prototype, "approveExecution")).toBe(false);
+    expect(Object.hasOwn(OrgChat.prototype, "rejectExecution")).toBe(false);
+    expect(Object.hasOwn(OrgChat.prototype, "pendingExecutions")).toBe(false);
   });
 });

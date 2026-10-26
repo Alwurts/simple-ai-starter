@@ -88,6 +88,7 @@ envelope) via the matching `console.*` method for `severity`.
 | `org_chat_auto_compaction_failed` | Think auto-compaction error callback |
 | `org_chat_usage_compaction_failed` | Usage-driven compaction threw |
 | `org_chat_touch_failed` | Parent `touchChat` fire-and-forget failed |
+| `org_workspace_announce_failed` | Step-end workspace refresh failed |
 | `org_sub_agent_auto_compaction_failed` | OrgSubAgent auto-compaction error |
 
 ---

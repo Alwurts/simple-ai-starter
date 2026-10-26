@@ -299,10 +299,19 @@ model server in CI.
   Agent features beyond the product tools: cross-chat conversation search
   (`OrgAgent.searchChats` over each chat's Sessions FTS index), Agent Skills
   (bundled `agents:skills` on `OrgChat` only), the opt-in read-only fetch tool
-  (`FETCH_ALLOWED_HOSTS`, absent when empty), and sandboxed code execution via
-  `@cloudflare/codemode` (`execute` tool, `LOADER` binding; gated writes pause
-  inside the sandbox — see
-  [`docs/guides/agent-tool-approvals.md`](guides/agent-tool-approvals.md)).
+  (`FETCH_ALLOWED_HOSTS`, absent when empty). Each organization has one
+  Computer `Workspace` on `OrgAgent`. Every chat works in it. The file panel
+  shows it from `/workspace` down. The model writes files with Think's tools
+  (`write`, `edit`, `delete`, and the rest) and runs JavaScript with `exec`.
+  Code reads and writes the same files through `node:fs/promises`, rooted at
+  `/workspace`, with no network. Code cannot call product tools. The model
+  calls those directly. `update_product` and `delete_product` ask for
+  approval. File tools are confined to `/workspace`. The browser reads
+  files only through `listWorkspace` and `readWorkspaceFile`. Symlinks are
+  listed and not followed. A step that ran a tool broadcasts
+  `{ type: "workspace-change" }`. See
+  [`docs/guides/writing-agent-tools.md`](guides/writing-agent-tools.md) and
+  [`docs/guides/agent-tool-approvals.md`](guides/agent-tool-approvals.md).
 - **Why** a choice was made → `docs/decisions/` (ADRs, under a strict
   significance bar — see ADR-005).
 - **How** to do or extend something here → `docs/guides/`.

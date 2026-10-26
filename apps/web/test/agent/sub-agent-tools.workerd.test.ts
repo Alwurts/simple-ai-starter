@@ -1,8 +1,18 @@
+import { runInDurableObject } from "cloudflare:test";
 import { getOrgAgentReadOnlyTools, getOrgAgentTools } from "@workspace/agent";
+import { OrgSubAgent } from "@workspace/agent/org/chat";
 import { DomainError } from "@workspace/core/errors";
 import { db } from "@workspace/db";
 import { member, organization, products, user } from "@workspace/db/schema";
 import { describe, expect, it } from "vitest";
+import { env } from "./test-env";
+
+const STUB_ENV = {
+  ORG_CHAT_PROVIDER: "openai-compatible",
+  OPENAI_COMPATIBLE_BASE_URL: "http://localhost:9/v1",
+  OPENAI_COMPATIBLE_API_KEY: "test-key",
+  ORG_CHAT_MODEL: "test-model",
+} as unknown as Cloudflare.Env;
 
 const MUTATING_TOOL_NAME = /create|update|delete|write|void|reverse/;
 
@@ -99,5 +109,23 @@ describe("OrgSubAgent read-only tool composition", () => {
     await expect(exec("get_product")({ id: other.product.id })).rejects.toThrow(
       new DomainError(`Product not found: ${other.product.id}`, "not_found")
     );
+  });
+
+  it("limits a turn to the read-only product tools and skips media eviction", async () => {
+    const stub = env.SESSION_HOST.get(
+      env.SESSION_HOST.idFromName("sub-agent-active-tools")
+    );
+    const result = await runInDurableObject(stub, (_host, state) => {
+      const subAgent = new OrgSubAgent(
+        state as unknown as DurableObjectState,
+        STUB_ENV
+      );
+      return {
+        mediaEviction: subAgent.mediaEviction,
+        activeTools: subAgent.beforeTurn(undefined as never).activeTools,
+      };
+    });
+    expect(result.mediaEviction).toBe(false);
+    expect(result.activeTools).toEqual(["list_products", "get_product"]);
   });
 });

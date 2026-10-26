@@ -1,7 +1,18 @@
 import { runInDurableObject } from "cloudflare:test";
+import { getWorkspace } from "@cloudflare/computer";
+import { WORKSPACE_CHANGE_FRAME } from "@workspace/agent/constants";
 import { OrgAgent } from "@workspace/agent/org";
+import { OrgChat } from "@workspace/agent/org/chat";
+import { db, organization } from "@workspace/db";
 import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
+
+const CHAT_ENV = {
+  ORG_CHAT_PROVIDER: "openai-compatible",
+  OPENAI_COMPATIBLE_BASE_URL: "http://localhost:9/v1",
+  OPENAI_COMPATIBLE_API_KEY: "test-key",
+  ORG_CHAT_MODEL: "test-model",
+} as unknown as Cloudflare.Env;
 
 /**
  * The multi-session backend, aligned to the examples/assistant
@@ -65,11 +76,11 @@ function fakeRegistry(o: OrgAgent): FakeRegistry {
 }
 
 function installFakeRegistry(o: OrgAgent, sql: SqlStorage): void {
-  // runInDurableObject constructs the DO but does not drive the agents async
-  // lifecycle (onStart is wrapped and awaited internally). `this.sql` is backed
-  // by `ctx.storage.sql` (the same store as `state.storage.sql`), so we create
-  // the real chat_meta table here directly — matching OrgAgent.onStart's schema
-  // — plus the fake registry table.
+  // runInDurableObject constructs the DO. agents 0.28 runs onStart on the
+  // first async RPC, not during construction. `this.sql` is backed by
+  // `ctx.storage.sql` (the same store as `state.storage.sql`), so we create
+  // the real chat_meta table here, matching OrgAgent.onStart's schema,
+  // plus the fake registry table.
   sql.exec(
     "CREATE TABLE IF NOT EXISTS chat_meta (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
   );
@@ -426,6 +437,7 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
       stub,
       async (o: OrgAgent, state) => {
         installFakeRegistry(o, state.storage.sql);
+        await o.lifecycle.start();
         state.storage.sql.exec(
           "INSERT INTO _test_registry (name, created_at) VALUES (?, ?)",
           input.id,
@@ -530,87 +542,233 @@ describe("OrgAgent multi-session backend (in workerd)", () => {
 });
 
 /**
- * The org's single shared workspace at the backend. The parent
- * OrgAgent owns the real `Workspace`; every child chat proxies to it via
- * `SharedWorkspace` RPC, so a file written from one chat is visible to all.
- *
- * In-pool we exercise the parent-owned workspace directly (the child proxy is a
- * thin one-hop forwarder to exactly these methods; the dynamic-agent hop itself
- * can't be spawned under vitest-pool-workers). This proves the shared-storage semantics
- * that make cross-chat visibility work, that text and binary content round-trip,
- * and that a write fires the `onChange` → `broadcast` signal.
+ * The org's single Computer workspace. OrgAgent owns it. Chats reach the same
+ * files through `getWorkspace(stub)`. The browser reaches only `listWorkspace`
+ * and `readWorkspaceFile`, both confined to `/workspace`.
  */
-describe("OrgAgent shared workspace (in workerd)", () => {
-  it("round-trips a text file through the parent-owned workspace", async () => {
+describe("OrgAgent workspace (in workerd)", () => {
+  it("round-trips a text file under /workspace", async () => {
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-text"));
     const read = await runInDurableObject(stub, async (o: OrgAgent) => {
-      // A write from "chat A" and a read from "chat B" both land on the parent
-      // workspace — modelled here as two calls on the shared owner.
-      await o.writeFile("/shared/note.txt", "hello from chat A");
-      return o.readFile("/shared/note.txt");
+      await o.workspace.fs.mkdir("/workspace/shared", { recursive: true });
+      await o.workspace.fs.writeFile(
+        "/workspace/shared/note.txt",
+        "hello from chat A"
+      );
+      return o.workspace.fs.readFile("/workspace/shared/note.txt", "utf8");
     });
     expect(read).toBe("hello from chat A");
   });
 
-  it("round-trips binary content (attachment bytes)", async () => {
+  it("round-trips binary content", async () => {
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-bytes"));
     const bytes = new Uint8Array([0, 1, 2, 3, 250, 255]);
     const read = await runInDurableObject(stub, async (o: OrgAgent) => {
-      await o.writeFileBytes(
-        "/shared/blob.bin",
-        bytes,
-        "application/octet-stream"
+      await o.workspace.fs.mkdir("/workspace/shared", { recursive: true });
+      await o.workspace.fs.writeFile("/workspace/shared/blob.bin", bytes);
+      const stream = await o.workspace.fs.readFile(
+        "/workspace/shared/blob.bin"
       );
-      return o.readFileBytes("/shared/blob.bin");
+      return new Uint8Array(await new Response(stream).arrayBuffer());
     });
-    expect(read).not.toBeNull();
-    expect(Array.from(read as Uint8Array)).toEqual(Array.from(bytes));
+    expect(Array.from(read)).toEqual(Array.from(bytes));
   });
 
-  it("exposes a read-only listing + file read for the client viewer", async () => {
+  it("lists a top-level file and a directory for the panel", async () => {
     const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-rpc"));
-    const { rootNames, docContent } = await runInDurableObject(
+    const { root, docContent, dirRead, fileList } = await runInDurableObject(
       stub,
       async (o: OrgAgent) => {
-        await o.writeFile("/report.md", "# Quarter\n\nrevenue up");
-        await o.writeFile("/docs/spec.txt", "spec body");
-        // These are the two `@callable()` methods the browser reaches.
-        const root = await o.listWorkspace("/");
-        const docContent = await o.readWorkspaceFile("/report.md");
-        return { rootNames: root.map((f) => f.name), docContent };
+        await o.workspace.fs.mkdir("/workspace/docs", { recursive: true });
+        await o.workspace.fs.writeFile(
+          "/workspace/report.md",
+          "# Quarter\n\nrevenue up"
+        );
+        await o.workspace.fs.writeFile("/workspace/docs/spec.txt", "spec body");
+        return {
+          root: await o.listWorkspace(),
+          docContent: await o.readWorkspaceFile("/workspace/report.md"),
+          dirRead: await o.readWorkspaceFile("/workspace/docs"),
+          fileList: await o.listWorkspace("/workspace/report.md"),
+        };
       }
     );
 
-    // Root listing surfaces the top-level file and the nested dir.
-    expect(rootNames).toContain("report.md");
-    expect(rootNames).toContain("docs");
-    expect(docContent).toBe("# Quarter\n\nrevenue up");
-  });
-
-  it("returns null from the read RPC for a missing file", async () => {
-    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-rpc-missing"));
-    const read = await runInDurableObject(stub, (o: OrgAgent) =>
-      o.readWorkspaceFile("/nope.txt")
+    expect(root).toEqual(
+      expect.arrayContaining([
+        { path: "/workspace/report.md", name: "report.md", type: "file" },
+        { path: "/workspace/docs", name: "docs", type: "directory" },
+      ])
     );
-    expect(read).toBeNull();
+    expect(docContent).toBe("# Quarter\n\nrevenue up");
+    expect(dirRead).toBeNull();
+    expect(fileList).toEqual([]);
   });
 
-  it("broadcasts a workspace-change signal on write (onChange → broadcast)", async () => {
-    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-onchange"));
-    const captured = await runInDurableObject(stub, async (o: OrgAgent) => {
+  it("lists a fresh workspace as []", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-fresh"));
+    const listing = await runInDurableObject(stub, (o: OrgAgent) =>
+      o.listWorkspace()
+    );
+    expect(listing).toEqual([]);
+  });
+
+  it("confines reads and listings to /workspace", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-confine"));
+    const result = await runInDurableObject(stub, async (o: OrgAgent) => {
+      await o.workspace.fs.mkdir("/workspace", { recursive: true });
+      await o.workspace.fs.writeFile("/workspace/note.txt", "inside");
+      return {
+        inside: await o.readWorkspaceFile("/workspace/note.txt"),
+        missing: await o.readWorkspaceFile("/workspace/missing.txt"),
+        etc: await o.readWorkspaceFile("/etc/passwd"),
+        escape: await o.readWorkspaceFile("/workspace/../x"),
+        etcList: await o.listWorkspace("/etc"),
+        escapeList: await o.listWorkspace("/workspace/../x"),
+        sibling: await o.listWorkspace("/workspace-other"),
+      };
+    });
+    expect(result.inside).toBe("inside");
+    expect(result.missing).toBeNull();
+    expect(result.etc).toBeNull();
+    expect(result.escape).toBeNull();
+    expect(result.etcList).toEqual([]);
+    expect(result.escapeList).toEqual([]);
+    expect(result.sibling).toEqual([]);
+  });
+
+  it("broadcasts a payload-free workspace-change frame", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-announce"));
+    const captured = await runInDurableObject(stub, (o: OrgAgent) => {
       const messages: string[] = [];
-      // Capture what the workspace onChange hook fans out to connected clients.
       o.broadcast = ((msg: string) => {
         messages.push(msg);
       }) as OrgAgent["broadcast"];
-      await o.writeFile("/watched.txt", "x");
+      o.announceWorkspaceChange();
       return messages;
     });
+    expect(captured).toEqual([
+      JSON.stringify({ type: WORKSPACE_CHANGE_FRAME }),
+    ]);
+    const frame = JSON.parse(captured[0] ?? "{}") as Record<string, unknown>;
+    expect(frame).toEqual({ type: "workspace-change" });
+    expect(Object.keys(frame)).toEqual(["type"]);
+  });
 
-    const events = captured
-      .map((m) => JSON.parse(m) as { type: string; event?: { path: string } })
-      .filter((m) => m.type === "workspace-change");
-    expect(events.length).toBeGreaterThan(0);
-    expect(events.some((e) => e.event?.path === "/watched.txt")).toBe(true);
+  it("shares files through getWorkspace on the OrgAgent stub", async () => {
+    const id = env.OrgAgent.idFromName("ws-client");
+    const client = await getWorkspace(
+      env.OrgAgent.get(id) as Parameters<typeof getWorkspace>[0]
+    );
+    await client.fs.mkdir("/workspace", { recursive: true });
+    await client.fs.writeFile("/workspace/from-chat.md", "from chat");
+    const listing = await runInDurableObject(
+      env.OrgAgent.get(id),
+      (o: OrgAgent) => o.listWorkspace()
+    );
+    expect(listing).toEqual(
+      expect.arrayContaining([
+        {
+          path: "/workspace/from-chat.md",
+          name: "from-chat.md",
+          type: "file",
+        },
+      ])
+    );
+  });
+
+  it("loads the org workspace on chat startup and confines writes to /workspace", async () => {
+    await db.insert(organization).values({
+      id: "ws-chat-tools",
+      name: "Workspace Org",
+      slug: "ws-chat-tools",
+    });
+    // A parent stub opened outside this object cannot be called from another
+    // DO in the workers pool (OutgoingFactory). Build the chat on the org
+    // DO and point parentAgent at the live instance.
+    const result = await runInDurableObject(
+      env.OrgAgent.get(env.OrgAgent.idFromName("ws-chat-tools")),
+      async (o: OrgAgent, state) => {
+        const chat = new OrgChat(
+          state as unknown as DurableObjectState,
+          CHAT_ENV
+        );
+        Object.defineProperty(chat, "parentPath", {
+          value: [{ className: "OrgAgent", name: "ws-chat-tools" }],
+        });
+        Object.defineProperty(chat, "parentAgent", {
+          value: () => Promise.resolve(o),
+        });
+        // OrgAgent.onStart creates this table on the first RPC. This
+        // callback is still construction, and chat startup reads it.
+        state.storage.sql.exec(
+          "CREATE TABLE IF NOT EXISTS org_memory (label TEXT PRIMARY KEY, content TEXT NOT NULL, updated_at INTEGER NOT NULL)"
+        );
+        await chat.onStart();
+        await chat.workspace.fs.mkdir("/workspace", { recursive: true });
+        const tools = chat.getTools();
+        const write = tools.write as unknown as {
+          execute: (input: {
+            path: string;
+            content: string;
+          }) => Promise<{ error?: string; path?: string }>;
+        };
+        const escaped = await write.execute({
+          path: "/workspace/../hidden.txt",
+          content: "no",
+        });
+        const written = await write.execute({
+          path: "/workspace/note.txt",
+          content: "yes",
+        });
+        const runtime = (
+          chat.workspace as {
+            runtime?: { backends: () => Array<{ id: string }> };
+          }
+        ).runtime;
+        let hidden = "absent";
+        try {
+          await o.workspace.fs.readFile("/hidden.txt", "utf8");
+          hidden = "present";
+        } catch {
+          hidden = "absent";
+        }
+        return {
+          hasExec: "exec" in tools,
+          escaped,
+          written,
+          backends: runtime?.backends() ?? [],
+          hidden,
+          listing: await o.listWorkspace(),
+        };
+      }
+    );
+    expect(result.hasExec).toBe(true);
+    expect(result.escaped.error).toContain("outside /workspace");
+    expect(result.written).toMatchObject({ path: "/workspace/note.txt" });
+    expect(result.backends).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "js" })])
+    );
+    expect(result.hidden).toBe("absent");
+    expect(result.listing).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "/workspace/note.txt",
+          type: "file",
+        }),
+      ])
+    );
+  });
+
+  it("registers the js module backend", async () => {
+    const stub = env.OrgAgent.get(env.OrgAgent.idFromName("ws-backends"));
+    const backends = await runInDurableObject(stub, (o: OrgAgent) =>
+      o.workspace.runtime.backends()
+    );
+    expect(backends).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "js", protocol: "module" }),
+      ])
+    );
   });
 });

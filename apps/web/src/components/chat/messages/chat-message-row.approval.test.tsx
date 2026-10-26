@@ -6,7 +6,6 @@ import type { OrgChatMessage } from "@/lib/chat/ai-types";
 import { ChatMessageRow } from "./chat-message-row";
 
 const UPDATE_PRODUCT_HEADER = /Update Product/;
-const EXECUTE_HEADER = /^Execute/;
 const UPDATED_PRICE = /4242/;
 
 vi.mock("streamdown", () => ({
@@ -18,28 +17,18 @@ afterEach(() => {
 });
 
 function message(
-  state: "input-streaming" | "approval-requested" | "output-available",
-  tool: "update_product" | "execute"
+  state: "input-streaming" | "approval-requested" | "output-available"
 ): OrgChatMessage {
   const approval =
     state === "approval-requested" ? { approval: { id: "ap-1" } } : {};
-  const part =
-    tool === "execute"
-      ? {
-          type: "tool-execute" as const,
-          toolCallId: "call-1",
-          state,
-          input: { code: "await update()" },
-          ...approval,
-        }
-      : {
-          type: "tool-update_product" as const,
-          toolCallId: "call-1",
-          state,
-          input: { id: "Widget", data: { price: 4242 } },
-          output: state === "output-available" ? { price: 4242 } : undefined,
-          ...approval,
-        };
+  const part = {
+    type: "tool-update_product" as const,
+    toolCallId: "call-1",
+    state,
+    input: { id: "Widget", data: { price: 4242 } },
+    output: state === "output-available" ? { price: 4242 } : undefined,
+    ...approval,
+  };
   return {
     id: "m1",
     role: "assistant",
@@ -64,9 +53,7 @@ describe("approval tool card", () => {
       errors.push(args.map(String).join(" "));
     });
 
-    const { rerender } = renderRow(
-      message("input-streaming", "update_product")
-    );
+    const { rerender } = renderRow(message("input-streaming"));
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(header(UPDATE_PRODUCT_HEADER).getAttribute("aria-expanded")).toBe(
       "false"
@@ -74,7 +61,7 @@ describe("approval tool card", () => {
 
     rerender(
       <ChatMessageRow
-        message={message("approval-requested", "update_product")}
+        message={message("approval-requested")}
         onToolApproval={() => undefined}
       />
     );
@@ -94,7 +81,7 @@ describe("approval tool card", () => {
 
     rerender(
       <ChatMessageRow
-        message={message("output-available", "update_product")}
+        message={message("output-available")}
         onToolApproval={() => undefined}
       />
     );
@@ -106,21 +93,5 @@ describe("approval tool card", () => {
     expect(screen.queryAllByText(UPDATED_PRICE)).toEqual([]);
 
     spy.mockRestore();
-  });
-
-  it("opens an execute card when approval is requested", () => {
-    const { rerender } = renderRow(message("input-streaming", "execute"));
-    expect(header(EXECUTE_HEADER).getAttribute("aria-expanded")).toBe("false");
-
-    rerender(
-      <ChatMessageRow
-        message={message("approval-requested", "execute")}
-        onToolApproval={() => undefined}
-      />
-    );
-    const trigger = header(EXECUTE_HEADER);
-    expect(trigger.getAttribute("aria-expanded")).toBe("true");
-    fireEvent.click(trigger);
-    expect(header(EXECUTE_HEADER).getAttribute("aria-expanded")).toBe("true");
   });
 });

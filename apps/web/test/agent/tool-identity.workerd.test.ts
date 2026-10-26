@@ -1,30 +1,16 @@
 import { runInDurableObject } from "cloudflare:test";
+import { getWorkspace } from "@cloudflare/computer";
+import { createAITools } from "@cloudflare/computer/tools/ai-sdk";
 import { getOrgAgentTools } from "@workspace/agent";
 import { PERMISSION_DENIED_MESSAGE } from "@workspace/agent/constants";
 import { OrgChat } from "@workspace/agent/org/chat";
-import { db, eq, member, organization, products, user } from "@workspace/db";
+import { db, member, organization, user } from "@workspace/db";
 import {
   __DO_NOT_USE_WILL_BREAK__agentContext as agentContext,
   type Connection,
-  getCurrentAgent,
 } from "agents";
 import { describe, expect, it } from "vitest";
 import { env } from "./test-env";
-
-/**
- * Tool identity. Think builds the ToolSet at turn start inside the
- * turn's ALS (think.js builds tools before beforeTurn), so OrgChat.getTools()
- * binds the initiating connection's user into that invocation's tool
- * closures; sandbox tool callbacks have no ALS of their own and read the
- * bound user; a live ALS at execute time wins; neither fails closed.
- *
- * The tests drive the production seams: `chat.getTools()` on a real OrgChat
- * DO (fake LOADER object — enough for createExecuteTool to construct the
- * codemode runtime; sandbox execution itself is never run), with the ALS
- * store planted via the same AsyncLocalStorage the framework wraps methods
- * in. A fake owner connection stays attached throughout — nothing consults
- * it, which is the point: no "any live connection" fallback exists.
- */
 
 interface ToolResultLike {
   name?: string;
@@ -35,7 +21,6 @@ const STUB_ENV = {
   OPENAI_COMPATIBLE_BASE_URL: "http://localhost:9/v1",
   OPENAI_COMPATIBLE_API_KEY: "test-key",
   ORG_CHAT_MODEL: "test-model",
-  LOADER: {},
 } as unknown as Cloudflare.Env;
 
 function connectionFor(userId: string): Connection {
@@ -122,28 +107,6 @@ function orgChatInFreshDo(organizationId: string) {
       value: [{ className: "OrgAgent", name: organizationId }],
       configurable: true,
     });
-    // The codemode runtime resolves a facet through ctx.exports/ctx.facets;
-    // facet I/O on a borrowed DO state is impossible in this pool, so shadow
-    // ctx with the same shape the runtime needs at BUILD time. The stub
-    // runtime refuses execution (a real one settles bogus ids as status
-    // errors — not under test here); what this test pins is that the
-    // override rebuilt the tool set — and with it `this.codemode` — under the
-    // approver's connection BEFORE super took the runtime. Storage stays
-    // real for the product-tool writes.
-    Object.defineProperty(chat, "ctx", {
-      value: {
-        storage: state.storage,
-        exports: { CodemodeRuntime: class {} },
-        facets: {
-          get: () => ({
-            getExecution: () => {
-              throw new Error("no runtime I/O in test");
-            },
-          }),
-        },
-      },
-      configurable: true,
-    });
     // Regression guard: an owner connection IS attached. Nothing in the
     // identity path may consult it — a "some live connection" fallback would
     // make the refused writes below succeed.
@@ -173,8 +136,6 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
     const { ownerId, orgId } = await seedOrgWithRoles();
     const chat = await orgChatInFreshDo(orgId);
 
-    // Build under the owner's ALS, then execute with no ALS at all — the
-    // codemode sandbox's situation: the user bound at build time applies.
     const tools = await runAs(chat, connectionFor(ownerId), () =>
       chat.getTools()
     );
@@ -213,90 +174,38 @@ describe("OrgChat tool identity via getTools (in workerd)", () => {
     ).rejects.toThrow(PERMISSION_DENIED_MESSAGE);
   });
 
-  it("approveExecution rebuilds the tools under the approver's connection (rebinds this.codemode)", async () => {
-    const { ownerId, viewerId, orgId } = await seedOrgWithRoles();
+  it("publishes rooted file tools, and product names stay off that set", async () => {
+    const { orgId } = await seedOrgWithRoles();
     const chat = await orgChatInFreshDo(orgId);
+    const tools = chat.getTools();
+    expect(tools).not.toHaveProperty("execute");
+    expect(tools).toHaveProperty("write");
+    expect(tools).not.toHaveProperty("exec");
 
-    // Pre-bind a runtime under the OWNER (a previous turn's build), the way
-    // the fail-closed test does. Without the override, super would take this
-    // stale runtime as-is and never call getTools — so both the spy below and
-    // the runtime-swap assertion actually pin the override's rebuild.
-    await runAs(chat, connectionFor(ownerId), () => chat.getTools());
-    const ownerRuntime = (chat as unknown as { codemode?: unknown }).codemode;
-    expect(ownerRuntime).toBeDefined();
-
-    // Spy on the instance's getTools: the override must call it (Think's
-    // approveExecution then takes this.codemode synchronously for the
-    // replay), and it must run with the approver's ALS connection.
-    const realGetTools = OrgChat.prototype.getTools;
-    let builtUnderUserId: string | undefined;
-    let builtUnderConnectionless = false;
-    Object.defineProperty(chat, "getTools", {
-      value() {
-        const { connection } = getCurrentAgent();
-        builtUnderUserId = connection?.state
-          ? (connection.state as { userId?: string }).userId
-          : undefined;
-        builtUnderConnectionless = !connection;
-        return realGetTools.call(this);
-      },
-      configurable: true,
-    });
-
-    // The stub runtime refuses I/O, so super rejects; the assertions below
-    // are about what happened before that — the rebuild under the approver.
-    await runAs(chat, connectionFor(viewerId), () =>
-      chat.approveExecution("no-such-execution")
-    ).catch(() => undefined);
-    expect(builtUnderConnectionless).toBe(false);
-    expect(builtUnderUserId).toBe(viewerId);
-    const approverRuntime = (chat as unknown as { codemode?: unknown })
-      .codemode;
-    expect(approverRuntime).toBeDefined();
-    expect(approverRuntime).not.toBe(ownerRuntime);
-  });
-
-  it("fails closed when the override's getTools throws — the stale runtime is cleared, not replayed", async () => {
-    const { ownerId, viewerId, orgId } = await seedOrgWithRoles();
-    const chat = await orgChatInFreshDo(orgId);
-
-    // Bind the runtime to the OWNER first (a previous turn's build).
-    await runAs(chat, connectionFor(ownerId), () => chat.getTools());
-    expect((chat as unknown as { codemode?: unknown }).codemode).toBeDefined();
-
-    // Now getTools throws during the viewer's approval (spy).
-    Object.defineProperty(chat, "getTools", {
-      value: () => {
-        throw new Error("build exploded");
-      },
-      configurable: true,
-    });
-    const outcome = await runAs(chat, connectionFor(viewerId), () =>
-      chat.approveExecution("no-such-execution")
+    const workspace = await getWorkspace(
+      env.OrgAgent.get(env.OrgAgent.idFromName(`tools-${orgId}`)) as Parameters<
+        typeof getWorkspace
+      >[0]
     );
-
-    // Think's own status error — the stale (owner-bound) runtime was
-    // cleared, so the approval settled without replaying anything.
-    expect(outcome).toMatchObject({
-      status: "error",
-      executionId: "no-such-execution",
-      error: expect.stringContaining("No codemode runtime"),
-    });
-    expect(
-      (chat as unknown as { codemode?: unknown }).codemode
-    ).toBeUndefined();
-    // And no write ran under the previously bound (owner) identity.
-    const rows = await db
-      .select({ name: products.name })
-      .from(products)
-      .where(eq(products.organizationId, orgId));
-    expect(rows).toEqual([]);
+    const workspaceNames = Object.keys(
+      createAITools({ workspace, root: "/workspace" })
+    );
+    expect(workspaceNames).toContain("write");
+    for (const name of [
+      "create_product",
+      "delete_product",
+      "get_product",
+      "list_products",
+      "update_product",
+    ]) {
+      expect(workspaceNames).not.toContain(name);
+    }
   });
 });
 
 /**
- * Composition-level sanity: the five product tools the sandbox sees are the
- * ones whose identity closure these tests exercise.
+ * Composition-level sanity: the five product tools whose identity closure
+ * these tests exercise.
  */
 describe("getOrgAgentTools composition", () => {
   it("exposes exactly the five product tools", () => {

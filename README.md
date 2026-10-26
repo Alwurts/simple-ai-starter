@@ -67,8 +67,8 @@ products into the local database (local only).
   data with saved chats, org memory, a shared org workspace, a `delegate`
   sub-agent, tool approvals, context compaction, conversation search, one
   bundled skill, an opt-in fetch tool (`FETCH_ALLOWED_HOSTS`), and sandboxed
-  code execution (`execute` via the `LOADER` binding; approval-gated tools
-  pause inside the sandbox).
+  JavaScript (`exec` via the `LOADER` binding, files under `/workspace`).
+  Code cannot call product tools.
 - **An end-to-end type-safe stack** with no code generation, from the database
   to the UI.
 
@@ -103,7 +103,7 @@ where the rest live. The full map and a worked example:
 
 Deploying needs Cloudflare resources first:
 
-1. A **Workers Paid** plan: the code-execution sandbox (`execute`) runs on
+1. A **Workers Paid** plan: JavaScript execution (`exec`) runs on
    [Dynamic Workers](https://developers.cloudflare.com/dynamic-workers/) through
    the `worker_loaders` binding, which is Paid-only. The org agent's
    SQLite-backed Durable Objects also run on the Free plan.

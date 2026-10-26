@@ -1,4 +1,9 @@
-import { type Session, Think } from "@cloudflare/think";
+import {
+  type Session,
+  Think,
+  type TurnConfig,
+  type TurnContext,
+} from "@cloudflare/think";
 import { errorMessage, structuredLog } from "@workspace/log";
 import type { ContextConfig } from "agents/context";
 import { createCompactFunction } from "agents/sessions";
@@ -32,6 +37,12 @@ Do the task thoroughly, then return a concise, self-contained result the parent 
  */
 export class OrgSubAgent extends Think<Cloudflare.Env> {
   override maxSteps = 30;
+
+  override mediaEviction = false;
+
+  override beforeTurn(_ctx: TurnContext): TurnConfig {
+    return { activeTools: ["list_products", "get_product"] };
+  }
 
   private resolvedModel: ResolvedOrgChatModel | undefined;
 

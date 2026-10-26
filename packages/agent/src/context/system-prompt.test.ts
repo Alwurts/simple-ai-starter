@@ -24,12 +24,16 @@ describe("buildOrgHeader", () => {
     ]);
   });
 
-  it("carries the codemode pause/rejection discipline (round 2)", () => {
+  it("tells the model to run JavaScript with exec under /workspace", () => {
     const flat = header.replace(/\s+/g, " ");
-    expect(flat).toContain('status: "paused"');
-    expect(flat).toContain("one pending approval");
-    expect(flat).toContain('status: "rejected"');
-    expect(flat).toContain("do not retry it unless the user asks again");
+    expect(flat).toContain("`exec`");
+    expect(flat).toContain("`ls`");
+    expect(flat).toContain("/workspace");
+    expect(flat).toContain("cannot call product tools");
+    expect(flat).not.toContain('status: "paused"');
+    expect(flat).not.toContain("`list`");
+    expect(flat).not.toContain("`bash`");
+    expect(flat).not.toContain("`execute`");
   });
 
   it("identifies the org once, up front", () => {

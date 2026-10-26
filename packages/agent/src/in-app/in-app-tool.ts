@@ -3,8 +3,8 @@ import type { z } from "zod";
 import type { ToolContext } from "../tool-parts/context";
 
 /**
- * One tool definition, bound per consumer (in-app chat, read-only delegate,
- * codemode via the chat tool set, an MCP binder later). `needsApproval` lives
+ * One tool definition, bound per consumer (in-app chat, read-only delegate).
+ * `needsApproval` lives
  * on the part. `execute` returns the value or throws; the AI SDK turns a
  * throw into the tool-error result (`output-error` / `errorText`).
  */

@@ -70,7 +70,7 @@ Run from the **monorepo root** (not inside a package):
   layer map + a worked `products` slice; the org agent (five product tools,
   memory, shared workspace, `delegate` sub-agent, approvals, compaction,
   conversation search, one bundled skill, opt-in `FETCH_ALLOWED_HOSTS` fetch
-  tool, codemode `execute` behind the `LOADER` binding) →
+  tool, JavaScript `exec` on the org workspace behind the `LOADER` binding) →
   [`docs/guides/writing-agent-tools.md`](docs/guides/writing-agent-tools.md).
 - **Why a choice was made** → [`docs/decisions/`](docs/decisions/) — ADRs, under a
   strict significance bar ([template](docs/decisions/template.md)).

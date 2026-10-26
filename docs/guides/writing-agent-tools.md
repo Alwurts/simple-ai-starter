@@ -34,7 +34,7 @@ packages/agent/src/
 
 | Compose entry | What it returns | Where it runs |
 |---------------|-----------------|---------------|
-| `getOrgAgentTools(ctx)` | The five product tools (`list/get/create/update/delete_product`) | Top-level Think tools on `OrgChat` — **also** the `tools.*` surface inside the codemode sandbox |
+| `getOrgAgentTools(ctx)` | The five product tools (`list/get/create/update/delete_product`) | Top-level Think tools on `OrgChat`. Code cannot call them |
 | `getOrgAgentReadOnlyTools(ctx)` | `list_products`, `get_product` only | Delegated sub-agent (`OrgSubAgent`) |
 | `createDisplayTools(ctx)` (`in-app/display.ts`) | `display_product_list`, `display_memory` | Composed in `org-chat.getTools()` as top-level peers of the product tools + `delegate` |
 
@@ -43,10 +43,8 @@ tools, `delegate`, and display tools as siblings. Display tools are UI echoes
 and may keep their own return shapes — do not block product work on wrapping
 them.
 
-The codemode sandbox (`execute` tool, below) is built from
-`getOrgAgentTools(ctx)` — nothing else. That is what keeps `update_product` /
-`delete_product` approval-gated inside sandbox code, and what keeps `delegate`,
-display tools and the browser out of it.
+Product tools stay top-level. Code cannot call them. `delegate`, display
+tools, and the browser stay out of the JavaScript sandbox.
 
 ## Agent Skills (`getSkills()`)
 
@@ -79,33 +77,31 @@ at least one host — empty/unset means the fetch tool does not exist at all
 bare-origin allowlist entry (origin + every subpath); Think enforces GET-only,
 size caps, redirect-into-allowlist, and blocks private/loopback targets.
 
-## Code execution (codemode `execute` tool)
+## Code execution (`exec`)
 
-`OrgChat.getTools()` adds `execute` via `createExecuteTool(this, { tools:
-productTools })` from `@cloudflare/think/tools/execute`: the model writes
-TypeScript that runs in an isolated Worker sandbox. Setup that this template
-already has: the `worker_loaders` binding `LOADER` (`wrangler.jsonc`) and
-`export { CodemodeRuntime } from "@cloudflare/codemode"` in
-`apps/web/src/server.ts` (the manual export the codemode docs prescribe —
-equivalent to their Vite plugin's output).
-
-Inside the sandbox the model sees `tools.*` (the five product tools),
-`state.*` (the shared org workspace), and the `codemode` SDK — no `cdp.*`
-(there is no `BROWSER` binding) and no `delegate`. Sandbox code runs with
-network access blocked.
-
-Running code is **not** gated itself — approvals come from the gated
-tools the code calls: sandbox calls to `update_product` / `delete_product`
-keep their `needsApproval`, which the codemode runtime maps to its durable
-pause/approve/resume — see
+`OrgAgent` owns one Computer `Workspace` with a Worker JavaScript backend.
+The `LOADER` binding in `wrangler.jsonc` is that backend. Think adds `exec`
+because the loaded workspace lists the `js` backend. The model runs
+JavaScript. Files live under `/workspace`. Inside the program they are
+`node:fs/promises`. From the chat they are Think's file tools (`read`, `ls`,
+`write`, `edit`, `delete`). The sandbox has no network. Code cannot call
+product tools. The model calls those itself. `update_product` and
+`delete_product` ask for approval through AI SDK `needsApproval`. See
 [`agent-tool-approvals.md`](./agent-tool-approvals.md).
 
-A paused run renders an approval card outside the collapsed Worked group
-(`PausedExecutionCard` in
-`apps/web/src/components/chat/messages/chat-message-row.tsx`), which
-loads the full pending args via `pendingExecutions(executionId)` and resolves
-via `approveExecution` / `rejectExecution`; Think replays the run and
-auto-continues the chat.
+`OrgChat.getTools()` republishes those file tools with root `/workspace`.
+Think builds its own copy without a root and then spreads `getTools()` over
+it, so the rooted set is the one the model calls. A path outside
+`/workspace` is rejected.
+
+`OrgSubAgent` does not use the org workspace. Its turn offers only
+`list_products` and `get_product`, and media eviction is off.
+
+The browser reads the same files through `OrgAgent.listWorkspace` and
+`readWorkspaceFile`, confined to `/workspace`. Symlinks are listed and not
+followed. A step that ran a tool announces `{ type: "workspace-change" }`.
+Media eviction writes `/workspace/attachments/evicted/` from a later queue
+pass and does not announce. `exec` renders as a generic tool row.
 
 ## Context globals vs `inputSchema`
 
@@ -280,7 +276,7 @@ On `@cloudflare/think` + the AI SDK tool loop:
 3. Bind in `getOrgAgentTools` only (not the read-only compose).
 4. Add to `AGENT_WRITE_TOOL_NAMES` if it mutates persisted state the UI
    should refresh — the web chat invalidates its products queries when a
-   settled tool part (or applied codemode call) names a write tool from that
+   settled tool part names a write tool from that
    constant.
 
 ### Approval-gated write
